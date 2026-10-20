@@ -14,7 +14,7 @@ Target: the unmodified WH3 Mod Manager release build, used as the A/B reference 
 | Version | 2.29.0 |
 | Build | official release asset `wh3mm-win32-x64-2.29.0.zip` (189,503,549 bytes), not a dev build |
 | Licence | MIT |
-| Host so far | none — see Feasibility below |
+| Host so far | GitHub-hosted `windows-latest` (first pass, see Measured) |
 
 ### Method
 
@@ -78,9 +78,44 @@ Raw output: `docs/perf/legacy-baseline.json` (schema `wh3mm.perf.legacy-baseline
 per-run logs. JSON, not screenshots. Medians, min/max, standard deviation and coefficient of
 variation are computed over the successful runs.
 
+### Measured (first pass, GitHub `windows-latest`)
+
+Run: [actions run 39457059668](https://github.com/mak8427/Warhammer_mod_manager/actions/runs/39457059668),
+2026-10-20, release asset SHA-256 `3f8aa1b5d096b9f7c5bf387f4bf9fde3f47012d7e93d274d393a0514ca8c99da`.
+Raw report: `docs/perf/legacy-baseline.json` (artifact `legacy-baseline-v2.29.0`, retained 90 days).
+
+| Field | Value |
+| --- | --- |
+| OS | Microsoft Windows Server 2025, `10.0.26100.33438`, x64 |
+| CPU | AMD EPYC (Family 25 Model 17), 2 vCPU |
+| RAM | 8 GiB |
+| Node | v22.23.3 |
+| Fixture | 500 packs, sha256 `77895a15…` (superseded by the separator fix below) |
+
+Five cold runs, fresh `--user-data-dir` and no header cache before each:
+
+| Metric | Median | Min | Max | Stdev | CV |
+| --- | --- | --- | --- | --- | --- |
+| Cold start to React mounted | **1037 ms** | 982 ms | 1131 ms | 48 ms | 4.6% |
+| Mod list populated (500 packs) | **6510 ms** | 6413 ms | 6666 ms | 84 ms | 1.3% |
+| PFH5 header scan (all mods) | **525 ms** | 500 ms | 574 ms | 28 ms | 5.1% |
+
+The app reported **492 mods**. That is correct, not a fixture defect: the 500 packs include 8
+data/content pairs with the same name, and the legacy app deliberately removes content copies that
+duplicate a data mod. 492 = 500 − 8.
+
+`modListPopulated` includes the legacy app's fixed 5,000 ms wait for Steam workshop subscription
+ids. Without Steam every run pays it, so the scan-related part is roughly `6510 − 5000 = 1510 ms`
+on this machine; the header scan (525 ms) is measured separately. Subtract the same fixed wait
+before comparing with the new app.
+
+Caveat: this is a shared 2-vCPU CI runner. The CV is low (1.3–5.1%) for a single machine, but the
+absolute numbers are not a substitute for a stable host for the final A/B. See Feasibility.
+
 ### Feasibility
 
-**Verdict: the baseline has not been captured. This host cannot run the legacy release build.**
+**Verdict: a first baseline is captured on a cloud Windows runner; the development host cannot
+run the legacy release build at all.**
 
 Evidence:
 
@@ -93,25 +128,28 @@ Evidence:
   That gives a *feasible* measurement path but a noisy one; it is not a substitute for a stable
   machine when we close the performance gate.
 
-This is a blocker for deliverable 3 (measured legacy numbers), not for the fixture or the method.
-No numbers have been invented.
+GitHub Actions `windows-latest` works: the app launched, rendered and scanned the fixture, and
+reported its own startup timings. What remains unresolved is a *stable* Windows host for the final
+A/B (option B/C below). No numbers have been invented; every value above comes from the checked-in
+runner and the uploaded JSON.
 
 ### Escalation and options
 
 | Option | Cost | Fidelity | Recommendation |
 | --- | --- | --- | --- |
-| A. GitHub Actions `windows-latest` via `Perf legacy baseline` workflow | included CI minutes (about 10–15 min/run; private-repo overage ≈ $0.008/min Linux-equivalent, Windows ≈ $0.016/min) | Shared 4 vCPU runner, noisy neighbours, ephemeral. Fine for a first number; weak for the final A/B | Do now |
+| A. GitHub Actions `windows-latest` via `Perf legacy baseline` workflow | included CI minutes (a run takes ≈2 min; Windows overage ≈ $0.016/min) | Shared 2–4 vCPU runner, noisy neighbours, ephemeral. Proven to work for the first number; weak for the final A/B | done |
 | B. Dedicated Windows VM (e.g. Azure `D4s_v5` ≈ $0.19/h pay-as-you-go, or Hetzner `CCX13` ≈ €0.02/h) for the duration of the gate | under $20 for the whole performance gate | Stable CPU, repeatable runs, can be pinned to the same machine as the new app | Do before the gate closes |
 | C. Physical Windows box with the real WH3 install | existing hardware, if Torgrim has one | Only option that measures real game-data size and the game-launch handoff end to end | Optional, for the launch metric |
 
-Decision needed from Torgrim/Katerina: approve option A now so the first legacy number exists, and
-name the machine for option B (or confirm A is acceptable for the final comparison).
+Decision needed from Torgrim/Katerina: name the machine for option B (or confirm A is acceptable
+for the final comparison). Option A already answered "can the legacy app run at all?" with yes.
 
 ### Reproduce checklist for whoever runs it
 
 - [ ] Windows 10/11 x64, 16 GB RAM, idle machine, no game running
 - [ ] `gh release download v2.29.0 ...` and record the asset SHA-256
-- [ ] `node scripts/perf/generate-fixture.mjs --out perf-fixture/wh3-500` and record the fixture digest
-- [ ] `WH3MM_RUNS=5 bash scripts/perf/legacy-baseline.sh`
-- [ ] Paste `environment`, `metrics` and the raw log paths into this section
+- [x] `node scripts/perf/generate-fixture.mjs --out perf-fixture/wh3-500` and record the fixture digest
+- [x] `WH3MM_RUNS=5 bash scripts/perf/legacy-baseline.sh` (via the workflow)
+- [x] Paste `environment`, `metrics` and the raw log paths into this section
+- [ ] Re-run on the stable host once named, and replace the cloud-runner numbers
 - [ ] Keep `main` green; attach the PR and task id `WAR-19`

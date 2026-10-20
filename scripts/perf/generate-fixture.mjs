@@ -246,8 +246,13 @@ async function generate(out, count, seed) {
   };
   await writeFile(nodePath.join(userData, "config.json"), `${JSON.stringify(config, null, 2)}\n`, "utf8");
 
+  // Normalise separators so the digest is identical on Windows and POSIX hosts.
+  const digestPath = (path) => path.replaceAll("\\", "/");
   const digestInput = await Promise.all(
-    files.map(async (file) => `${file.path}:${await sha256(await readFile(nodePath.join(out, file.path)))}`),
+    files.map(
+      async (file) =>
+        `${digestPath(file.path)}:${await sha256(await readFile(nodePath.join(out, file.path)))}`,
+    ),
   );
   const manifestJson = {
     schema: "wh3mm.perf.fixture.v1",
@@ -287,8 +292,9 @@ async function verify(out) {
       });
     }
   }
+  const digestPath = (path) => path.replaceAll("\\", "/");
   const digestInput = [];
-  for (const pack of packs) digestInput.push(`${pack.path}:${await sha256(pack.buffer)}`);
+  for (const pack of packs) digestInput.push(`${digestPath(pack.path)}:${await sha256(pack.buffer)}`);
   const actual = await sha256(Buffer.from(digestInput.sort().join("\n"), "utf8"));
   const ok = actual === expected.sha256 && packs.length === expected.packFiles;
   console.log(

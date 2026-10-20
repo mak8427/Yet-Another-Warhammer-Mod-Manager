@@ -83,14 +83,15 @@ jobs:
         run: |
           if (Test-Path docs/perf/legacy-baseline.json) {
             $report = Get-Content docs/perf/legacy-baseline.json -Raw | ConvertFrom-Json
-            @"
-          ### Legacy baseline (${{ inputs.legacy_tag || 'v2.29.0' }})
-          Machine: $($report.environment.osRelease) / $($report.environment.cpu) / $($report.environment.cpuCores) cores
-          Fixture: $($report.environment.fixturePacks) packs, sha256 $($report.environment.fixtureSha256)
-          Cold start median: $($report.metrics.coldStartMs.medianMs) ms (cv $($report.metrics.coldStartMs.cvPercent)%)
-          Mod list populated median: $($report.metrics.modListPopulatedMs.medianMs) ms (cv $($report.metrics.modListPopulatedMs.cvPercent)%)
-          Header scan median: $($report.metrics.headerScanMs.medianMs) ms (cv $($report.metrics.headerScanMs.cvPercent)%)
-          "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            $lines = @(
+              "### Legacy baseline (${{ inputs.legacy_tag || 'v2.29.0' }})",
+              "Machine: $($report.environment.osRelease) / $($report.environment.cpu) / $($report.environment.cpuCores) cores / $($report.environment.totalMemoryGiB) GiB",
+              "Fixture: $($report.environment.fixturePacks) packs, sha256 $($report.environment.fixtureSha256)",
+              "Cold start median: $($report.metrics.coldStartMs.medianMs) ms (cv $($report.metrics.coldStartMs.cvPercent)%)",
+              "Mod list populated median: $($report.metrics.modListPopulatedMs.medianMs) ms (cv $($report.metrics.modListPopulatedMs.cvPercent)%)",
+              "Header scan median: $($report.metrics.headerScanMs.medianMs) ms (cv $($report.metrics.headerScanMs.cvPercent)%)"
+            )
+            $lines | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
           }
 
       - name: Upload raw logs and report
@@ -102,4 +103,5 @@ jobs:
             docs/perf/legacy-baseline.json
             docs/perf/.legacy-baseline-*/*.log
           if-no-files-found: warn
+          include-hidden-files: true
           retention-days: 90
