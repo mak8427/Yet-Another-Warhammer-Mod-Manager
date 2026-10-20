@@ -1,8 +1,11 @@
 target/
 node_modules/
 dist/
-.DS_Store
+coverage/
+.vite/
+*.tsbuildinfo
 *.log
 .env
 .env.*
+.DS_Store
 !.env.example

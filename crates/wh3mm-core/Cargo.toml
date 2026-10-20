@@ -1,0 +1,12 @@
+[package]
+name = "wh3mm-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Pure domain logic for the WH3 Mod Manager (no Tauri or WebView dependencies)"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
