@@ -80,9 +80,14 @@ variation are computed over the successful runs.
 
 ### Measured (first pass, GitHub `windows-latest`)
 
-Run: [actions run 39457059668](https://github.com/mak8427/Warhammer_mod_manager/actions/runs/39457059668),
+Run: [actions run 39457611317](https://github.com/mak8427/Warhammer_mod_manager/actions/runs/39457611317),
 2026-10-20, release asset SHA-256 `3f8aa1b5d096b9f7c5bf387f4bf9fde3f47012d7e93d274d393a0514ca8c99da`.
-Raw report: `docs/perf/legacy-baseline.json` (artifact `legacy-baseline-v2.29.0`, retained 90 days).
+Raw report: `docs/perf/legacy-baseline.json`; raw stdout logs:
+`docs/perf/legacy-baseline-run-39457611317/run-1..5.log`.
+
+The same job on the previous runner (run 39457059668) gave cold start 1037 ms, mod list 6510 ms,
+header scan 525 ms. That 15% spread between two identical jobs on the same runner class is the
+reason the final A/B needs a stable host.
 
 | Field | Value |
 | --- | --- |
@@ -90,15 +95,15 @@ Raw report: `docs/perf/legacy-baseline.json` (artifact `legacy-baseline-v2.29.0`
 | CPU | AMD EPYC (Family 25 Model 17), 2 vCPU |
 | RAM | 8 GiB |
 | Node | v22.23.3 |
-| Fixture | 500 packs, sha256 `77895a15…` (superseded by the separator fix below) |
+| Fixture | 500 packs, sha256 `1de7de62…` (identical to the POSIX digest) |
 
 Five cold runs, fresh `--user-data-dir` and no header cache before each:
 
 | Metric | Median | Min | Max | Stdev | CV |
 | --- | --- | --- | --- | --- | --- |
-| Cold start to React mounted | **1037 ms** | 982 ms | 1131 ms | 48 ms | 4.6% |
-| Mod list populated (500 packs) | **6510 ms** | 6413 ms | 6666 ms | 84 ms | 1.3% |
-| PFH5 header scan (all mods) | **525 ms** | 500 ms | 574 ms | 28 ms | 5.1% |
+| Cold start to React mounted | **1197 ms** | 1127 ms | 1330 ms | 76 ms | 6.2% |
+| Mod list populated (500 packs) | **6718 ms** | 6665 ms | 8163 ms | 573 ms | 8.1% |
+| PFH5 header scan (all mods) | **551 ms** | 517 ms | 584 ms | 25 ms | 4.5% |
 
 The app reported **492 mods**. That is correct, not a fixture defect: the 500 packs include 8
 data/content pairs with the same name, and the legacy app deliberately removes content copies that
@@ -106,11 +111,12 @@ duplicate a data mod. 492 = 500 − 8.
 
 `modListPopulated` includes the legacy app's fixed 5,000 ms wait for Steam workshop subscription
 ids. Without Steam every run pays it, so the scan-related part is roughly `6510 − 5000 = 1510 ms`
-on this machine; the header scan (525 ms) is measured separately. Subtract the same fixed wait
+on this machine; the header scan (551 ms) is measured separately. Subtract the same fixed wait
 before comparing with the new app.
 
-Caveat: this is a shared 2-vCPU CI runner. The CV is low (1.3–5.1%) for a single machine, but the
-absolute numbers are not a substitute for a stable host for the final A/B. See Feasibility.
+Caveat: this is a shared 2-vCPU CI runner. The CV is low (4.5–8.1%) within a job, but two identical
+jobs on the same runner class differed by ~15%. These numbers are not a substitute for a stable
+host for the final A/B. See Feasibility.
 
 ### Feasibility
 
