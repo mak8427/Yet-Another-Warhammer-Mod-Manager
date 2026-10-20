@@ -54,7 +54,8 @@ private task runner (`pnpm dev|build|typecheck|lint|test`); it ships no code.
 
 `wh3mm-app` owns only:
 
-- Tauri command registration and argument validation (`commands/` by domain).
+- Tauri command registration and argument validation (`commands.rs` in M0;
+  split into `commands/` by domain as M1-M3 land).
 - Resolving OS/app paths (Tauri path APIs) and passing them to core.
 - Process spawning for Steam/game launch.
 - Mapping core errors to `AppError` and serializing responses.
@@ -150,7 +151,8 @@ The legacy renderer called `window.electron.*` / `ipcRenderer.invoke(...)` and
 received main-process events. The replacement is:
 
 1. Every operation becomes a typed Tauri command declared in
-   `crates/wh3mm-app/src/commands/` and registered in `invoke_handler`.
+   `crates/wh3mm-app/src/commands.rs` (or `commands/` once split) and registered
+   in `invoke_handler`.
 2. Request/response payloads are `serde` structs in `wh3mm-core::ipc` with
    camelCase fields; the TypeScript mirror lives in `frontend/src/lib/ipc.ts`.
 3. Renderer code calls `ipc.<method>()`; it never imports `@tauri-apps/api`
