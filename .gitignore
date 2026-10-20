@@ -9,3 +9,7 @@ coverage/
 .env.*
 .DS_Store
 !.env.example
+
+# Perf fixtures are generated, never committed (500 binary packs)
+perf-fixture/
+docs/perf/.legacy-baseline-*/

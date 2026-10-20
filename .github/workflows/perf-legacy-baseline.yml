@@ -1,0 +1,98 @@
+name: Perf legacy baseline
+
+# Measures the official legacy WH3 Mod Manager release build against the synthetic 500-mod
+# fixture. Windows-only: the legacy project ships a win32-x64 release and the app needs a
+# desktop session. See docs/PERF.md.
+on:
+  workflow_dispatch:
+    inputs:
+      legacy_tag:
+        description: Legacy release tag to measure
+        required: true
+        default: v2.29.0
+      runs:
+        description: Measured runs per metric
+        required: true
+        default: "5"
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Download the legacy release build
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LEGACY_TAG: ${{ inputs.legacy_tag }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force -Path "$env:RUNNER_TEMP\legacy" | Out-Null
+          gh release download $env:LEGACY_TAG --repo Shazbot/WH3-Mod-Manager --dir "$env:RUNNER_TEMP\legacy"
+          $zip = Get-ChildItem "$env:RUNNER_TEMP\legacy\*.zip" | Select-Object -First 1
+          if (-not $zip) { throw "release asset zip not found" }
+          Expand-Archive -Path $zip.FullName -DestinationPath "$env:RUNNER_TEMP\legacy\app" -Force
+          $exe = Get-ChildItem "$env:RUNNER_TEMP\legacy\app" -Recurse -Filter "wh3mm.exe" | Select-Object -First 1
+          if (-not $exe) { throw "wh3mm.exe not found in the release zip" }
+          "WH3MM_APP=$($exe.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Output "release asset: $($zip.Name) ($($zip.Length) bytes)"
+          Write-Output "exe: $($exe.FullName)"
+
+      - name: Generate and verify the 500-mod fixture
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          node scripts/perf/generate-fixture.mjs --out perf-fixture/wh3-500 --count 500
+          if ($LASTEXITCODE -ne 0) { throw "fixture generation failed" }
+          node scripts/perf/generate-fixture.mjs --verify perf-fixture/wh3-500
+          if ($LASTEXITCODE -ne 0) { throw "fixture verification failed" }
+
+      - name: Measure the legacy release build
+        shell: pwsh
+        env:
+          WH3MM_RUNS: ${{ inputs.runs }}
+          WH3MM_APP: ${{ env.WH3MM_APP }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force -Path docs/perf | Out-Null
+          node scripts/perf/measure-legacy.mjs `
+            --app "$env:WH3MM_APP" `
+            --fixture perf-fixture/wh3-500 `
+            --runs $env:WH3MM_RUNS `
+            --out docs/perf/legacy-baseline.json
+          if ($LASTEXITCODE -ne 0) { throw "legacy measurement failed" }
+
+      - name: Attach the numbers to the run
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path docs/perf/legacy-baseline.json) {
+            $report = Get-Content docs/perf/legacy-baseline.json -Raw | ConvertFrom-Json
+            @"
+          ### Legacy baseline (${{ inputs.legacy_tag }})
+          Machine: $($report.environment.osRelease) / $($report.environment.cpu) / $($report.environment.cpuCores) cores
+          Fixture: $($report.environment.fixturePacks) packs, sha256 $($report.environment.fixtureSha256)
+          Cold start median: $($report.metrics.coldStartMs.medianMs) ms (cv $($report.metrics.coldStartMs.cvPercent)%)
+          Mod list populated median: $($report.metrics.modListPopulatedMs.medianMs) ms (cv $($report.metrics.modListPopulatedMs.cvPercent)%)
+          Header scan median: $($report.metrics.headerScanMs.medianMs) ms (cv $($report.metrics.headerScanMs.cvPercent)%)
+          "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+
+      - name: Upload raw logs and report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: legacy-baseline-${{ inputs.legacy_tag }}
+          path: |
+            docs/perf/legacy-baseline.json
+            docs/perf/.legacy-baseline-*/*.log
+          if-no-files-found: warn
+          retention-days: 90
