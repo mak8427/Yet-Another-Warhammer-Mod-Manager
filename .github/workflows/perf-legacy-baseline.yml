@@ -4,6 +4,13 @@ name: Perf legacy baseline
 # fixture. Windows-only: the legacy project ships a win32-x64 release and the app needs a
 # desktop session. See docs/PERF.md.
 on:
+  # workflow_dispatch only works once this file is on the default branch; the pull_request
+  # trigger lets the job run on the branch that introduces it.
+  pull_request:
+    paths:
+      - "scripts/perf/**"
+      - "docs/perf/**"
+      - ".github/workflows/perf-legacy-baseline.yml"
   workflow_dispatch:
     inputs:
       legacy_tag:
@@ -32,7 +39,7 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          LEGACY_TAG: ${{ inputs.legacy_tag }}
+          LEGACY_TAG: ${{ inputs.legacy_tag || 'v2.29.0' }}
         run: |
           $ErrorActionPreference = "Stop"
           New-Item -ItemType Directory -Force -Path "$env:RUNNER_TEMP\legacy" | Out-Null
@@ -58,7 +65,7 @@ jobs:
       - name: Measure the legacy release build
         shell: pwsh
         env:
-          WH3MM_RUNS: ${{ inputs.runs }}
+          WH3MM_RUNS: ${{ inputs.runs || '5' }}
           WH3MM_APP: ${{ env.WH3MM_APP }}
         run: |
           $ErrorActionPreference = "Stop"
@@ -77,7 +84,7 @@ jobs:
           if (Test-Path docs/perf/legacy-baseline.json) {
             $report = Get-Content docs/perf/legacy-baseline.json -Raw | ConvertFrom-Json
             @"
-          ### Legacy baseline (${{ inputs.legacy_tag }})
+          ### Legacy baseline (${{ inputs.legacy_tag || 'v2.29.0' }})
           Machine: $($report.environment.osRelease) / $($report.environment.cpu) / $($report.environment.cpuCores) cores
           Fixture: $($report.environment.fixturePacks) packs, sha256 $($report.environment.fixtureSha256)
           Cold start median: $($report.metrics.coldStartMs.medianMs) ms (cv $($report.metrics.coldStartMs.cvPercent)%)
@@ -90,7 +97,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: legacy-baseline-${{ inputs.legacy_tag }}
+          name: legacy-baseline-${{ inputs.legacy_tag || 'v2.29.0' }}
           path: |
             docs/perf/legacy-baseline.json
             docs/perf/.legacy-baseline-*/*.log
