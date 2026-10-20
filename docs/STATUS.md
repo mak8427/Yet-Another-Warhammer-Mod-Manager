@@ -24,8 +24,8 @@ when its acceptance checks are recorded here with command evidence.
 - Branch: `feat/m0-bootstrap`, cut from `main` at `8d877f9`.
 - Scaffold commit: `8d877f9` (`feat(m0): bootstrap Rust workspace, Tauri shell,
   typed IPC, ADRs, CI`).
-- Pull request: see the WAR-4 task thread and the PR titled
-  "M0: bootstrap Rust workspace, Tauri shell, typed IPC, ADRs, CI".
+- Pull request: [#1](https://github.com/mak8427/Warhammer_mod_manager/pull/1)
+  ("M0: bootstrap Rust workspace, Tauri shell, typed IPC, ADRs, CI").
 - ADRs: `docs/adr/001-architecture.md` (layout, crate boundaries, legacy UI
   reuse/drop map), `002-ipc-contract.md` (payloads, error envelope),
   `003-data-model.md` (`used_mods.txt`, config, profiles, tags),
