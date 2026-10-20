@@ -43,16 +43,28 @@ Fresh clone of `feat/m0-bootstrap` at `8d877f9`, 2026-10-20:
 | `cargo test --workspace` | pass, 5 tests |
 | `pnpm build` | pass |
 | `cargo fmt --all --check` | pass |
-| `cargo clippy --workspace --all-targets -- -D warnings` | pass |
+| `cargo clippy --workspace --all-targets --locked -- -D warnings` | pass |
 | `pnpm typecheck` | pass |
 | `pnpm lint` | pass |
 | `pnpm test` | pass, 6 tests |
 
+GitHub Actions [PR run #39445715098](https://github.com/mak8427/Warhammer_mod_manager/actions/runs/39445715098):
+`Linux quality gates` pass; Windows job skipped by design on pull requests.
+
+### Windows verification
+
+Manual [CI run #39445706876](https://github.com/mak8427/Warhammer_mod_manager/actions/runs/39445706876)
+on `feat/m0-bootstrap` (attempt 2): Linux and Windows jobs pass. The Windows
+job runs `pnpm build`, `cargo test --workspace --locked`, and
+`cargo build -p wh3mm-app --release`; the `Build Tauri shell` step compiles
+`tauri-build`, `generate_context!`, and the `app_info` handler. `8d877f9` was
+missing the `icons/icon.ico` that `tauri-build` requires; `2070b7f` fixes it.
+
 ## Risks and open items
 
-- The Windows Tauri shell is not compiled by the Linux gates. Until M5
-  packaging, `.github/workflows/ci.yml`'s manual Windows job is the only proof
-  that `tauri-build`, command registration, and `generate_context!` compile.
+- The Windows Tauri shell is not compiled by the Linux gates. It is verified by
+  the manual `workflow_dispatch` job, not by a required PR check, until M5
+  packaging makes it mandatory.
 - `main` has no GitHub branch protection; the branch/PR policy is enforced by
   review. Enabling protection is an owner action for Torgrim.
 - The M0 scaffold commit reached `main` before the CEO's no-direct-push
