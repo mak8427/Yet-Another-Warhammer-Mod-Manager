@@ -1,5 +1,5 @@
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vitest/config'
+import { configDefaults, defineConfig } from 'vitest/config'
 
 const devHost = process.env.TAURI_DEV_HOST
 
@@ -22,5 +22,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
     css: false,
+    // The render guard is a separate, non-blocking workload: `pnpm test:perf`.
+    exclude: [...configDefaults.exclude, 'src/perf/**'],
   },
 })
