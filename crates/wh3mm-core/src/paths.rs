@@ -332,56 +332,112 @@ fn display_path(path: &Path) -> String {
     }
 }
 
-/// Candidate Steam roots for the current platform.
-pub fn default_steam_root_candidates() -> Vec<PathBuf> {
+/// Inputs for Steam-root candidate discovery.
+///
+/// The platform probes fill this struct; [`steam_root_candidates`] stays pure
+/// so the Windows ordering and deduplication can be tested on Linux CI.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct SteamRootInputs {
+    pub env_steam_root: Option<String>,
+    pub registry_roots: Vec<PathBuf>,
+    pub program_files_x86: Option<PathBuf>,
+    pub program_files: Option<PathBuf>,
+    pub home: Option<PathBuf>,
+    pub xdg_data_home: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SteamRootPlatform {
+    Windows,
+    Unix,
+}
+
+/// Resolves candidate roots in platform order, then deduplicates them.
+///
+/// Order matters: the environment override wins, then registry roots, then the
+/// install-location defaults. The first root that owns a valid library is the
+/// one detection uses.
+pub fn steam_root_candidates(
+    inputs: &SteamRootInputs,
+    platform: SteamRootPlatform,
+) -> Vec<PathBuf> {
     let mut candidates = Vec::new();
-    if let Ok(value) = std::env::var("STEAM_ROOT") {
-        if !value.trim().is_empty() {
-            candidates.push(PathBuf::from(value));
+    if let Some(value) = inputs.env_steam_root.as_deref() {
+        let trimmed = value.trim();
+        if !trimmed.is_empty() {
+            candidates.push(PathBuf::from(trimmed));
         }
     }
 
-    #[cfg(windows)]
-    {
-        candidates.extend(registry_steam_paths());
-        if let Some(program_files) = std::env::var_os("ProgramFiles(x86)") {
-            candidates.push(PathBuf::from(program_files).join("Steam"));
+    match platform {
+        SteamRootPlatform::Windows => {
+            candidates.extend(inputs.registry_roots.iter().cloned());
+            if let Some(program_files) = &inputs.program_files_x86 {
+                candidates.push(program_files.join("Steam"));
+            }
+            if let Some(program_files) = &inputs.program_files {
+                candidates.push(program_files.join("Steam"));
+            }
         }
-        if let Some(program_files) = std::env::var_os("ProgramFiles") {
-            candidates.push(PathBuf::from(program_files).join("Steam"));
-        }
-    }
-
-    #[cfg(not(windows))]
-    {
-        if let Some(home) = std::env::var_os("HOME").map(PathBuf::from) {
-            candidates.push(home.join(".steam").join("steam"));
-            candidates.push(home.join(".steam").join("root"));
-            candidates.push(home.join(".steam").join("debian-installation"));
-            candidates.push(home.join(".local").join("share").join("Steam"));
-            candidates.push(
-                home.join(".var")
-                    .join("app")
-                    .join("com.valvesoftware.Steam")
-                    .join(".local")
-                    .join("share")
-                    .join("Steam"),
-            );
-            candidates.push(
-                home.join("snap")
-                    .join("steam")
-                    .join("common")
-                    .join(".local")
-                    .join("share")
-                    .join("Steam"),
-            );
-        }
-        if let Some(data_home) = std::env::var_os("XDG_DATA_HOME") {
-            candidates.push(PathBuf::from(data_home).join("Steam"));
+        SteamRootPlatform::Unix => {
+            if let Some(home) = &inputs.home {
+                candidates.push(home.join(".steam").join("steam"));
+                candidates.push(home.join(".steam").join("root"));
+                candidates.push(home.join(".steam").join("debian-installation"));
+                candidates.push(home.join(".local").join("share").join("Steam"));
+                candidates.push(
+                    home.join(".var")
+                        .join("app")
+                        .join("com.valvesoftware.Steam")
+                        .join(".local")
+                        .join("share")
+                        .join("Steam"),
+                );
+                candidates.push(
+                    home.join("snap")
+                        .join("steam")
+                        .join("common")
+                        .join(".local")
+                        .join("share")
+                        .join("Steam"),
+                );
+            }
+            if let Some(data_home) = &inputs.xdg_data_home {
+                candidates.push(data_home.join("Steam"));
+            }
         }
     }
 
     dedupe_paths(candidates)
+}
+
+/// Candidate Steam roots for the current platform.
+pub fn default_steam_root_candidates() -> Vec<PathBuf> {
+    let (inputs, platform) = platform_inputs();
+    steam_root_candidates(&inputs, platform)
+}
+
+#[cfg(windows)]
+fn platform_inputs() -> (SteamRootInputs, SteamRootPlatform) {
+    let inputs = SteamRootInputs {
+        env_steam_root: std::env::var("STEAM_ROOT").ok(),
+        registry_roots: registry_steam_paths(),
+        program_files_x86: std::env::var_os("ProgramFiles(x86)").map(PathBuf::from),
+        program_files: std::env::var_os("ProgramFiles").map(PathBuf::from),
+        ..SteamRootInputs::default()
+    };
+    (inputs, SteamRootPlatform::Windows)
+}
+
+#[cfg(not(windows))]
+fn platform_inputs() -> (SteamRootInputs, SteamRootPlatform) {
+    let inputs = SteamRootInputs {
+        env_steam_root: std::env::var("STEAM_ROOT").ok(),
+        home: std::env::var_os("HOME").map(PathBuf::from),
+        xdg_data_home: std::env::var_os("XDG_DATA_HOME").map(PathBuf::from),
+        ..SteamRootInputs::default()
+    };
+    (inputs, SteamRootPlatform::Unix)
 }
 
 #[cfg(windows)]
@@ -800,6 +856,74 @@ mod tests {
         assert_eq!(
             installed_dir_from_manifest(text).unwrap().as_deref(),
             Some("Total War WARHAMMER III")
+        );
+    }
+
+    #[test]
+    fn windows_steam_candidates_keep_order_and_dedupe() {
+        let dir = crate::test_support::TempDir::new("steam-candidates-windows");
+        let base = dir.path();
+        let env_root = base.join("env-steam");
+        let hkcu = base.join("hkcu-steam");
+        let hklm = base.join("hklm-steam");
+        let program_files_x86 = base.join("Program Files (x86)");
+        let program_files = base.join("Program Files");
+        let inputs = SteamRootInputs {
+            env_steam_root: Some(format!(" {} ", env_root.display())),
+            registry_roots: vec![hkcu.clone(), hklm.clone(), hkcu.clone()],
+            program_files_x86: Some(program_files_x86.clone()),
+            program_files: Some(program_files.clone()),
+            ..SteamRootInputs::default()
+        };
+
+        let candidates = steam_root_candidates(&inputs, SteamRootPlatform::Windows);
+
+        assert_eq!(
+            candidates,
+            vec![
+                env_root,
+                hkcu,
+                hklm,
+                program_files_x86.join("Steam"),
+                program_files.join("Steam"),
+            ]
+        );
+    }
+
+    #[test]
+    fn unix_steam_candidates_keep_native_order_and_dedupe() {
+        let dir = crate::test_support::TempDir::new("steam-candidates-unix");
+        let home = dir.path().join("home");
+        let xdg = home.join(".local").join("share");
+        let inputs = SteamRootInputs {
+            env_steam_root: Some(home.join(".local/share/Steam").display().to_string()),
+            home: Some(home.clone()),
+            xdg_data_home: Some(xdg.clone()),
+            ..SteamRootInputs::default()
+        };
+
+        let candidates = steam_root_candidates(&inputs, SteamRootPlatform::Unix);
+
+        assert_eq!(
+            candidates,
+            vec![
+                home.join(".local").join("share").join("Steam"),
+                home.join(".steam").join("steam"),
+                home.join(".steam").join("root"),
+                home.join(".steam").join("debian-installation"),
+                home.join(".var")
+                    .join("app")
+                    .join("com.valvesoftware.Steam")
+                    .join(".local")
+                    .join("share")
+                    .join("Steam"),
+                home.join("snap")
+                    .join("steam")
+                    .join("common")
+                    .join(".local")
+                    .join("share")
+                    .join("Steam"),
+            ]
         );
     }
 
