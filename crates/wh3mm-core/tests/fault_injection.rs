@@ -299,11 +299,11 @@ fn fi10_interrupted_write_is_not_restored_silently() {
     let used_mods = game.join("used_mods.txt");
     let good = fixture_bytes("load_order", "used_mods_valid.txt");
     fs::write(used_mods_backup_path(&used_mods), &good).expect("backup");
-    fs::write(
-        game.join(format!(".{}--tmp-999-0", "used_mods.txt")),
-        b"mod \"half-written.pack\";\n",
-    )
-    .expect("stale temp");
+    // The product's temp name is `.{file}.tmp-{pid}-{counter}` (atomic.rs).
+    // `999` stands in for the pid of the process that crashed mid-write.
+    let stale_temp = game.join(".used_mods.txt.tmp-999-0");
+    let stale_bytes = b"mod \"half-written.pack\";\n";
+    fs::write(&stale_temp, stale_bytes).expect("stale temp");
 
     let mut session = Session::initialize(options(&dir, &game)).expect("session");
     let snapshot = session.snapshot();
@@ -311,13 +311,32 @@ fn fi10_interrupted_write_is_not_restored_silently() {
         !snapshot.load_order.present,
         "a missing file must stay missing"
     );
+    assert!(
+        !snapshot
+            .load_order
+            .mod_names
+            .iter()
+            .any(|name| name == "half-written.pack"),
+        "a crash-left temp must never be read as the load order: {:?}",
+        snapshot.load_order.mod_names
+    );
     assert!(snapshot.load_order.backup_available);
     assert!(
         !used_mods.exists(),
         "startup must not silently restore the backup"
     );
+    assert_eq!(
+        fs::read(&stale_temp).expect("stale temp is left alone"),
+        stale_bytes.to_vec(),
+        "startup must not consume or delete the crash-left temp"
+    );
 
     let restored = session.restore_load_order().expect("explicit restore");
     assert_eq!(restored.mod_names.len(), 4);
     assert_eq!(fs::read(&used_mods).expect("restored"), good);
+    assert_eq!(
+        fs::read(&stale_temp).expect("stale temp survives an explicit restore"),
+        stale_bytes.to_vec(),
+        "an explicit restore must not consume or delete the crash-left temp"
+    );
 }
