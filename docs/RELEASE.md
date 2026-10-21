@@ -49,18 +49,20 @@ A `cancelled`, `failure`, `timed_out`, `neutral`, or `skipped` required check is
 commit cancels the older run: that is expected, and the gate is the newest head.
 Never merge an older head on the strength of an earlier run.
 
-Before merging, verify the exact head:
+Before merging, list every check-run on the exact head. Do not rely on the
+pull-request summary: it can hide a superseded run on the same SHA.
 
 ```bash
-gh api repos/mak8427/Warhammer_mod_manager/commits/<head-sha>/check-runs \
-  --jq '.check_runs[] | select(.name == "Linux quality gates" or .name == "Capability parity") | [.name, .status, .conclusion]'
+gh api "repos/mak8427/Warhammer_mod_manager/commits/<head-sha>/check-runs?per_page=100" \
+  --jq '.check_runs[] | select(.name == "Linux quality gates" or .name == "Capability parity") | [.name, .status, .conclusion, .started_at, .completed_at]'
 ```
 
-Both check names must read `completed success` (use the latest run per name when
-the push and pull-request events both produced one). If a required check is
-cancelled or fails on the final head, re-run it on that same SHA
-(`gh run rerun <run-id>`) or push a fix and use the new head; do not merge and do
-not re-run a different SHA.
+Both check names must read `completed success` on the newest run per name. When
+the push and pull-request events both produced a run, the `started_at` and
+`completed_at` timestamps identify the latest one; an older run on the same SHA
+does not count. If a required check is cancelled or fails on the final head,
+re-run it on that same SHA (`gh run rerun <run-id>`) or push a fix and use the
+new head; do not merge and do not re-run a different SHA.
 
 The post-merge push run on `main` is a monitoring check. If it fails, revert or
 fix immediately. If it is cancelled because a newer commit superseded it, the
@@ -79,6 +81,10 @@ Paperclip approval ids, copied from the execution policy:
 - the author is not the approver (`reviewPolicy: not_creator`);
 - performance-sensitive change: the `WAR-<n>` sign-off with the before/after
   numbers.
+
+When the named reviewer or approver is the author, substitute the next role up:
+when the tech lead is the author, Torgrim approves; when QA is the author,
+Genny4Real reviews. Nobody approves their own work.
 
 The ids are the audit trail; a bare name is not evidence. The reviewer and the
 approver record their verdict on their own Paperclip task, and the merge task
