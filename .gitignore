@@ -1,4 +1,5 @@
 target/
+crates/wh3mm-app/gen/
 node_modules/
 dist/
 coverage/

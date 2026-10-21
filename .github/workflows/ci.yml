@@ -97,4 +97,4 @@ jobs:
         run: cargo test --workspace --locked
 
       - name: Build Tauri shell
-        run: cargo build -p wh3mm-app --release
+        run: cargo build -p wh3mm-app --release --locked

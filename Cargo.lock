@@ -3874,7 +3874,6 @@ dependencies = [
 name = "wh3mm-app"
 version = "0.1.0"
 dependencies = [
- "serde",
  "tauri",
  "tauri-build",
  "wh3mm-core",

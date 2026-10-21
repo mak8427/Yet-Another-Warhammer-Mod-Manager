@@ -142,7 +142,7 @@ compiles, so build the frontend before `cargo run`. The `beforeDevCommand` and
 `devUrl` entries in `crates/wh3mm-app/tauri.conf.json` belong to the Tauri CLI,
 which M0 does not install; the sequence above is the M0 path.
 
-On Linux, `cargo run -p wh3mm-app` exits with:
+On Linux, `cargo run -p wh3mm-app --locked` exits with:
 
 ```text
 wh3mm: the Tauri desktop shell is Windows-only in M0; use `cargo test` for headless work.
@@ -157,7 +157,8 @@ application requires Windows.
   Linux and macOS. The shell is gated to Windows by ADR-001. Run the workspace
   tests, or run the app on Windows.
 - **Windows build cannot find `frontend/dist`** — run `pnpm build` from the
-  repository root before `cargo build -p wh3mm-app` or `cargo run -p wh3mm-app`.
+  repository root before `cargo build -p wh3mm-app --locked` or
+  `cargo run -p wh3mm-app --locked`.
   Tauri embeds that directory at compile time.
 
 ## CI

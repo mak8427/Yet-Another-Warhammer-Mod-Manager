@@ -20,10 +20,10 @@ tests on Linux plus a small number of Windows checks for the shell and packaging
 |---|---|---|---|---|
 | Core unit tests | `crates/wh3mm-core/src/**` (`#[cfg(test)]`) | `cargo test` | Linux + Windows | Pure functions, validation, ordering, error mapping |
 | Core integration tests | `crates/wh3mm-core/tests/` | `cargo test` | Linux + Windows | Fixtures on disk, atomic writes, parser round trips |
-| App command tests | `crates/wh3mm-app/src/commands/**` | `cargo test` | Linux + Windows | Command logic without a Tauri runtime |
+| App command tests | `crates/wh3mm-app/src/commands.rs` | `cargo test` | Linux + Windows | Command logic without a Tauri runtime |
 | IPC contract tests | `crates/wh3mm-core/tests/ipc_contract.rs` + `frontend/src/lib/ipc.test.ts` | `cargo test`, Vitest | Linux | Serialized names, error envelope, wrapper normalization |
 | Frontend unit/component | `frontend/src/**/*.test.ts(x)` | Vitest + Testing Library (jsdom) | Linux | Rendering, interaction contracts, error states, store logic |
-| Tauri shell compile | `crates/wh3mm-app` | `cargo build -p wh3mm-app` | Windows (manual CI) | `generate_context!`, command registration, capabilities |
+| Tauri shell compile | `crates/wh3mm-app` | `cargo build -p wh3mm-app --locked` | Windows (manual CI) | `generate_context!`, command registration, capabilities |
 | E2E | Tauri WebDriver or equivalent | TBD in M5 | Windows | Install detection, reorder, profile switch, launch, corrupt-file recovery |
 | Performance | `benches/` + scripted fixtures | TBD by Genny4Real in M5 | Windows | 50-200 mod list load, filter, reorder, write latency |
 
@@ -33,8 +33,8 @@ CI (`.github/workflows/ci.yml`) runs, in order:
 
 ```
 cargo fmt --all --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo test --workspace --locked
 pnpm install --frozen-lockfile
 pnpm typecheck
 pnpm lint
