@@ -133,8 +133,8 @@ export function App() {
                 {state.snapshot.warnings.length > 0 && (
                   <div className="banner banner-warning" role="status">
                     <div className="banner-body">
-                      {state.snapshot.warnings.map((warning) => (
-                        <span key={warning}>{warning}</span>
+                      {state.snapshot.warnings.map((warning, index) => (
+                        <span key={`${index}-${warning}`}>{warning}</span>
                       ))}
                     </div>
                   </div>
