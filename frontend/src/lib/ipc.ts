@@ -146,6 +146,84 @@ export interface UiPreferences {
   lastScrollTop: number
 }
 
+export interface FileConflict {
+  path: string
+  winnerModId: string
+  loserModIds: string[]
+}
+
+export interface MissingDependency {
+  modId: string
+  missing: string[]
+}
+
+export interface DuplicatePackName {
+  name: string
+  modIds: string[]
+}
+
+export interface DisabledDependency {
+  modId: string
+  dependency: string
+  providerModId: string
+}
+
+export interface BaseTableShadow {
+  modId: string
+  path: string
+  basePack: string
+}
+
+export interface ConflictModSummary {
+  modId: string
+  name: string
+  overrides: number
+  overriddenOn: number
+  baseTableOverrides: number
+  fileCount: number
+}
+
+export interface ConflictReport {
+  conflicts: FileConflict[]
+  missingDependencies: MissingDependency[]
+  duplicatePackNames: DuplicatePackName[]
+  disabledDependencies: DisabledDependency[]
+  shadowedBaseTables: BaseTableShadow[]
+  shadowedBaseTableCount: number
+  modSummaries: ConflictModSummary[]
+  warnings: string[]
+}
+
+export type WorkshopState = 'subscribed' | 'installed' | 'update_pending' | 'unknown'
+export type WorkshopAction = 'open' | 'subscribe' | 'unsubscribe' | 'update'
+
+export interface WorkshopItem {
+  workshopId: string
+  title: string
+  state: WorkshopState
+  updatedAt: string | null
+}
+
+export interface SteamActionResult {
+  action: WorkshopAction
+  workshopId: string
+  opened: boolean
+  message: string
+}
+
+export interface LaunchOptions {
+  skipIntro: boolean
+  scriptLogging: boolean
+}
+
+export type LaunchMethod = 'steam' | 'direct'
+
+export interface LaunchResult {
+  launched: boolean
+  method: LaunchMethod
+  message: string | null
+}
+
 /** Normalized rejection thrown by every command wrapper. */
 export class IpcError extends Error {
   readonly code: ErrorCode
@@ -224,6 +302,12 @@ export type CommandName =
   | 'preview_load_order'
   | 'write_load_order'
   | 'restore_load_order'
+  | 'get_conflicts'
+  | 'list_workshop_items'
+  | 'workshop_action'
+  | 'get_launch_options'
+  | 'set_launch_options'
+  | 'launch_game'
 
 export async function invokeCommand<T>(
   command: CommandName,
@@ -334,6 +418,33 @@ export async function restoreLoadOrder(): Promise<LoadOrderReadReport> {
   return invokeCommand<LoadOrderReadReport>('restore_load_order')
 }
 
+export async function getConflicts(): Promise<ConflictReport> {
+  return invokeCommand<ConflictReport>('get_conflicts')
+}
+
+export async function listWorkshopItems(): Promise<WorkshopItem[]> {
+  return invokeCommand<WorkshopItem[]>('list_workshop_items')
+}
+
+export async function workshopAction(
+  action: WorkshopAction,
+  workshopId: string,
+): Promise<SteamActionResult> {
+  return invokeCommand<SteamActionResult>('workshop_action', { action, workshopId })
+}
+
+export async function getLaunchOptions(): Promise<LaunchOptions> {
+  return invokeCommand<LaunchOptions>('get_launch_options')
+}
+
+export async function setLaunchOptions(options: LaunchOptions): Promise<LaunchOptions> {
+  return invokeCommand<LaunchOptions>('set_launch_options', { options })
+}
+
+export async function launchGame(skipIntro: boolean, scriptLogging: boolean): Promise<LaunchResult> {
+  return invokeCommand<LaunchResult>('launch_game', { skipIntro, scriptLogging })
+}
+
 /**
  * The only place the frontend turns a local path into a displayable URL.
  * Falls back to the path when the Tauri asset bridge is unavailable (tests,
@@ -371,6 +482,12 @@ export const ipc = {
   previewLoadOrder,
   writeLoadOrder,
   restoreLoadOrder,
+  getConflicts,
+  listWorkshopItems,
+  workshopAction,
+  getLaunchOptions,
+  setLaunchOptions,
+  launchGame,
 }
 
 export type IpcClient = typeof ipc

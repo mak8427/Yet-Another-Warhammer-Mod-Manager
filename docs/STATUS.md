@@ -15,7 +15,7 @@ when its acceptance checks are recorded here with command evidence.
 | M0 | Katerina | Repo layout, Rust workspace, Tauri shell, TS/Vite shell, typed IPC, ADRs, CI | Done; merged as `abceb50` (PR #1) |
 | M1 | Karl | Steam/WH3 detection, pack parser, mod index, fixtures | Implemented; PR #6 open for QA and tech-lead review |
 | M2 | Karl | Mod list, load order, tags, profiles | Implemented; PR #6 open for QA and tech-lead review |
-| M3 | Karl | Conflicts, Workshop, launch | Not started |
+| M3 | Karl | Conflicts, Workshop, launch | Implemented; PR #12 open for QA and tech-lead review |
 | M4 | Katerina + Karl | TW:WH3 visual system, density, keyboard map, states | Not started |
 | M5 | Baltasar + Genny4Real | E2E, performance budgets, Windows installer, release | Not started |
 
@@ -96,6 +96,41 @@ missing the `icons/icon.ico` that `tauri-build` requires; `2070b7f` fixes it.
 Windows shell compile remains covered by the manual `workflow_dispatch` job
 until M5 packaging.
 
+## M3 evidence (WAR-9)
+
+- Branch: `feat/m3-conflicts-workshop-launch`, cut from `feat/m1-m2-core` at
+  `6998a15` (PR #6 head), per the CEO ruling in WAR-35.
+- Pull request: [#12](https://github.com/mak8427/Warhammer_mod_manager/pull/12)
+  ("M3: conflict analysis, Workshop integration, and game launch").
+- New modules: `crates/wh3mm-core/src/conflicts.rs`, `workshop.rs`, `launch.rs`;
+  new screens under `frontend/src/components/{conflicts,workshop,launch}`.
+  M1/M2 edits are additive wiring, documented in ADR-006.
+- Contract decisions: ADR-002 M3 command table and ADR-006.
+- Rust coverage: PFH5 file-index parsing for every pack type (Boot, Release,
+  Patch, Mod, Movie) with the always-present compression byte and the `0x40`
+  hash bit, a base-game index containing a Patch-type pack, three-way winner
+  calculation, missing/disabled dependencies, duplicate pack names, base-game
+  table shadows, ACF state mapping (installed, update pending, subscribed),
+  Steam URL construction, launch command construction, managed tweak files, and
+  per-profile launch-option round trip.
+- Frontend coverage: conflict report rendering and error state, Workshop
+  subscriptions/error state, the Workshop state badge (INST/SUB/UPD) in the mod
+  list, launch options/error/result, and navigation from the section rail.
+- Manual demo: `docs/M3_MANUAL_QA.md`; fixture generator:
+  `docs/fixtures/make_m3_conflicts.py`.
+
+### Verification (2026-10-21, Linux)
+
+| Command | Result |
+|---|---|
+| `cargo fmt --all --check` | pass |
+| `cargo clippy --workspace --all-targets --locked -- -D warnings` | pass |
+| `cargo test --workspace --locked` | pass, 82 tests |
+| `pnpm typecheck` | pass |
+| `pnpm lint` | pass |
+| `pnpm test` | pass, 41 tests |
+| `pnpm build` | pass |
+
 ## Risks and open items
 
 - The Windows Tauri shell is not compiled by the Linux gates. It is verified by
@@ -116,4 +151,5 @@ until M5 packaging.
 2. Katerina Zarina: design/contract review of ADR-005 and the command surface.
 3. Genny4Real: use `ModListSnapshot.timings` and the `wh3mm: timing` log lines
    as the new-app baseline for WAR-7.
-4. Start M3 (conflicts, Workshop metadata, launch) after PR #6 merges.
+4. Baltasar Gelt and Katerina Zarina: review M3 at PR #12; the Windows manual QA
+   script in `docs/M3_MANUAL_QA.md` still needs a real-install run.

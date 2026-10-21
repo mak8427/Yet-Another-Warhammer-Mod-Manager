@@ -85,6 +85,28 @@ describe('ModList', () => {
     expect(props.onClearSelection).toHaveBeenCalled()
   })
 
+  it('shows the Workshop subscription state on mod rows', () => {
+    const mods = [
+      makeMod({ id: 'mod-ws', name: 'workshop.pack', isWorkshop: true, workshopId: '123' }),
+      makeMod({ id: 'mod-pending', name: 'pending.pack', isWorkshop: true, workshopId: '456' }),
+      makeMod({ id: 'mod-local', name: 'local.pack' }),
+    ]
+    renderList({
+      mods,
+      workshopStates: new Map([
+        ['123', 'installed'],
+        ['456', 'update_pending'],
+      ]),
+    })
+
+    expect(screen.getByText('INST')).toHaveAttribute('title', 'Workshop: installed')
+    expect(screen.getByText('UPD')).toHaveAttribute(
+      'title',
+      'Workshop: update pending — refresh after Steam updates',
+    )
+    expect(screen.queryByText('SUB')).not.toBeInTheDocument()
+  })
+
   it('renders an empty state when the filter has no matches', () => {
     renderList({ mods: [] })
     expect(screen.getByText('No mods match this filter')).toBeInTheDocument()

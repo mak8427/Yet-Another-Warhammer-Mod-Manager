@@ -131,6 +131,9 @@ payload extensions and the load-order safety rules.
 | M2 | `restore_load_order` | none | `LoadOrderReadReport` |
 | M3 | `get_conflicts` | none | `ConflictReport` |
 | M3 | `list_workshop_items` | none | `WorkshopItem[]` |
+| M3 | `workshop_action` | `{ action: "open" \| "subscribe" \| "unsubscribe" \| "update", workshopId: string }` | `SteamActionResult` |
+| M3 | `get_launch_options` | none | `LaunchOptions` |
+| M3 | `set_launch_options` | `{ options: LaunchOptions }` | `LaunchOptions` |
 | M3 | `launch_game` | `{ skipIntro: boolean, scriptLogging: boolean }` | `LaunchResult` |
 
 ```ts
@@ -237,6 +240,22 @@ type ConflictReport = {
   conflicts: Array<{ path: string; winnerModId: string; loserModIds: string[] }>
   missingDependencies: Array<{ modId: string; missing: string[] }>
   duplicatePackNames: Array<{ name: string; modIds: string[] }>
+  disabledDependencies: Array<{
+    modId: string
+    dependency: string
+    providerModId: string
+  }>
+  shadowedBaseTables: Array<{ modId: string; path: string; basePack: string }>
+  shadowedBaseTableCount: number
+  modSummaries: Array<{
+    modId: string
+    name: string
+    overrides: number
+    overriddenOn: number
+    baseTableOverrides: number
+    fileCount: number
+  }>
+  warnings: string[]
 }
 
 type WorkshopItem = {
@@ -244,6 +263,18 @@ type WorkshopItem = {
   title: string
   state: 'subscribed' | 'installed' | 'update_pending' | 'unknown'
   updatedAt: string | null
+}
+
+type SteamActionResult = {
+  action: 'open' | 'subscribe' | 'unsubscribe' | 'update'
+  workshopId: string
+  opened: boolean
+  message: string
+}
+
+type LaunchOptions = {
+  skipIntro: boolean
+  scriptLogging: boolean
 }
 
 type LaunchResult = {

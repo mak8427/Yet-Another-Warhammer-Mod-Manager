@@ -13,6 +13,9 @@ import { ModToolbar } from './components/mod-list/ModToolbar'
 import { Modal } from './components/common/Modal'
 import { ProfileDialog, type ProfileDialogMode } from './components/profiles/ProfileDialog'
 import { ProfilesScreen } from './components/profiles/ProfilesScreen'
+import { ConflictScreen } from './components/conflicts/ConflictScreen'
+import { WorkshopScreen } from './components/workshop/WorkshopScreen'
+import { LaunchScreen } from './components/launch/LaunchScreen'
 import {
   activeProfileName,
   store,
@@ -38,6 +41,16 @@ export function App() {
 
   const activeProfile = state.profiles?.profiles.find(
     (profile) => profile.id === state.profiles?.activeProfileId,
+  )
+
+  const conflictSummaries = useMemo(
+    () => new Map((state.conflicts?.modSummaries ?? []).map((summary) => [summary.modId, summary])),
+    [state.conflicts],
+  )
+
+  const workshopStates = useMemo(
+    () => new Map((state.workshop ?? []).map((item) => [item.workshopId, item.state])),
+    [state.workshop],
   )
 
   const setSelected = (enabled: boolean) => {
@@ -110,6 +123,8 @@ export function App() {
             modCount={state.snapshot.mods.length}
             enabledCount={state.snapshot.enabledCount}
             profileCount={state.profiles.profiles.length}
+            conflictCount={state.conflicts?.conflicts.length ?? 0}
+            workshopCount={state.workshop?.length ?? 0}
             onSelect={(view) => store.setView(view)}
           />
 
@@ -117,7 +132,7 @@ export function App() {
             {state.error && <ErrorBanner error={state.error} onDismiss={() => store.dismissError()} />}
             {state.notice && <NoticeBanner notice={state.notice} onDismiss={() => store.dismissNotice()} />}
 
-            {state.view === 'mods' ? (
+            {state.view === 'mods' && (
               <>
                 <div className="pane-heading pane-heading-tight">
                   <div>
@@ -180,6 +195,8 @@ export function App() {
                     mods={visible}
                     tags={state.tags}
                     selection={state.selection}
+                    conflictSummaries={conflictSummaries}
+                    workshopStates={workshopStates}
                     density={state.ui.density}
                     showAuthors={state.ui.showAuthors}
                     showThumbnails={state.ui.showThumbnails}
@@ -203,7 +220,9 @@ export function App() {
                   />
                 </div>
               </>
-            ) : (
+            )}
+
+            {state.view === 'profiles' && (
               <ProfilesScreen
                 profiles={state.profiles}
                 busy={Boolean(state.busy)}
@@ -212,6 +231,41 @@ export function App() {
                 onRename={(id, name) => store.renameProfile(id, name)}
                 onDuplicate={(id, name) => store.duplicateProfile(id, name)}
                 onDelete={(id) => store.deleteProfile(id)}
+              />
+            )}
+
+            {state.view === 'conflicts' && (
+              <ConflictScreen
+                report={state.conflicts}
+                loading={state.conflictLoading}
+                error={state.conflictError}
+                onRefresh={() => void store.refreshConflicts()}
+                onDismissError={() => store.dismissConflictError()}
+              />
+            )}
+
+            {state.view === 'workshop' && (
+              <WorkshopScreen
+                items={state.workshop}
+                loading={state.workshopLoading}
+                busy={Boolean(state.busy)}
+                error={state.workshopError}
+                onRefresh={() => void store.refreshWorkshop()}
+                onDismissError={() => store.dismissWorkshopError()}
+                onAction={(action, workshopId) => void store.runWorkshopAction(action, workshopId)}
+              />
+            )}
+
+            {state.view === 'launch' && (
+              <LaunchScreen
+                game={state.game}
+                options={state.launchOptions}
+                result={state.launchResult}
+                error={state.launchError}
+                busy={state.launchLoading}
+                onToggle={(key, value) => void store.setLaunchOption(key, value)}
+                onLaunch={() => void store.launchGame()}
+                onDismissError={() => store.dismissLaunchError()}
               />
             )}
           </main>

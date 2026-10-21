@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from 'react'
-import type { ModSummary, Tag } from '../../lib/ipc'
+import type { ConflictModSummary, ModSummary, Tag, WorkshopState } from '../../lib/ipc'
 import { virtualRange } from '../../lib/virtual'
 import { ModRow } from './ModRow'
 import { gridColumns } from './grid'
@@ -9,6 +9,8 @@ import type { MoveTarget, SelectMode } from '../../store'
 interface ModListProps {
   mods: ModSummary[]
   tags: Tag[]
+  conflictSummaries?: Map<string, ConflictModSummary>
+  workshopStates?: Map<string, WorkshopState>
   selection: string[]
   density: 'comfortable' | 'compact'
   showAuthors: boolean
@@ -29,6 +31,8 @@ const OVERSCAN = 6
 export function ModList({
   mods,
   tags,
+  conflictSummaries = new Map(),
+  workshopStates = new Map(),
   selection,
   density,
   showAuthors,
@@ -253,6 +257,10 @@ export function ModList({
                   showAuthors={showAuthors}
                   showThumbnails={showThumbnails}
                   tagsById={tagsById}
+                  conflictSummary={conflictSummaries.get(mod.id)}
+                  workshopState={
+                    mod.workshopId ? workshopStates.get(mod.workshopId) : undefined
+                  }
                   onToggle={onToggle}
                   onSelect={handleSelect}
                   onDragStart={(modId) => {

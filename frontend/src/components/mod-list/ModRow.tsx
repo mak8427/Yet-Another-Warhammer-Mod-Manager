@@ -1,5 +1,11 @@
 import type { MouseEvent as ReactMouseEvent } from 'react'
-import { fileUrl, type ModSummary, type Tag } from '../../lib/ipc'
+import {
+  fileUrl,
+  type ConflictModSummary,
+  type ModSummary,
+  type Tag,
+  type WorkshopState,
+} from '../../lib/ipc'
 import { formatBytes, formatDate } from '../../lib/format'
 import { gridColumns } from './grid'
 
@@ -11,6 +17,8 @@ export interface ModRowProps {
   showAuthors: boolean
   showThumbnails: boolean
   tagsById: Map<string, Tag>
+  conflictSummary?: ConflictModSummary
+  workshopState?: WorkshopState
   onToggle: (modId: string) => void
   onSelect: (modId: string, event: ReactMouseEvent) => void
   onDragStart: (modId: string) => void
@@ -28,6 +36,8 @@ export function ModRow({
   showAuthors,
   showThumbnails,
   tagsById,
+  conflictSummary,
+  workshopState,
   onToggle,
   onSelect,
   onDragStart,
@@ -98,7 +108,39 @@ export function ModRow({
           {mod.isEnabled && <span className="order-number">{mod.loadOrder + 1}</span>}
           <span className="mod-title-text">{mod.humanName}</span>
           {mod.isWorkshop && <span className="row-badge">WS</span>}
+          {workshopState && (
+            <span
+              className={`row-badge row-badge-workshop-${workshopState}`}
+              title={workshopStateTitle(workshopState)}
+            >
+              {workshopStateLabel(workshopState)}
+            </span>
+          )}
           {mod.isMovie && <span className="row-badge row-badge-muted">MOV</span>}
+          {conflictSummary && conflictSummary.overrides > 0 && (
+            <span
+              className="row-badge row-badge-conflict"
+              title={`Wins ${conflictSummary.overrides} shared file path(s)`}
+            >
+              W{conflictSummary.overrides}
+            </span>
+          )}
+          {conflictSummary && conflictSummary.overriddenOn > 0 && (
+            <span
+              className="row-badge row-badge-overridden"
+              title={`Overridden on ${conflictSummary.overriddenOn} shared file path(s)`}
+            >
+              L{conflictSummary.overriddenOn}
+            </span>
+          )}
+          {conflictSummary && conflictSummary.baseTableOverrides > 0 && (
+            <span
+              className="row-badge row-badge-muted"
+              title={`Shadows ${conflictSummary.baseTableOverrides} base-game table path(s)`}
+            >
+              DB
+            </span>
+          )}
           {mod.packError && (
             <span className="row-warning" title={mod.packError} aria-label={`Pack error: ${mod.packError}`}>
               !
@@ -124,6 +166,32 @@ export function ModRow({
       <span className="mod-updated">{formatDate(mod.updatedAt)}</span>
     </div>
   )
+}
+
+function workshopStateLabel(state: WorkshopState): string {
+  switch (state) {
+    case 'installed':
+      return 'INST'
+    case 'subscribed':
+      return 'SUB'
+    case 'update_pending':
+      return 'UPD'
+    case 'unknown':
+      return '?'
+  }
+}
+
+function workshopStateTitle(state: WorkshopState): string {
+  switch (state) {
+    case 'installed':
+      return 'Workshop: installed'
+    case 'subscribed':
+      return 'Workshop: subscribed, not installed'
+    case 'update_pending':
+      return 'Workshop: update pending — refresh after Steam updates'
+    case 'unknown':
+      return 'Workshop: subscription state unknown'
+  }
 }
 
 function initials(value: string): string {

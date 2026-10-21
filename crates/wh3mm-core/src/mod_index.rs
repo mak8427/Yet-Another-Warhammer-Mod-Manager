@@ -140,6 +140,9 @@ fn collect_local(
             continue;
         }
         let name = file_name_lower(&path);
+        if name == crate::launch::MANAGED_SKIP_INTRO_PACK {
+            continue;
+        }
         if vanilla.contains(&name) {
             continue;
         }
