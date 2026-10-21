@@ -127,29 +127,40 @@ fn collect_local(
     let Ok(entries) = fs::read_dir(dir) else {
         return Vec::new();
     };
-    let mut candidates = Vec::new();
+    let entries = entries
+        .flatten()
+        .filter_map(|entry| {
+            let path = entry.path();
+            let file_type = entry.file_type().ok()?;
+            (file_type.is_file() || file_type.is_symlink()).then_some((path, file_type))
+        })
+        .collect::<Vec<_>>();
+
     let mut thumbnails: HashMap<String, (u8, PathBuf)> = HashMap::new();
-    for entry in entries.flatten() {
-        let path = entry.path();
-        let Ok(file_type) = entry.file_type() else {
-            continue;
-        };
-        if !file_type.is_file() && !file_type.is_symlink() {
+    for (path, file_type) in &entries {
+        if is_pack(path) {
             continue;
         }
+        let Some(priority) = local_thumbnail_priority(path) else {
+            continue;
+        };
+        if !file_type.is_file() && !path.is_file() {
+            continue;
+        }
+        let Some(key) = local_thumbnail_key(path) else {
+            continue;
+        };
+        if thumbnails
+            .get(&key)
+            .is_none_or(|(current, _)| priority < *current)
+        {
+            thumbnails.insert(key, (priority, path.clone()));
+        }
+    }
+
+    let mut candidates = Vec::new();
+    for (path, _) in entries {
         if !is_pack(&path) {
-            if let Some(priority) = local_thumbnail_priority(&path) {
-                if file_type.is_file() || path.is_file() {
-                    if let Some(key) = local_thumbnail_key(&path) {
-                        if thumbnails
-                            .get(&key)
-                            .is_none_or(|(current, _)| priority < *current)
-                        {
-                            thumbnails.insert(key, (priority, path));
-                        }
-                    }
-                }
-            }
             continue;
         }
         let name = file_name_lower(&path);
