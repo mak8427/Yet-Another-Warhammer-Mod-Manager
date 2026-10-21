@@ -12,7 +12,8 @@ use crate::config::{self, AppConfig, ConfigStatus};
 use crate::error::{AppError, ErrorCode};
 use crate::ipc::{
     GameLocation as IpcGameLocation, LoadOrderReadReport, LoadOrderWriteReport, ModListSnapshot,
-    ModSummary, Profile, ProfilesState, ResetDefaultsReport, Tag, UiPreferences,
+    ModSummary, Profile, ProfilesState, ResetDefaultsReport, ResetLoadOrderReport,
+    ResetLoadOrderStatus, Tag, UiPreferences,
 };
 use crate::load_order::{self, LoadOrderFile, PlannedName, WritePlan};
 use crate::mod_index::{self, DiscoveredMod, IndexReport};
@@ -565,30 +566,119 @@ impl Session {
     }
 
     /// Resets UI preferences and the active profile's enabled set, clears the
-    /// manual game path override, and writes an empty load order when a game is
-    /// available. Profiles, tags, mod tags, and launch options are kept.
-    pub fn reset_to_defaults(&mut self, confirm: bool) -> Result<ResetDefaultsReport, AppError> {
+    /// manual game path override, and writes an empty load order at the
+    /// automatically detected game path. Profiles, tags, mod tags, and launch
+    /// options are kept.
+    ///
+    /// The load-order write is preflighted before any state changes. A corrupt
+    /// or unreadable `used_mods.txt`, or an unconfirmed unmanaged-directive
+    /// drop, leaves the session untouched and is reported through
+    /// [`ResetLoadOrderReport`].
+    pub fn reset_to_defaults(
+        &mut self,
+        confirm: bool,
+        confirm_unmanaged_loss: bool,
+    ) -> Result<ResetDefaultsReport, AppError> {
         if !confirm {
             return Err(AppError::validation(
                 "Resetting settings and the load order requires confirmation",
             ));
         }
+
+        // Clearing the override moves the reset write to the automatically
+        // detected installation, so probe that location before mutating state.
+        // When automatic detection finds nothing, still refuse to report a
+        // successful reset over a corrupt file in the currently live install.
+        let (new_location, detection) = self.detect_automatic_location();
+        let preflight = match &new_location {
+            Some(location) => Some((location, true)),
+            None => self.location.as_ref().map(|location| (location, false)),
+        };
+        if let Some((location, writes_here)) = preflight {
+            let plan = load_order::plan_write(
+                &load_order::used_mods_path(&location.game_path),
+                &[],
+                &[],
+                true,
+                confirm_unmanaged_loss,
+            )?;
+            if !writes_here {
+                if plan.hard_blocked {
+                    return Ok(ResetDefaultsReport {
+                        load_order: failed_report(plan.blocked_reason, plan.unmanaged_directives),
+                    });
+                }
+            } else if plan.requires_unmanaged_confirmation {
+                return Ok(ResetDefaultsReport {
+                    load_order: unmanaged_report(plan.blocked_reason, plan.unmanaged_directives),
+                });
+            } else if !plan.can_write {
+                return Ok(ResetDefaultsReport {
+                    load_order: failed_report(plan.blocked_reason, plan.unmanaged_directives),
+                });
+            }
+        }
+
         self.commit_config(|config| {
             config.reset_to_defaults();
             Ok(())
         })?;
         self.enabled_ids.clear();
+        self.apply_detected_location(new_location, detection);
 
-        let mut load_order_written = false;
-        if self.location.is_some() {
-            let plan = self.plan_write(true, true)?;
-            if plan.can_write {
-                load_order::write_plan(&plan)?;
-                self.refresh_load_order_after_write()?;
-                load_order_written = true;
-            }
+        let Some(location) = &self.location else {
+            return Ok(ResetDefaultsReport {
+                load_order: ResetLoadOrderReport {
+                    status: ResetLoadOrderStatus::NoGamePath,
+                    message: Some(
+                        "Automatic detection found no game path; the load order was not written"
+                            .to_string(),
+                    ),
+                    unmanaged_directives: Vec::new(),
+                    requires_unmanaged_confirmation: false,
+                },
+            });
+        };
+        let path = load_order::used_mods_path(&location.game_path);
+
+        // Re-plan after detection: the file can change between the preflight and
+        // the write. Never start a new confirmation round after the config has
+        // already been reset; report the race instead.
+        let plan = self.plan_write(true, confirm_unmanaged_loss)?;
+        if plan.requires_unmanaged_confirmation {
+            return Ok(ResetDefaultsReport {
+                load_order: failed_report(
+                    Some(
+                        "used_mods.txt changed during the reset; review the unmanaged directives and try again"
+                            .to_string(),
+                    ),
+                    plan.unmanaged_directives,
+                ),
+            });
         }
-        Ok(ResetDefaultsReport { load_order_written })
+        if !plan.can_write {
+            return Ok(ResetDefaultsReport {
+                load_order: failed_report(plan.blocked_reason, plan.unmanaged_directives),
+            });
+        }
+        if let Err(error) = load_order::write_plan(&plan) {
+            let message = match error.details {
+                Some(details) => format!("{}: {details}", error.message),
+                None => error.message,
+            };
+            return Ok(ResetDefaultsReport {
+                load_order: failed_report(Some(message), Vec::new()),
+            });
+        }
+        self.load_order = read_report(&load_order::read_file(&path), &self.mods);
+        Ok(ResetDefaultsReport {
+            load_order: ResetLoadOrderReport {
+                status: ResetLoadOrderStatus::Written,
+                message: None,
+                unmanaged_directives: Vec::new(),
+                requires_unmanaged_confirmation: false,
+            },
+        })
     }
 
     pub fn read_load_order(&mut self) -> Result<LoadOrderReadReport, AppError> {
@@ -641,6 +731,52 @@ impl Session {
         let file = load_order::read_file(&load_order::used_mods_path(&location.game_path));
         self.load_order = read_report(&file, &self.mods);
         Ok(())
+    }
+
+    fn detect_automatic_location(&self) -> (Option<GameLocation>, DetectionReport) {
+        let candidates = self
+            .steam_root_candidates
+            .clone()
+            .unwrap_or_else(paths::default_steam_root_candidates);
+        paths::autodetect(&candidates)
+    }
+
+    /// Applies a location resolved from automatic detection. The mod index is
+    /// rescanned only when the game folder changed.
+    fn apply_detected_location(
+        &mut self,
+        location: Option<GameLocation>,
+        detection: DetectionReport,
+    ) {
+        let same_game = match (&self.location, &location) {
+            (Some(current), Some(next)) => current.game_path == next.game_path,
+            (None, None) => true,
+            _ => false,
+        };
+        self.location = location.clone();
+        self.detection = detection;
+        if same_game {
+            return;
+        }
+        match location {
+            Some(found) => {
+                let (mods, report) = mod_index::scan(&found);
+                self.mods = mods;
+                self.index_report = report;
+                let file = load_order::read_file(&load_order::used_mods_path(&found.game_path));
+                if let Some(reason) = &file.unreadable {
+                    self.warnings.push(format!(
+                        "used_mods.txt could not be read; writes are blocked until it is readable: {reason}"
+                    ));
+                }
+                self.load_order = read_report(&file, &self.mods);
+            }
+            None => {
+                self.mods.clear();
+                self.index_report = IndexReport::default();
+                self.load_order = empty_load_order_report("");
+            }
+        }
     }
 
     fn plan_write(
@@ -786,6 +922,30 @@ fn mods_by_lower_name(mods: &[DiscoveredMod]) -> HashMap<String, String> {
     mods.iter()
         .map(|module| (module.name.to_lowercase(), module.id.clone()))
         .collect()
+}
+
+fn unmanaged_report(
+    message: Option<String>,
+    unmanaged_directives: Vec<String>,
+) -> ResetLoadOrderReport {
+    ResetLoadOrderReport {
+        status: ResetLoadOrderStatus::UnmanagedDirectives,
+        message,
+        unmanaged_directives,
+        requires_unmanaged_confirmation: true,
+    }
+}
+
+fn failed_report(
+    message: Option<String>,
+    unmanaged_directives: Vec<String>,
+) -> ResetLoadOrderReport {
+    ResetLoadOrderReport {
+        status: ResetLoadOrderStatus::Failed,
+        message,
+        unmanaged_directives,
+        requires_unmanaged_confirmation: false,
+    }
 }
 
 fn empty_load_order_report(path: &str) -> LoadOrderReadReport {

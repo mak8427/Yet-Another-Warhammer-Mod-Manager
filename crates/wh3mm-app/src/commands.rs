@@ -154,8 +154,12 @@ impl Manager {
         self.with_mut(|session| session.update_ui_preferences(preferences))
     }
 
-    pub fn reset_to_defaults(&self, confirm: bool) -> Result<ResetDefaultsReport, AppError> {
-        self.with_mut(|session| session.reset_to_defaults(confirm))
+    pub fn reset_to_defaults(
+        &self,
+        confirm: bool,
+        confirm_unmanaged_loss: bool,
+    ) -> Result<ResetDefaultsReport, AppError> {
+        self.with_mut(|session| session.reset_to_defaults(confirm, confirm_unmanaged_loss))
     }
 
     pub fn read_load_order(&self) -> Result<LoadOrderReadReport, AppError> {
@@ -370,8 +374,9 @@ mod tauri_commands {
     pub fn reset_to_defaults(
         state: tauri::State<'_, Manager>,
         confirm: bool,
+        confirm_unmanaged_loss: bool,
     ) -> Result<ResetDefaultsReport, AppError> {
-        state.reset_to_defaults(confirm)
+        state.reset_to_defaults(confirm, confirm_unmanaged_loss)
     }
 
     #[tauri::command]

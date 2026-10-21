@@ -209,10 +209,70 @@ describe('App', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Reset settings and load order' }))
 
     await waitFor(() => {
-      expect(ipc.resetToDefaults).toHaveBeenCalledWith(true)
+      expect(ipc.resetToDefaults).toHaveBeenCalledWith(true, false)
     })
     expect(ipc.listMods).toHaveBeenCalled()
     expect(await screen.findByText('Settings and load order reset to defaults')).toBeInTheDocument()
+  })
+
+  it('asks before dropping unmanaged directives during reset', async () => {
+    mockReady()
+    vi.mocked(ipc.resetToDefaults).mockResolvedValueOnce({
+      loadOrder: {
+        status: 'unmanagedDirectives',
+        message: 'used_mods.txt contains unmanaged directives that this write would remove',
+        unmanagedDirectives: ['add_working_directory "C:/tools";'],
+        requiresUnmanagedConfirmation: true,
+      },
+    })
+    render(<App />)
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    const rail = screen.getByRole('navigation', { name: 'Sections' })
+    fireEvent.click(within(rail).getByRole('button', { name: 'Settings' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Reset settings and load order' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Reset to defaults' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Reset settings and load order' }))
+
+    const warning = await screen.findByRole('dialog', { name: 'Drop unmanaged directives?' })
+    expect(warning).toHaveTextContent('add_working_directory "C:/tools";')
+    expect(ipc.resetToDefaults).toHaveBeenCalledWith(true, false)
+    expect(screen.queryByText('Settings and load order reset to defaults')).not.toBeInTheDocument()
+
+    fireEvent.click(within(warning).getByRole('button', { name: 'Drop directives and reset' }))
+
+    await waitFor(() => {
+      expect(ipc.resetToDefaults).toHaveBeenLastCalledWith(true, true)
+    })
+    expect(await screen.findByText('Settings and load order reset to defaults')).toBeInTheDocument()
+  })
+
+  it('shows a failure instead of a success toast when the reset cannot write the order', async () => {
+    mockReady()
+    vi.mocked(ipc.resetToDefaults).mockResolvedValueOnce({
+      loadOrder: {
+        status: 'failed',
+        message: 'used_mods.txt is corrupt; restore the backup before writing again',
+        unmanagedDirectives: [],
+        requiresUnmanagedConfirmation: false,
+      },
+    })
+    render(<App />)
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    const rail = screen.getByRole('navigation', { name: 'Sections' })
+    fireEvent.click(within(rail).getByRole('button', { name: 'Settings' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Reset settings and load order' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Reset to defaults' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Reset settings and load order' }))
+
+    expect(
+      await screen.findByText('used_mods.txt is corrupt; restore the backup before writing again'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Settings and load order reset to defaults')).not.toBeInTheDocument()
+    expect(screen.queryByText('Settings reset; no game path was available for the load order')).not.toBeInTheDocument()
   })
 
   it('opens the launch dialog and requests a launch through Steam', async () => {

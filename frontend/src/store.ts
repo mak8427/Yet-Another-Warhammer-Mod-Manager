@@ -14,6 +14,7 @@ import {
   type ModListSnapshot,
   type ModSummary,
   type ProfilesState,
+  type ResetDefaultsReport,
   type SteamActionResult,
   type Tag,
   type UiPreferences,
@@ -689,36 +690,58 @@ export class AppStore {
     }
   }
 
-  async resetToDefaults(): Promise<void> {
+  async resetToDefaults(
+    confirmUnmanagedLoss = false,
+  ): Promise<ResetDefaultsReport | null> {
     this.set({ busy: 'Resetting settings and load order' })
     try {
-      const report = await this.client.resetToDefaults(true)
+      const report = await this.client.resetToDefaults(true, confirmUnmanagedLoss)
+      let game: GameLocation | null = this.state.game
+      try {
+        game = await this.client.detectGame()
+      } catch (cause) {
+        if (toIpcError(cause).code !== 'game_not_found') throw cause
+        game = null
+      }
       const [snapshot, profiles, tags, ui] = await Promise.all([
         this.client.listMods(),
         this.client.listProfiles(),
         this.client.listTags(),
         this.client.getUiPreferences(),
       ])
+      const outcome = report.loadOrder
+      const written = outcome.status === 'written'
       this.set({
+        status: game ? 'ready' : 'no-game',
+        game,
         snapshot,
         profiles,
         tags,
         ui,
         busy: null,
-        dirty: false,
-        lastWriteAt: report.loadOrderWritten
+        dirty: written || outcome.status === 'noGamePath' ? false : this.state.dirty,
+        lastWriteAt: written
           ? new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           : this.state.lastWriteAt,
-        notice: {
-          kind: 'success',
-          message: report.loadOrderWritten
-            ? 'Settings and load order reset to defaults'
-            : 'Settings reset; no game path was available for the load order',
-        },
+        notice: written
+          ? { kind: 'success', message: 'Settings and load order reset to defaults' }
+          : outcome.status === 'noGamePath'
+            ? {
+                kind: 'warning',
+                message: 'Settings reset; no game path was available for the load order',
+              }
+            : outcome.status === 'failed'
+              ? {
+                  kind: 'error',
+                  message: outcome.message ?? 'The load order was not reset',
+                }
+              : null,
       })
       void this.refreshConflicts()
+      return report
     } catch (cause) {
       this.set({ busy: null, error: toIpcError(cause) })
+      return null
     }
   }
 

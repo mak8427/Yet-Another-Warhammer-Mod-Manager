@@ -185,7 +185,12 @@ export const LAUNCH_RESULT: LaunchResult = {
 }
 
 export const RESET_REPORT: ResetDefaultsReport = {
-  loadOrderWritten: true,
+  loadOrder: {
+    status: 'written',
+    message: null,
+    unmanagedDirectives: [],
+    requiresUnmanagedConfirmation: false,
+  },
 }
 
 export const WRITE_REPORT: LoadOrderWriteReport = {
