@@ -12,5 +12,8 @@
     "typecheck": "pnpm --filter @wh3mm/desktop typecheck",
     "lint": "pnpm --filter @wh3mm/desktop lint",
     "test": "pnpm --filter @wh3mm/desktop test"
+  },
+  "devDependencies": {
+    "yaml": "2.8.1"
   }
 }

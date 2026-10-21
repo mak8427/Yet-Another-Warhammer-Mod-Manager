@@ -6,6 +6,7 @@ backend and a TypeScript frontend.
 - Product scope and v1.0 acceptance criteria: [docs/PRODUCT_SCOPE.md](docs/PRODUCT_SCOPE.md)
 - Architecture decisions: [docs/adr/](docs/adr/)
 - QA plan and release gate: [docs/QA_PLAN.md](docs/QA_PLAN.md)
+- Capability parity scorecard: [docs/PARITY.md](docs/PARITY.md)
 - Bug report template: [docs/BUG_REPORT_TEMPLATE.md](docs/BUG_REPORT_TEMPLATE.md)
 - Legacy reference (Electron, not copied): https://github.com/Shazbot/WH3-Mod-Manager
 

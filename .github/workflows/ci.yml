@@ -80,6 +80,31 @@ jobs:
       - name: Frontend build
         run: pnpm build
 
+  parity:
+    name: Capability parity
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Parity report tests
+        run: node --test scripts/parity-report.test.mjs
+
+      - name: Parity report
+        run: node scripts/parity-report.mjs --check
+
   windows-tauri:
     name: Windows Tauri shell (manual until packaging)
     # The shell is Windows-only by design (ADR-001). This job is manual in M0;
