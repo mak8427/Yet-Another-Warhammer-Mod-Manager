@@ -304,7 +304,7 @@ fn is_image(path: &Path) -> bool {
 
 fn file_name_lower(path: &Path) -> String {
     path.file_name()
-        .map(|name| name.to_string_lossy().to_ascii_lowercase())
+        .map(|name| name.to_string_lossy().to_lowercase())
         .unwrap_or_default()
 }
 
