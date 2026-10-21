@@ -60,7 +60,7 @@ describe('App', () => {
     render(<App />)
 
     expect(
-      await screen.findByRole('heading', { name: /no total war: warhammer iii installation found/i }),
+      await screen.findByRole('heading', { name: /warhammer iii was not found/i }),
     ).toBeInTheDocument()
     expect(screen.getByLabelText('Game folder')).toBeInTheDocument()
     expect(screen.getByText('Checked 2 Steam libraries')).toBeInTheDocument()
@@ -74,9 +74,10 @@ describe('App', () => {
     const list = await screen.findByRole('listbox', { name: 'Mods' })
     expect(await within(list).findByText('Alpha Legion')).toBeInTheDocument()
     expect(within(list).getByText('Beta Bastion')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Load order' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Mods' })).toBeInTheDocument()
     expect(screen.getByLabelText('Active profile')).toHaveValue('profile-default')
-    expect(document.querySelector('.toolbar-count')?.textContent).toBe('1/2 enabled')
+    expect(document.querySelector('.toolbar-count')?.textContent).toBe('2 mods')
+    expect(screen.getByText(/Ready · 2 mods · 1 enabled/)).toBeInTheDocument()
   })
 
   it('filters the list from the search box', async () => {
@@ -135,7 +136,7 @@ describe('App', () => {
     await waitFor(() => {
       expect(ipc.applyProfile).toHaveBeenCalledWith('profile-campaign')
     })
-    expect(await screen.findByText(/2 of 2 enabled/)).toBeInTheDocument()
+    expect(await screen.findByText(/Ready · 2 mods · 2 enabled/)).toBeInTheDocument()
   })
 
   it('renames a non-active profile without replacing its enabled set', async () => {
@@ -145,8 +146,11 @@ describe('App', () => {
     await screen.findByRole('listbox', { name: 'Mods' })
 
     fireEvent.click(screen.getByRole('button', { name: /^Profiles/ }))
-    const renameButtons = await screen.findAllByRole('button', { name: 'Rename' })
-    fireEvent.click(renameButtons[1])
+    const profileTable = await screen.findByRole('table')
+    const profileRow = within(profileTable).getByText(PROFILE_CAMPAIGN.name).closest('tr')
+    expect(profileRow).not.toBeNull()
+    fireEvent.click(profileRow as HTMLTableRowElement)
+    fireEvent.click(screen.getByRole('button', { name: 'Rename' }))
 
     const dialog = await screen.findByRole('dialog', { name: 'Rename profile' })
     fireEvent.change(within(dialog).getByLabelText('Profile name'), {
@@ -182,12 +186,42 @@ describe('App', () => {
     })
     render(<App />)
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Write load order' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Apply load order' }))
 
     expect(await screen.findByRole('dialog', { name: 'Write used_mods.txt' })).toBeInTheDocument()
     expect(ipc.previewLoadOrder).toHaveBeenCalled()
     expect(screen.getByText('C:/game/used_mods.txt')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Write 1 mod/ })).toBeEnabled()
+  })
+
+  it('opens the launch dialog and requests a launch through Steam', async () => {
+    mockReady()
+    render(<App />)
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Launch game' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Launch Warhammer III' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Launch game' }))
+
+    await waitFor(() => {
+      expect(ipc.launchGame).toHaveBeenCalled()
+    })
+    expect(await within(dialog).findByRole('status')).toHaveTextContent('launch requested through Steam')
+  })
+
+  it('changes density from settings and persists it', async () => {
+    mockReady()
+    render(<App />)
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    const rail = screen.getByRole('navigation', { name: 'Sections' })
+    fireEvent.click(within(rail).getByRole('button', { name: 'Settings' }))
+    fireEvent.change(await screen.findByLabelText('Density'), { target: { value: 'roomy' } })
+
+    await waitFor(() => {
+      expect(ipc.updateUiPreferences).toHaveBeenCalledWith(expect.objectContaining({ density: 'roomy' }))
+    })
+    expect(document.documentElement.dataset.density).toBe('roomy')
   })
 
   it('shows a structured error screen when the workspace cannot load', async () => {
