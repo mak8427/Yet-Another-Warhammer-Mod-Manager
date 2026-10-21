@@ -191,14 +191,23 @@ export function validateConfig(config, { root = repoRoot, scanFindings = [] } = 
       issues.push('snapshot.previous_index must be a number')
     }
     const dropReason = String(config.snapshot.drop_reason ?? '').trim()
+    const history = Array.isArray(config.snapshot.history) ? config.snapshot.history : []
     const { index } = evaluate(config)
+    const recordedDrop = history.some(
+      (entry) =>
+        entry &&
+        typeof entry.index === 'number' &&
+        Math.abs(entry.index - index) < 0.0005 &&
+        String(entry.reason ?? '').trim() !== '',
+    )
     if (
       typeof config.snapshot.previous_index === 'number' &&
       index < config.snapshot.previous_index - 0.0005 &&
-      dropReason === ''
+      !recordedDrop
     ) {
       issues.push(
-        `index dropped from ${config.snapshot.previous_index} to ${index.toFixed(3)} without snapshot.drop_reason`,
+        `index dropped from ${config.snapshot.previous_index} to ${index.toFixed(3)} without a matching snapshot.history reason` +
+          (dropReason ? ' (drop_reason alone is not enough)' : ''),
       )
     }
   }
@@ -542,8 +551,12 @@ export function renderMarkdown(config, result, { scan = { findings: [], scanned:
   lines.push('')
   lines.push('## Corrections to the WAR-3 snapshot')
   lines.push('')
-  if (snapshot.drop_reason) {
-    lines.push(`**Recorded index drop:** ${String(snapshot.drop_reason).replace(/\s+/g, ' ').trim()}`)
+  const recordedDrop = (snapshot.history ?? []).find(
+    (entry) => entry && typeof entry.index === 'number' && Math.abs(entry.index - result.index) < 0.0005,
+  )
+  const dropReason = recordedDrop?.reason ?? snapshot.drop_reason
+  if (dropReason) {
+    lines.push(`**Recorded index drop:** ${String(dropReason).replace(/\s+/g, ' ').trim()}`)
     lines.push('')
   }
   if (Array.isArray(config.corrections) && config.corrections.length > 0) {

@@ -8,6 +8,13 @@ snapshot:
     SET-4 (reset to defaults) was scored Partial in the WAR-3 snapshot, but no reset
     command, screen, or test exists on main or in an open PR. It is Missing here.
     The correction drops the weighted index by 0.625 points; no other check changed score.
+  history:
+    - date: "2026-10-21"
+      index: 86.625
+      reason: >-
+        SET-4 (reset to defaults) was scored Partial in the WAR-3 snapshot, but no reset
+        command, screen, or test exists on main or in an open PR. It is Missing here.
+        The correction drops the weighted index by 0.625 points; no other check changed score.
   scoring: >-
     Each capability has four binary checks. A check scores 1.0 when it is done, 0.5 when
     it is partial, and 0.0 when it is missing. The capability score is the mean of its

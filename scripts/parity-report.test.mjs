@@ -103,17 +103,20 @@ test('a done check backed only by a QA-pending PR is rejected', () => {
   assert.ok(issues.some((issue) => issue.includes('done needs a passing test')))
 })
 
-test('an index drop needs a recorded reason', () => {
+test('an index drop needs a matching history reason', () => {
   const config = structuredClone(loadConfig())
   const result = evaluate(config)
   config.snapshot.previous_index = Number((result.index + 1).toFixed(3))
+  config.snapshot.history = []
   config.snapshot.drop_reason = ''
   let issues = issuesFor(config)
-  assert.ok(issues.some((issue) => issue.includes('without snapshot.drop_reason')))
+  assert.ok(issues.some((issue) => issue.includes('without a matching snapshot.history reason')))
 
-  config.snapshot.drop_reason = 'A check regressed; see the task thread.'
+  config.snapshot.history = [
+    { date: '2026-10-21', index: result.index, reason: 'A check regressed; see the task thread.' },
+  ]
   issues = issuesFor(config)
-  assert.ok(!issues.some((issue) => issue.includes('without snapshot.drop_reason')))
+  assert.ok(!issues.some((issue) => issue.includes('without a matching snapshot.history reason')))
 })
 
 test('the oracle map covers all 39 files and ported entries point at real paths', () => {
