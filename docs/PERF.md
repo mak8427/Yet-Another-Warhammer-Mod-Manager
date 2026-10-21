@@ -3,6 +3,7 @@
 This file records how we measure the paths users feel, on which machine, and with which command.
 A number without an environment and a command does not belong here.
 
+<<<<<<< HEAD
 ## Legacy baseline
 
 Target: the unmodified WH3 Mod Manager release build, used as the A/B reference for the rebuild.
@@ -229,3 +230,161 @@ JSON, and the raw logs.
 - [x] Record the per-run environment and the spread across identical jobs
 - [x] Record the game-launch handoff as a documented proxy, not a game-launch number
 - [x] Keep `main` green; attach the PR and task id `WAR-19`
+
+## New app vs legacy (M2 gate)
+
+**Status: OPEN — no Windows measurement has run, so no verdict is claimed.**
+
+The branch `perf/new-app-comparison` (from `main` `c1a9cdd`) contains the measurement harness, the
+workflow and one reproduction command. The Windows run is blocked, not skipped:
+
+- This run has no managed GitHub identity. `git push -u origin perf/new-app-comparison` fails with
+  `fatal: could not read Username for 'https://github.com': terminal prompts disabled`, and
+  `gh auth status` reports `You are not logged into any GitHub hosts`.
+- The exact command and error are recorded on WAR-46. The branch cannot be pushed, the PR cannot be
+  opened, and `.github/workflows/perf-new-app.yml` cannot be dispatched until a run with GitHub
+  identity picks the branch up.
+- A Linux measurement exists and is committed (see Harness smoke), but the host classes differ.
+  The comparison tool marks those rows `not comparable (host mismatch)` instead of inventing a
+  ratio. A Linux ratio against a Windows legacy median is not evidence for this gate.
+
+The table is filled by the Windows run. Until then every new-app cell is `pending`.
+
+| Metric | Legacy n | Legacy median | Legacy for comparison | New n | New median | New IQR | Ratio | Verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Cold start to interactive mod list | 12 | 1322 ms | 1322 ms | pending | pending | pending | pending | **pending** |
+| 500-mod list populated | 12 | 6862 ms | 1862 ms (Steam wait removed) | pending | pending | pending | pending | **pending** |
+| PFH5 header scan (500 packs) | 12 | 990 ms | 990 ms | pending | pending | pending | pending | **pending** |
+| Load-order apply/persist | 12 | 279 ms | 279 ms | pending | pending | pending | pending | **pending** |
+| Profile/preset switch | 12 | 298 ms | 298 ms | pending | pending | pending | pending | **pending** |
+| Game-launch handoff (**proxy**) | 11 | 6163 ms | 6163 ms | pending | pending | pending | pending | **pending** |
+
+Bar: **≥2x faster** on cold start and 500-mod list; every other metric strictly faster, or the gap
+explained with evidence. A miss is reported as `miss`, with the measured hotspot, not massaged.
+
+### What the new-app harness measures
+
+`crates/wh3mm-perf` is a headless measurement binary. It is not shipped. It links `wh3mm-core` and
+runs the same session pipeline the Tauri shell runs in `Manager::new` during setup.
+
+| Metric | Implementation | Includes | Excludes |
+| --- | --- | --- | --- |
+| `coldStartMs` | process start → `Session::initialize` returns | config load, detection, 492-pack scan, `used_mods.txt` read | WebView creation, first paint |
+| `modListPopulatedMs` | process start → first `ModListSnapshot` serialised for IPC | the same startup pipeline plus snapshot serialisation | DOM render of the list |
+| `headerScanMs` | session `timings.scan_ms` | PFH5 header parse, data-folder enumeration, dedupe of 492 packs | the 8 workshop duplicate copies, which this app does not enumerate |
+| `loadOrderPersistMs` | `set_load_order` command with the second enabled row moved to position 5 | config validation and the atomic `config.json` write | DOM drag dispatch |
+| `presetSwitchMs` | `apply_profile("Perf Half")` | config validation and the atomic `config.json` write | DOM keyboard dispatch |
+| `gameLaunchHandoffMs` | **proxy**: `used_mods.txt` write, then a stub process started by the harness | the app's last pre-launch write and a process start | a real game, Steam, the app's launch path (none exists at `c1a9cdd`) |
+
+Two scope facts are deliberate and must not be edited out of a comparison:
+
+1. The new-app interaction rows measure the **core command**, not the UI. The legacy rows include
+   CDP drag/key dispatch, so those ratios are favourable to the new app by construction. The bar
+   for those rows covers the backend path only; UI interaction latency is not claimed here.
+2. `gameLaunchHandoffMs` is a **proxy** for both apps. The new app has no launch command at
+   `c1a9cdd` (M3 adds it), so the harness starts the stub itself. The row is labelled in the table
+   and in the JSON.
+
+### Fixture and coverage
+
+The workflow regenerates the fixture with the committed generator and **fails** unless the digest
+is exactly `1de7de625da9ee53d1101a764d07d5ccbb61975932816c8b43574b648d0ab73a`.
+
+All 500 packs are the same bytes the legacy baseline used. The new app scans **492** of them: the
+8 `content/1142710` duplicate copies are only reachable through Steam workshop discovery, and the
+manual game path does not enumerate that folder. The legacy app enumerated 500 and then dropped the
+same 8 duplicate copies, so both UIs show **492 mods**. The header-scan comparison is therefore
+492 files vs 500 files (1.6% fewer), stated rather than hidden.
+
+### One command to reproduce
+
+On Windows (the host class of the baseline):
+
+```powershell
+node scripts/perf/generate-fixture.mjs --out perf-fixture/wh3-500 --count 500
+node scripts/perf/generate-fixture.mjs --verify perf-fixture/wh3-500
+cargo build --release -p wh3mm-perf --locked
+
+node scripts/perf/measure-new-app.mjs `
+  --bin target/release/wh3mm-perf.exe `
+  --fixture perf-fixture/wh3-500 `
+  --runs 12 `
+  --stub "$env:WH3MM_GAME_STUB" `
+  --out docs/perf/new-app.json `
+  --raw-log-dir docs/perf/.new-app-<run-id>
+```
+
+`WH3MM_GAME_STUB` is the compiled `Warhammer3.exe` stub from
+`.github/workflows/perf-new-app.yml`; the same C# stub contract as the legacy workflow. The
+workflow (`.github/workflows/perf-new-app.yml`, `windows-latest`) is the supported path: it builds
+the release harness, runs 12 cold samples, writes `docs/perf/new-app.json`, and uploads the per-run
+JSON and logs.
+
+Each sample is a **new process with a fresh config directory**. `used_mods.txt` and its backup are
+removed before each run, so no run inherits the previous run's load order. The new app has no header
+cache; the OS file cache warms after run 1 for both apps, as it did for the legacy baseline.
+
+The report (`schema wh3mm.perf.new-app.v1`) records the environment per run, every sample,
+median/IQR/min/max/CV, the verification flags, the raw log path and, when the host matches, the
+comparison rows with ratio and verdict. Committed evidence goes to
+`docs/perf/new-app-run-<actions-run-id>/run-<n>/run-<n>.{json,log}`.
+
+### Harness smoke on the Linux dev host — **NOT the gate**
+
+Ten cold runs of the harness on the development host, 2026-10-21. This validates the harness and
+proves the command works; it says nothing about the Windows gate.
+
+| Field | Value |
+| --- | --- |
+| Host | CachyOS, kernel `7.2.9-2-cachyos`, i9-13900K (32 threads), 125.5 GiB RAM |
+| Node | v26.11.1 |
+| Fixture | 500 packs, sha256 `1de7de62…` |
+| Report | `docs/perf/new-app-smoke-linux.json` |
+| Logs | `docs/perf/new-app-smoke-linux/run-1..10/` |
+
+| Metric | n | Median | IQR | Min | Max | CV |
+| --- | --- | --- | --- | --- | --- | --- |
+| Cold start | 10 | 6.332 ms | 1.607 ms | 4.059 ms | 7.934 ms | 20.1% |
+| Mod list populated | 10 | 6.643 ms | 1.705 ms | 4.332 ms | 8.193 ms | 19.5% |
+| PFH5 header scan | 10 | 6 ms | 1.750 ms | 3 ms | 7 ms | 25.5% |
+| Load-order persist | 10 | 0.590 ms | 0.317 ms | 0.437 ms | 0.861 ms | 25.4% |
+| Preset switch | 10 | 0.256 ms | 0.116 ms | 0.179 ms | 0.341 ms | 23.2% |
+| Launch handoff (proxy) | 10 | 2.505 ms | 0.194 ms | 2.388 ms | 3.082 ms | 7.6% |
+
+The committed report contains `"hostMatches": false` and `not comparable (host mismatch)` on every
+comparison row. Do not promote these numbers into the gate table. They do show that the measured
+path is already far below the legacy numbers on a much faster machine; the Windows run is still
+required because the legacy baseline was captured there.
+
+### Measurement-scope decision
+
+Driving the real Tauri window through CDP/WebDriver was rejected for this gate: the shell is
+Windows-only, this run cannot push a branch or dispatch Windows CI, and an untested WebView driver
+would add a failure mode to the only measurement that matters. The headless core harness measures
+the same startup pipeline, is reproducible on any host, and states exactly what it excludes. When
+M3 adds the launch path, the launch metric must be re-measured through the app rather than the
+harness stub.
+
+## Known limits
+
+- **Core, not WebView.** Cold start excludes window/WebView creation and paint; mod-list population
+  excludes DOM render. The numbers are a backend floor, not end-to-end frame timing.
+- **Interaction scope.** The core commands exclude DOM dispatch that the legacy CDP numbers include.
+  UI interaction latency needs the manual Chrome trace described in WAR-7; it is not claimed here.
+- **Launch is a proxy.** `c1a9cdd` has no launch command; the harness starts the stub. This row can
+  never be read as "the new app launches in N ms".
+- **492 vs 500 packs.** The 8 workshop duplicate copies are not enumerated by the new app; both
+  apps show 492 mods. Any future fixture should state its scan coverage the same way.
+- **Shared CI host.** `windows-latest` is a 2-core shared runner; identical legacy jobs differed by
+  up to 38% on cold start and 89% on header scan. Publish the distribution, never a single run.
+- **Cold vs warm cache.** Only run 1 is cold for the OS file cache; the same was true for the legacy
+  baseline. Defender scanning on Windows is part of that first run.
+- **Sub-millisecond core commands.** Medians keep three decimals; a rounded `0 ms` is a lie about a
+  real 0.2 ms call, so the report keeps the decimals.
+
+## Optimisation candidates
+
+None ranked. The mandate is "no optimisation without a measurement", and there is no same-host
+new-app number yet. The first Windows comparison produces the list in the required shape: path,
+current number, budget, cause, proposed change, expected win. Any candidate is a focused child task
+or a change to the author's branch with its benchmark in the same PR.
