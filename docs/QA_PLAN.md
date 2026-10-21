@@ -1,7 +1,7 @@
 # QA Plan — WH3 Mod Manager v1.0
 
 - Owner: Baltasar Gelt (QA)
-- Status: **active — gate not yet complete** (see §10)
+- Status: **active — M1/M2 automation complete; release rows blocked** (§10)
 - Scope source: `docs/PRODUCT_SCOPE.md`, ADR-002 (IPC), ADR-003 (data), ADR-004 (testing)
 - Last updated: 2026-10-21
 
@@ -23,8 +23,9 @@ cargo fmt --all --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 
-# Fixtures (also runs in CI before the suites)
+# Fixtures and QA script tests (also run in CI)
 node scripts/qa/generate-fixtures.mjs --verify
+node --test scripts/qa/*.test.mjs
 
 # Frontend
 pnpm install --frozen-lockfile
@@ -32,6 +33,9 @@ pnpm typecheck
 pnpm lint
 pnpm test
 pnpm build
+
+# Release-time performance gate (requires docs/perf/comparison.json; see §7)
+node scripts/qa/verify-perf-gate.mjs
 ```
 
 A release candidate passes only when **all** of the following are true:
@@ -65,6 +69,7 @@ fixed seeds, `tempfile::TempDir`, and mocked IPC only.
 | App commands | `crates/wh3mm-app/src/commands.rs` tests | `cargo test` | Command wrappers without a Tauri runtime | < 10 s |
 | IPC contract | `tests/ipc_contract.rs`, `frontend/src/lib/ipc.test.ts` | `cargo test`, Vitest | Wire names, error envelope, malformed rejections | < 5 s |
 | Fixture contract | `crates/wh3mm-core/tests/qa_fixtures.rs` | `cargo test` | Fixture bytes, encodings, manifest, scale index | < 1 s |
+| QA scripts | `scripts/qa/*.test.mjs` | `node --test` | Fixture guard and performance-gate validator | < 1 s |
 | Frontend component | `frontend/src/**/*.test.tsx` | Vitest + Testing Library + jsdom | Rendering, interaction contracts, error states | < 10 s |
 | Manual Windows | `docs/MANUAL_QA_WINDOWS.md` | Human | Install detection, first run, recovery, launch | per script |
 | Performance | `benches/`, `docs/PERF.md` | Criterion + scripted Windows runs | Cold start, 500-mod load, persist, profile switch, launch | release build |
@@ -84,69 +89,79 @@ owner named), `BLOCKED` (cannot be proven until another issue lands).
 
 | ID | Criterion | Proving evidence | Status |
 | --- | --- | --- | --- |
-| A1 | `cargo fmt --check` passes | CI `Rust format` step | PENDING — no suite run since M0 |
-| A2 | `cargo clippy -- -D warnings` passes | CI `Rust clippy` step | PENDING |
-| A3 | `cargo test` passes for the workspace | CI `Rust tests` step | PASS — 12 tests, 2026-10-21 (§9) |
-| A4 | `pnpm typecheck`, `lint`, `test`, `build` pass | CI frontend steps | PASS — 6 tests, 2026-10-21 (§9) |
+| A1 | `cargo fmt --check` passes | `cargo fmt --all --check` on the QA branch | PASS — 2026-10-21 |
+| A2 | `cargo clippy -- -D warnings` passes | `cargo clippy --workspace --all-targets --locked -- -D warnings` | PASS — 2026-10-21 |
+| A3 | `cargo test` passes for the workspace | `cargo test --workspace --locked` | PASS — 97 passed, 0 failed, 0 ignored (WAR-47 regression un-ignored) |
+| A4 | `pnpm typecheck`, `lint`, `test`, `build` pass | frontend gate + `node --test scripts/qa/*.test.mjs` | PASS — 42 Vitest tests / 6 files; 24 Node tests |
+
+No test is ignored or quarantined. The WAR-47 regression is un-ignored and
+passes; the defect it covered is closed in §8.
 
 ### 3.2 Rust integration coverage
 
 Every row is required by `docs/PRODUCT_SCOPE.md` ("Rust integration tests
-cover…"). The test file and test name are the contract; a differently named
-test is acceptable only if it covers the same assertion and §3 is updated.
+cover…"). Test names are the contract; if a test is renamed, update this table
+in the same PR.
 
-| ID | Criterion | Proving test (required) | Owner | Status |
-| --- | --- | --- | --- | --- |
-| R1 | Path detection from fixture VDF/registry data | `tests/detection.rs::detects_wh3_from_libraryfolders` and `::missing_library_path_is_skipped` | WAR-5 | BLOCKED |
-| R2 | Manual game-path override wins over auto-detection | `tests/detection.rs::manual_override_validated_and_reportable` | WAR-5 | BLOCKED |
-| R3 | Pack parsing, valid headers incl. dependencies/unicode | `tests/pack_parsing.rs::parses_all_valid_fixtures` | WAR-5 | BLOCKED |
-| R4 | Pack parsing, malformed/truncated/oversized headers | `tests/pack_parsing.rs::rejects_every_malformed_fixture_without_panic` | WAR-5 | BLOCKED |
-| R5 | Load-order read: BOM/CRLF/duplicates/unknown directives | `tests/load_order.rs::reads_all_used_mods_variants` | WAR-5 | BLOCKED |
-| R6 | Load-order atomic write leaves original intact on failure | `tests/load_order.rs::failed_replace_preserves_original` | WAR-5 | BLOCKED |
-| R7 | `.bak` created on successful write; recovery is explicit, never silent | `tests/load_order.rs::write_creates_bak_and_recovery_requires_intent` | WAR-5 | BLOCKED |
-| R8 | Byte-stable round-trip (read → write → read) | `tests/load_order.rs::round_trip_is_byte_stable` | WAR-5 | BLOCKED |
-| R9 | Profile round-trip: create/save/rename/duplicate/delete | `tests/profiles.rs::profile_lifecycle_round_trip` | WAR-5 | BLOCKED |
-| R10 | Config corrupt + valid `.bak` recovery; future schema refused | `tests/profiles.rs::corrupt_config_recovers_from_bak` | WAR-5 | BLOCKED |
-| R11 | Deleting the last profile refused; active-profile fallback | `tests/profiles.rs::cannot_delete_last_profile` | WAR-5 | BLOCKED |
-| R12 | Conflict winner calculation (last line wins) | `tests/conflicts.rs::last_enabled_pack_wins_each_path` | WAR-9 | BLOCKED |
-| R13 | Missing dependency warning | `tests/conflicts.rs::reports_missing_dependencies` | WAR-9 | BLOCKED |
-| R14 | Duplicate pack names warned, IDs stay distinct | `tests/conflicts.rs::reports_duplicate_pack_names` | WAR-9 | BLOCKED |
-| R15 | Fault injection: ≥ 3 deliberate faults, no panic, no data loss | `tests/fault_injection.rs` (FI-01…FI-10, §5) | WAR-6 | BLOCKED |
-| R16 | 500-mod index: scan, order, persist within budget | `tests/scale.rs::handles_500_pack_fixture` | WAR-5 | BLOCKED |
-| R17 | Fixture bytes match the documented variants | `tests/qa_fixtures.rs` (7 tests) | WAR-6 | PASS — 2026-10-21 (§9) |
+| ID | Criterion | Proving test | Status |
+| --- | --- | --- | --- |
+| R1 | Path detection from fixture VDF data (multi-library, missing path, Flatpak/Proton) | `detection.rs::discovers_two_libraries_and_reports_the_missing_one`, `::detects_a_game_in_a_secondary_library_with_workshop_and_proton_prefix`, `::falls_back_to_the_conventional_folder_when_the_manifest_is_missing`, `::vdf_fixture_parses_modern_and_legacy_paths` | PASS |
+| R2 | Manual path override validates and recovers without a restart | `session_flow.rs::no_game_session_returns_typed_error_and_recovers_when_a_path_is_set` | PASS |
+| R3 | Pack parsing, valid headers incl. dependencies, unicode, movie, hash bit | `pack_fixtures.rs::parses_every_valid_fixture_through_the_product_parser` | PASS |
+| R4 | Pack parsing failures: bad magic, truncated, oversized dependency/index, empty | `pack_fixtures.rs::rejects_every_header_level_defect_with_a_typed_error`, `pack.rs` unit tests | PASS (scope note below) |
+| R5 | Load-order read: BOM, CRLF, duplicates, corrupt, unknown directives, no final newline | `load_order_fixtures.rs::parses_every_committed_variant_exactly_as_documented` | PASS |
+| R6 | Load-order write failure leaves the original intact and cleans its temp file | `load_order_fixtures.rs::corrupt_fixture_refuses_writes_and_never_changes_the_file`, `fault_injection.rs::fi03_read_only_directory_preserves_the_load_order` | PASS |
+| R7 | `.bak` is byte-exact; recovery is explicit and never silent | `load_order_fixtures.rs::successful_write_creates_a_byte_exact_backup_and_restore_brings_it_back`, `fault_injection.rs::fi06_corrupt_load_order_requires_explicit_restore`, `::fi10_interrupted_write_is_not_restored_silently` | PASS |
+| R8 | Byte-stable read → write → read | `session_flow.rs::writes_byte_compatible_used_mods_and_backs_up_the_previous_file`, `load_order::tests::write_round_trip_is_byte_stable_and_creates_backup` | PASS |
+| R9 | Profile round-trip: create/save/apply/duplicate/delete; rename keeps the target's set | `session_flow.rs::profiles_create_switch_duplicate_and_delete`, `frontend/src/store.test.ts::renames a non-active profile with its saved set, not the visible one` | PASS |
+| R10 | Config corrupt + valid `.bak` recovery; **future schema never overwritten** | `config_fixtures.rs::corrupt_primary_recovers_from_a_valid_backup_and_says_so`, `::future_schema_is_refused_and_never_overwritten`, `::double_corrupt_config_leaves_both_files_untouched`, `::future_schema_with_a_stale_backup_must_still_not_overwrite` | PASS — WAR-47 fixed by PR #15 (`76dd0b9`); future `config.json` and stale v1 `.bak` both stay byte-identical |
+| R11 | Deleting the last profile refused; deleting the active profile activates a sibling | `config.rs` unit tests `::deleting_the_last_profile_is_refused`, `::deleting_the_active_profile_activates_a_sibling` | PASS |
+| R12 | Conflict winner calculation (last line wins) | `conflicts.rs::last_enabled_pack_wins_each_path` (to be added) | BLOCKED — WAR-9 |
+| R13 | Missing dependency warning | `conflicts.rs::reports_missing_dependencies` (to be added) | BLOCKED — WAR-9 |
+| R14 | Duplicate pack names warned, IDs stay distinct | `conflicts.rs::reports_duplicate_pack_names` (to be added) | BLOCKED — WAR-9 |
+| R15 | Fault injection: ≥ 3 deliberate faults, no panic, no data loss | `fault_injection.rs` FI-01/03/05/06/07/08/10 (7 tests) | PASS |
+| R16 | 500-mod scale: scan, enable all, reverse order, save profile, write 500 lines | `session_flow.rs::loads_500_mods_toggles_reorders_saves_profile_and_writes_500_lines` | PASS |
+| R17 | Fixture bytes match the documented variants | `qa_fixtures.rs` (7 tests) | PASS |
+
+**R4 scope note.** `read_pack_header` reads the 28-byte header and dependency
+table only. `malformed_count_mismatch.pack` and `malformed_unterminated_name.pack`
+are defects inside the packed-file index; the header parser accepts them by
+design, and `pack_fixtures.rs::index_level_defects_are_not_misreported_by_the_header_parser`
+pins that limitation. When the M3 file-index reader lands, it must reject both,
+and this row must be widened.
 
 ### 3.3 Frontend coverage
 
-| ID | Criterion | Proving test (required) | Owner | Status |
-| --- | --- | --- | --- | --- |
-| F1 | Startup with missing game shows a clear "set path" state, no crash | `App.test.tsx::startup_with_missing_game_offers_path_override` | WAR-5 | BLOCKED (basic error state exists) |
-| F2 | Mod list renders dense rows and virtualizes | `modList.test.tsx::renders_and_virtualizes_500_mods` | WAR-5 | BLOCKED |
-| F3 | Enable/disable toggles the right mod | `modList.test.tsx::toggles_enabled_state_for_clicked_row` | WAR-5 | BLOCKED |
-| F4 | Reorder (drag + keyboard + top/bottom) sends complete order | `modList.test.tsx::reorder_sends_complete_ordered_ids` | WAR-5 | BLOCKED |
-| F5 | Search/filter narrows the visible set | `modList.test.tsx::search_and_tag_filter_narrow_rows` | WAR-5 | BLOCKED |
-| F6 | Profile switch restores enabled set and order | `profiles.test.tsx::applying_profile_restores_order` | WAR-5 | BLOCKED |
-| F7 | Error states render `IpcError` and malformed rejections | `App.test.tsx::shows_structured_backend_errors`, `ipc.test.ts::rejects_malformed_error_payloads` | WAR-5 | PASS — 2026-10-21 |
-| F8 | Pre-write report warns before destructive change | `loadOrder.test.tsx::shows_unmanaged_loss_warning_before_write` | WAR-5 | BLOCKED |
-| F9 | Cut features absent from navigation and routes | `navigation.test.tsx::only_v1_sections_are_reachable` | WAR-8/WAR-9 | BLOCKED |
+| ID | Criterion | Proving test | Status |
+| --- | --- | --- | --- |
+| F1 | Startup with missing game shows a clear "set path" state, no crash | `App.test.tsx::starts with the explicit game-not-found state and a manual path form` | PASS |
+| F2 | Mod list renders dense rows and virtualizes 500 items | `ModList.test.tsx::mounts only the virtualized window, not all 500 rows`, `::mounts the scrolled-to rows and keeps the virtualization contract` | PASS |
+| F3 | Enable/disable toggles the right mod | `ModList.test.tsx::toggles a row through its checkbox without changing selection`, `App.test.tsx::toggles a mod and sends the boolean inverted from the row state` | PASS |
+| F4 | Reorder (drag + keyboard + move to edge) sends the complete order | `store.test.ts::moves the selected enabled mods and sends the complete order`, `::drops dragged enabled rows before the target row`, `ModList.test.tsx::selects with ctrl-click and moves with Alt+Arrow` | PASS |
+| F5 | Search/filter narrows the visible set | `store.test.ts::filters by search, author, and tags`, `App.test.tsx::filters the list from the search box` | PASS |
+| F6 | Profile switch restores enabled set and order | `App.test.tsx::switches profiles and applies the returned enabled set`, `store.test.ts::applies profiles and keeps the active id in the snapshot` | PASS |
+| F7 | Error states render `IpcError` and malformed rejections | `App.test.tsx::shows a structured error screen when the workspace cannot load`, `ipc.test.ts::rejects malformed error payloads`, `LoadOrderBanner.test.tsx` (5 tests) | PASS |
+| F8 | Pre-write report and corrupt/unreadable warnings before a destructive change | `App.test.tsx::opens the load-order preview before allowing a write`, `LoadOrderBanner.test.tsx::reports an unreadable used_mods.txt…`, `::enables explicit backup restore only when a backup exists` | PASS |
+| F9 | Cut features absent from navigation and routes | `navigation.test.tsx::only_v1_sections_are_reachable` (to be added) | BLOCKED — WAR-8/WAR-9 |
 
 ### 3.4 Manual and packaging
 
 | ID | Criterion | Proving evidence | Owner | Status |
 | --- | --- | --- | --- | --- |
-| M1 | Windows QA script covers install detection, first run, 50+ list, reorder, profile switch, launch, corrupt `used_mods.txt` recovery | `docs/MANUAL_QA_WINDOWS.md`, completed with evidence | QA + CEO | PENDING |
+| M1 | Windows script covers install detection, first run, 50+ list, reorder, profile switch, launch, corrupt `used_mods.txt` recovery | `docs/MANUAL_QA_WINDOWS.md` (WIN-01…WIN-13), completed with evidence | QA + CEO | PENDING — needs a Windows host + game |
 | M2 | Windows CI produces an installable artefact attached to a release | release page + CI run URL | WAR-11 | BLOCKED |
-| M3 | No cut feature in navigation, menus, or IPC | F9 + `cargo test` contract surface + manual audit | WAR-12 | BLOCKED |
+| M3 | No cut feature in navigation, menus, or IPC | F9 + IPC contract surface + manual audit | WAR-12 | BLOCKED |
 
 ### 3.5 Performance (CEO directive 2026-10-20)
 
 | ID | Criterion | Proving evidence | Owner | Status |
 | --- | --- | --- | --- | --- |
-| P1 | `docs/PERF.md` method is reproducible | §7 checklist; script exit 0 + fresh output | WAR-7 | BLOCKED |
-| P2 | Legacy baseline is valid: same machine, same fixture, release builds | §7 checklist; `docs/PERF.md` environment table | WAR-19 | BLOCKED (host decision open, PR #4) |
-| P3 | Every primary metric strictly faster than legacy | §7 table, no metric ≤ legacy | WAR-7 | BLOCKED (no new-app A/B yet) |
+| P1 | `docs/PERF.md` method is reproducible | `docs/perf/comparison.json` + `node scripts/qa/verify-perf-gate.mjs` | WAR-7 | BLOCKED — file and PERF.md are not on `main` |
+| P2 | Legacy baseline is valid: same machine, same fixture, release builds | Gate checks `hostId`, `fixtureDigest`, `build: "release"`, ≥ 5 samples | WAR-19 | BLOCKED (host decision open, PR #4) |
+| P3 | Every primary metric strictly faster than legacy | Gate fails on any non-strict metric; 2× headline is a warning | WAR-7 | BLOCKED (no new-app A/B yet) |
 
 A missing or invalid perf comparison blocks the v1.0 gate. See §7 for the exact
-validity rules and the current state.
+validity rules, the JSON contract, and the current state.
 
 ---
 
@@ -160,8 +175,8 @@ and provenance.
 | --- | --- | --- |
 | `packs/*.pack` | 6 valid PFH5 variants, 7 malformed variants | R3, R4, R15, R17 |
 | `steam/*.vdf`, `*.acf` | Libraries (incl. Flatpak), WH3 manifest, Workshop metadata | R1, R2, WAR-9 |
-| `load_order/used_mods_*.txt` | LF, CRLF, BOM, empty, corrupt, duplicates, directives, no final newline | R5–R8, FI-03, FI-04 |
-| `config/config_*.json` | Valid v1, future v2, unknown fields, corrupt, truncated | R9–R11, FI-05 |
+| `load_order/used_mods_*.txt` | LF, CRLF, BOM, empty, corrupt, duplicates, directives, no final newline | R5–R8, FI-03, FI-06 |
+| `config/config_*.json` | Valid v1, future v2, unknown fields, corrupt, truncated | R9–R11, FI-05, WAR-47 |
 | `scale/index-500.json` | Deterministic 500-mod index for frontend scale tests | F2, R16 |
 | generated `--scale` tree | 500 real packs + manifest for Rust scale and perf runs | R16, WAR-7 |
 
@@ -177,21 +192,23 @@ At least three faults must prove **no panic and no data loss**. Each test
 asserts the typed error (never a panic) and that the original file is still
 byte-identical afterwards.
 
-| ID | Fault | Expected result | Required test |
-| --- | --- | --- | --- |
-| FI-01 | Malformed pack in a directory scan | Skip + warning; other packs still load | `fault_injection.rs::malformed_pack_does_not_abort_scan` |
-| FI-02 | Truncated/oversized-header pack | `pack_parse_failed`; no panic | `fault_injection.rs::oversized_header_is_a_typed_error` |
-| FI-03 | `used_mods.txt` target is read-only / locked | Write fails; original unchanged; temp removed | `fault_injection.rs::locked_target_preserves_original` |
-| FI-04 | Rename fails after `.bak` was written | Original unchanged; `.bak` is the last good copy; no partial file | `fault_injection.rs::rename_failure_is_atomic` |
-| FI-05 | Corrupt `config.json` and corrupt `.bak` | Defaults in memory; both files untouched; `config_corrupt` surfaced | `fault_injection.rs::double_corrupt_config_is_not_overwritten` |
-| FI-06 | Missing parent directory | `io` error; no file created | `fault_injection.rs::missing_parent_is_a_typed_error` |
-| FI-07 | Zero-byte pack | Rejected; scan continues | `fault_injection.rs::empty_pack_is_rejected` |
-| FI-08 | Summary drops unmanaged directives without confirmation | `validation`; no write | `fault_injection.rs::unmanaged_loss_requires_confirmation` |
-| FI-09 | Write would empty a non-empty managed list without intent | `validation`; no write | `fault_injection.rs::empty_write_requires_intent` |
-| FI-10 | Crash after temp write, before rename | On next start the original is intact; stale temp is ignored/cleaned | `fault_injection.rs::interrupted_write_leaves_original_intact` |
+| ID | Fault | Expected result | Test | Status |
+| --- | --- | --- | --- | --- |
+| FI-01 | Malformed pack in a directory scan | Typed error on the row; healthy packs still load | `fault_injection.rs::fi01_malformed_pack_does_not_abort_scan` | PASS |
+| FI-02 | Truncated/oversized-header pack | `pack_parse_failed`; no panic | `pack_fixtures.rs::rejects_every_header_level_defect_with_a_typed_error` | PASS |
+| FI-03 | `used_mods.txt` directory read-only | Write fails; original unchanged; temp removed | `fault_injection.rs::fi03_read_only_directory_preserves_the_load_order` | PASS |
+| FI-04 | Rename fails after `.bak` was written | Original unchanged; `.bak` is the last good copy | read-only parent (FI-03) covers pre-rename; no deterministic rename injection | PARTIAL |
+| FI-05 | Corrupt `config.json` and corrupt `.bak` | Defaults in memory; both files untouched | `fault_injection.rs::fi05_double_corrupt_config_is_never_overwritten` | PASS |
+| FI-06 | Missing parent directory | `io` error; no file created | `load_order::tests::missing_parent_is_an_io_error_and_leaves_nothing_behind` | PASS |
+| FI-07 | Zero-byte pack | Rejected; scan continues | `pack_fixtures.rs` malformed set + FI-01 | PASS |
+| FI-08 | Unmanaged directives dropped without confirmation | `validation`; no write | `fault_injection.rs::fi07_unmanaged_loss_requires_confirmation` | PASS |
+| FI-09 | Empty write over a non-empty managed list without intent | `validation`; no write | `fault_injection.rs::fi08_empty_write_requires_intent` | PASS |
+| FI-10 | Crash temp + missing file with a valid `.bak` | No silent restore; stale temp ignored; explicit restore works | `fault_injection.rs::fi10_interrupted_write_is_not_restored_silently` | PASS |
 
-FI-03, FI-04, FI-08 and FI-09 are the minimum release-blocking set because they
-are the paths that can destroy a user's load order.
+FI-03, FI-08 and FI-09 are the minimum release-blocking set because they are
+the paths that can destroy a user's load order. FI-04 remains partial because a
+rename failure cannot be injected deterministically without an OS-level fault
+hook; the gate accepts it only with FI-03 covering the pre-rename failure.
 
 ---
 
@@ -199,11 +216,11 @@ are the paths that can destroy a user's load order.
 
 | ID | Risk | Likelihood | Impact | Mitigation / proof |
 | --- | --- | --- | --- | --- |
-| K1 | A failed write truncates `used_mods.txt` and destroys a working setup | Medium | Critical | Atomic temp → fsync → `.bak` → rename; R6, R7, FI-03, FI-04 |
+| K1 | A failed write truncates `used_mods.txt` and destroys a working setup | Medium | Critical | Atomic temp → fsync → `.bak` → rename; R6, R7, FI-03, FI-08, FI-09 |
 | K2 | A malformed pack panics the scanner and the app dies | Medium | High | Typed `pack_parse_failed`; R4, FI-01, FI-02 |
 | K3 | Duplicate pack names resolve to the wrong file | Medium | High | Case-insensitive name match + duplicate warning; R14 |
 | K4 | Steam/Proton/Flatpak path detection misses a valid install | High | Medium | Multi-candidate detection + manual override; R1, R2 |
-| K5 | Profile save races with a load-order write | Low | High | One mutex, explicit commands; R9, R10 |
+| K5 | A config downgrade destroys a newer schema | Low | High | ADR-003; R10 — **mitigated** by PR #15 (`76dd0b9`); un-ignored regression asserts both files stay byte-identical |
 | K6 | The 500-mod list is slow or unvirtualized | Medium | High | F2, R16, P1–P3 |
 | K7 | Flaky suite erodes trust in the gate | Medium | Medium | Deterministic fixtures, no network/time, bounded CI; §1 |
 | K8 | Fixtures drift from the documented format | Medium | Medium | `--verify` in CI + R17 + manifest |
@@ -216,49 +233,62 @@ are the paths that can destroy a user's load order.
 
 ## 7. Performance gate (CEO directive)
 
-`docs/PERF.md` must contain a **new-app vs legacy** comparison that a reviewer
-can reproduce. The gate passes only when all four checks pass.
+The gate is machine-checked against `docs/perf/comparison.json` (schema
+`wh3mm.perf.comparison.v1`) and explained for humans in `docs/PERF.md`.
 
-### 7.1 Validity checklist
+```bash
+node scripts/qa/verify-perf-gate.mjs            # exit 1 = gate fails or file missing
+node scripts/qa/verify-perf-gate.mjs --json     # machine-readable verdict
+node --test scripts/qa/verify-perf-gate.test.mjs
+```
 
-- [ ] **PERF-V1 — Method:** `docs/PERF.md` names the exact commands, the fixture
-      generator, the fixture digest, the run count (≥ 5 cold runs), and the raw
-      output path (JSON/logs, not only screenshots).
-- [ ] **PERF-V2 — Same machine:** legacy and new-app numbers come from the same
-      physical/VM host class, with CPU, RAM, OS build, storage type, and date
-      recorded for both.
-- [ ] **PERF-V3 — Same fixture:** both runs use the same 500-mod fixture digest
-      (`docs/PERF.md` and `fixture-manifest.json` agree).
-- [ ] **PERF-V4 — Release builds:** legacy uses the official release asset; the
-      new app uses `--release` (not `cargo run`/debug). Both build types and
-      commits are recorded.
-- [ ] **PERF-V5 — Reproducible:** rerunning the documented command on the same
-      host reproduces each median within the stated variance.
+### 7.1 Validity rules
+
+- [ ] **PERF-V1 — Method:** both sides record version, commit, build type, raw
+      output path, `hostId`, and the same `fixtureDigest`; ≥ 5 samples per
+      metric; medians within the sample range.
+- [ ] **PERF-V2 — Same machine:** `environment.sameHost === true` and
+      `legacy.hostId === newApp.hostId === environment.hostId`; OS, CPU, RAM,
+      and date are present.
+- [ ] **PERF-V3 — Same fixture:** `fixture.modCount >= 500` and both runs carry
+      the same 64-character SHA-256 `fixtureDigest`.
+- [ ] **PERF-V4 — Release builds:** `legacy.build === "release"` and
+      `newApp.build === "release"`.
+- [ ] **PERF-V5 — Reproducible:** the raw output files exist and a rerun on the
+      same host reproduces each median within the stated variance.
+
+The validator enforces V1–V4 mechanically and checks raw-output existence for
+V5; the human reviewer checks the rerun variance in `docs/PERF.md`.
 
 ### 7.2 Metrics and pass rule
 
-| Metric | Legacy source | New-app source | Pass rule |
+| Metric key | Legacy source | New-app source | Pass rule |
 | --- | --- | --- | --- |
-| Cold start → interactive mod list | `[startup] … React mounted` | startup instrumentation | new < legacy |
-| 500-mod load/parse | enumeration + `pack-headers-cache.bin` | scan duration | new < legacy |
-| Load-order apply/persist | write timing | write timing | new < legacy |
-| Profile switch | preset switch | apply-profile timing | new < legacy |
-| Game launch handoff | write + Steam handoff | launch handoff | new < legacy |
+| `coldStartToInteractive` | `[startup] … React mounted` | startup instrumentation | new < legacy (2× target) |
+| `modLoad500` | enumeration + header scan | scan duration | new < legacy (2× target) |
+| `loadOrderApply` | write timing | write timing | new < legacy |
+| `profileSwitch` | preset switch | apply-profile timing | new < legacy |
+| `launchHandoff` | write + Steam handoff | launch handoff | new < legacy |
 
-**Any metric that is equal to or slower than legacy fails the gate.** A metric
-that is "not yet automated" (as some legacy metrics are today) also fails the
-gate: it is unproven, not exempt. Headline target: ≥ 2× faster cold start and
-500-mod load.
+**Any metric that is equal to or slower than legacy fails the gate.** A missing
+metric also fails: an unproven number is not an exemption. Missing the 2×
+headline target on `coldStartToInteractive` or `modLoad500` is a warning, not a
+failure, because the CEO acceptance is "strictly faster" for every metric.
 
 ### 7.3 Current state — **BLOCKED**
 
-`docs/PERF.md` (branch `perf/legacy-baseline`, PR #4) records a valid first-pass
-legacy baseline (5 cold runs, release asset 2.29.0, commit `07fcf3e`, fixture
-digest `1de7de62…`). It does **not** yet contain new-app numbers, and
-load-order/persist, profile switch, and launch handoff are explicitly marked
-"not yet automated" for legacy. Therefore PERF-V1/V3/V4 are partially met and
-PERF-P3 cannot pass. The Windows host for the final A/B is an open human
-decision on WAR-19. No guessed numbers will be accepted.
+`docs/PERF.md` is **not on `main`**: it lives on `perf/legacy-baseline` (PR #4,
+WAR-19, in review) and records a first-pass legacy baseline only. `docs/perf/`
+does not exist on `main`, and no `comparison.json` exists. WAR-7's benchmark
+branch (PR #8) is closed and conflicting. Therefore:
+
+- P1/P3 cannot pass (no new-app numbers, no comparison file).
+- P2 is partially met for legacy (5 cold runs, release asset 2.29.0, commit
+  `07fcf3e`, fixture digest `1de7de62…`) but lacks the new-app side.
+- `node scripts/qa/verify-perf-gate.mjs` correctly reports `BLOCKED` and exits 1.
+
+No guessed numbers will be accepted. The Windows host for the final A/B is an
+open decision on WAR-19.
 
 ---
 
@@ -270,13 +300,15 @@ template in `docs/BUG_REPORT_TEMPLATE.md`. QA does not rewrite the feature.
 | Severity | Meaning | Examples | Gate effect |
 | --- | --- | --- | --- |
 | S1 — Blocker | Data loss, crash on a normal path, security issue, unopenable build | Corrupt `used_mods.txt`; panic on a valid pack; installer fails | Blocks release and the PR |
-| S2 — Major | v1.0 criterion broken, no workaround | Wrong conflict winner; profile switch loses order; no "game not found" state | Blocks release |
+| S2 — Major | v1.0 criterion broken, no workaround | Wrong conflict winner; profile switch loses order; future config overwritten (WAR-47) | Blocks release |
 | S3 — Minor | Incorrect but recoverable; workaround exists | Wrong row highlighted; filter misses a tag | Fix before release or record as known issue |
-| S4 — Trivial | Cosmetic, docs, test-only | Wording; missing tooltip | Queue, no gate |
+| S4 — Trivial | Cosmetic, docs, test-only | Wording; stale temp file left after a crash | Queue, no gate |
 
 A flaky test is a defect: quarantine with an issue and a deadline, not a silent
 retry or `skip` (ADR-004). A release-blocking regression is reported on the PR
 and the task with the run URL, failing test, and expected vs actual.
+
+**Open defects:** none at S1/S2. WAR-47 (S2, config downgrade overwrite) is closed by PR #15 (`76dd0b9`) and its un-ignored regression.
 
 ---
 
@@ -284,9 +316,16 @@ and the task with the run URL, failing test, and expected vs actual.
 
 | Date | Commit | Command | Result |
 | --- | --- | --- | --- |
-| 2026-10-21 | `abceb50` + QA branch | `cargo test --workspace --locked` | PASS — 12 tests (1 app unit, 4 IPC contract, 7 fixture contract), 0 failed, 0 ignored, 0.12 s warm |
-| 2026-10-21 | `abceb50` + QA branch | `pnpm test` | PASS — 2 files, 6 tests, 0.75 s |
-| 2026-10-21 | `abceb50` + QA branch | `node scripts/qa/generate-fixtures.mjs --verify` | PASS — 33 fixtures, 500-mod index verified |
+| 2026-10-21 | `c1a9cdd` + QA branch | `cargo fmt --all --check` | PASS |
+| 2026-10-21 | `c1a9cdd` + QA branch | `cargo clippy --workspace --all-targets --locked -- -D warnings` | PASS |
+| 2026-10-21 | `c1a9cdd` + QA branch | `cargo test --workspace --locked` | PASS — 95 passed, 0 failed, 1 ignored (WAR-47), 0.18 s warm |
+| 2026-10-21 | `c1a9cdd` + QA branch | `pnpm typecheck / lint / test / build` | PASS — 42 tests across 6 files, 0.72 s |
+| 2026-10-21 | `c1a9cdd` + QA branch | `node --test scripts/qa/*.test.mjs` | PASS — 24 tests (13 perf-gate, 11 fixture guard) |
+| 2026-10-21 | `c1a9cdd` + QA branch | `node scripts/qa/generate-fixtures.mjs --verify` | PASS — 33 fixtures + 500-mod index verified |
+| 2026-10-21 | `c1a9cdd` + QA branch | `node scripts/qa/verify-perf-gate.mjs` | BLOCKED — no `docs/perf/comparison.json` (expected) |
+| 2026-10-21 | WAR-56 head (`test/qa-harness` + `main` @ `76dd0b9`) | `cargo fmt --all --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, `cargo test --workspace --locked` | PASS — 97 passed, 0 failed, 0 ignored |
+| 2026-10-21 | WAR-56 head (`test/qa-harness` + `main` @ `76dd0b9`) | `pnpm typecheck`, `lint`, `test`, `build`; `node scripts/qa/generate-fixtures.mjs --verify`; `node --test scripts/qa/*.test.mjs` | PASS — 42 Vitest tests / 6 files; 33 fixtures + 500-mod index; 24 Node tests |
+| 2026-10-21 | WAR-56 head (`test/qa-harness` + `main` @ `76dd0b9`) | `node scripts/qa/verify-perf-gate.mjs` | BLOCKED — no `docs/perf/comparison.json` (expected; WAR-7/WAR-19 still open) |
 | 2026-10-21 | fixture set | legacy `parsePFH5Header`/`parsePFH5Index` (commit `07fcf3e`) | 6/6 valid packs parse; 7/7 malformed packs rejected |
 
 The counts above are the regression baseline: if a later run has fewer tests,
@@ -298,11 +337,14 @@ the gate fails until the decrease is explained and approved.
 
 | ID | Gap | Evidence | Owner / next action |
 | --- | --- | --- | --- |
-| G1 | The product suites in §3.2/§3.3 cannot be written against `main`: no pack parser, detection, load-order, profile, or mod-list code exists yet. WAR-6 was unblocked when WAR-4 closed, but the code under test is WAR-5. | `origin/main` `abceb50` has only `wh3mm-core/src/{error,ipc}.rs`; WAR-5 is `in_progress` with no branch/PR | WAR-6 blocked on WAR-5; QA writes the product tests as soon as the M1/M2 APIs land |
-| G2 | WAR-6 names `appworkshop_3247630.acf`; WH3's Steam app id is 1142710 | `reference/WH3-Mod-Manager/src/supportedGames.ts` (`wh3: "1142710"`), `docs/PRODUCT_SCOPE.md` §1 | Fixtures use 1142710; task owner to correct the brief |
-| G3 | `docs/PERF.md` has no new-app A/B and three legacy metrics are not automated | §7.3; PR #4; WAR-19 human host decision | WAR-7/WAR-19; perf gate stays BLOCKED |
+| G1 | Product suites could not be written before M1/M2. **Resolved.** | WAR-5 merged as `c1a9cdd`; R1–R11/R15–R17 and F1–F8 now run against the real APIs | Closed |
+| G2 | WAR-6 names `appworkshop_3247630.acf`; WH3's Steam app id is 1142710 | `reference/.../supportedGames.ts` (`wh3: "1142710"`), `docs/PRODUCT_SCOPE.md` §1 | Fixtures use 1142710; brief owner to correct |
+| G3 | Perf gate cannot be verified: `docs/PERF.md` and `docs/perf/` are not on `main`, no comparison JSON, WAR-7 PR #8 closed/conflicting | §7.3; PR #4; WAR-19 in review | WAR-7/WAR-19; P1–P3 stay BLOCKED and block v1.0 |
 | G4 | Windows shell and packaging are manual (`workflow_dispatch`) until M5 | `.github/workflows/ci.yml` | WAR-11 promotes them; M1/M2 stay manual |
-| G5 | CI green is not yet demonstrated for any post-M0 branch | run history | QA re-checks every PR; WAR-16 tracks the hanging Windows job |
+| G5 | Conflict winner, dependency warning, and duplicate-name proof are missing | `conflicts.rs` does not exist on `main`; WAR-9 PR #12 is closed and conflicting, issue `in_review` | R12–R14 stay BLOCKED until M3 lands |
+| G6 | Future config is overwritten by a stale v1 backup. **Resolved.** | WAR-47 fixed by PR #15 (`76dd0b9`); `config_fixtures.rs::future_schema_with_a_stale_backup_must_still_not_overwrite` is un-ignored and asserts both `config.json` and `config.json.bak` are byte-identical | Closed |
+| G7 | No navigation/cut-feature audit yet | F9 blocked on WAR-8 (PR #10 open) and WAR-9 | WAR-8/WAR-9; M3 stays BLOCKED |
+| G8 | Manual Windows script has not been executed | Needs Windows + Steam + WH3 | QA + CEO before v1.0; M1 stays PENDING |
 
 Escalate blockers to Katerina Zarina, scope conflicts to Torgrim, fixes to Karl
 Franz, and performance regressions to Genny4Real.
