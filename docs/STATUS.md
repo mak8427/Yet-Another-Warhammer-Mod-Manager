@@ -106,14 +106,16 @@ until M5 packaging.
   new screens under `frontend/src/components/{conflicts,workshop,launch}`.
   M1/M2 edits are additive wiring, documented in ADR-006.
 - Contract decisions: ADR-002 M3 command table and ADR-006.
-- Rust coverage: PFH5 file-index parsing (including the `0x40` hash bit),
-  three-way winner calculation, missing/disabled dependencies, duplicate pack
-  names, base-game table shadows, ACF state mapping (installed, update pending,
-  subscribed), Steam URL construction, launch command construction, managed
-  tweak files, and per-profile launch-option round trip.
+- Rust coverage: PFH5 file-index parsing for every pack type (Boot, Release,
+  Patch, Mod, Movie) with the always-present compression byte and the `0x40`
+  hash bit, a base-game index containing a Patch-type pack, three-way winner
+  calculation, missing/disabled dependencies, duplicate pack names, base-game
+  table shadows, ACF state mapping (installed, update pending, subscribed),
+  Steam URL construction, launch command construction, managed tweak files, and
+  per-profile launch-option round trip.
 - Frontend coverage: conflict report rendering and error state, Workshop
-  subscriptions/error state, launch options/error/result, and navigation from
-  the section rail.
+  subscriptions/error state, the Workshop state badge (INST/SUB/UPD) in the mod
+  list, launch options/error/result, and navigation from the section rail.
 - Manual demo: `docs/M3_MANUAL_QA.md`; fixture generator:
   `docs/fixtures/make_m3_conflicts.py`.
 
@@ -123,10 +125,10 @@ until M5 packaging.
 |---|---|
 | `cargo fmt --all --check` | pass |
 | `cargo clippy --workspace --all-targets --locked -- -D warnings` | pass |
-| `cargo test --workspace --locked` | pass, 80 tests |
+| `cargo test --workspace --locked` | pass, 82 tests |
 | `pnpm typecheck` | pass |
 | `pnpm lint` | pass |
-| `pnpm test` | pass, 40 tests |
+| `pnpm test` | pass, 41 tests |
 | `pnpm build` | pass |
 
 ## Risks and open items
