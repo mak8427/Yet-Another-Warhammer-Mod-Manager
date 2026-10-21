@@ -61,4 +61,3 @@ node scripts/parity-report.mjs --check  # fail if this file is stale
 ```
 
 Scope is the v1.0 contract, not legacy feature parity. Cut features score zero. Source: [docs/PRODUCT_SCOPE.md](PRODUCT_SCOPE.md).
-

@@ -591,7 +591,6 @@ export function renderMarkdown(config, result, { scan = { findings: [], scanned:
   lines.push(
     `Scope is the v1.0 contract, not legacy feature parity. Cut features score zero. Source: [docs/PRODUCT_SCOPE.md](PRODUCT_SCOPE.md).`,
   )
-  lines.push('')
   return `${lines.join('\n')}\n`
 }
 
