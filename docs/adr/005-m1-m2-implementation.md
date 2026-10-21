@@ -1,8 +1,9 @@
 # ADR-005 — M1/M2 implementation decisions
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-21
 - Owner: Karl Franz
+- Approved: Katerina Zarina, 2026-10-21
 - Depends on: ADR-001, ADR-002, ADR-003, ADR-004
 
 ## Context
@@ -58,6 +59,13 @@ scanned mods, working enabled order, and cached read/write reports. The Tauri
 layer only resolves the config directory, holds the session behind one mutex,
 and maps methods to commands. This keeps the whole M2 flow testable headlessly
 on Linux with a temporary config dir and a synthetic game directory.
+
+## Profile rename
+
+Renaming reuses `save_profile` with the target profile's stored `enabledModIds`;
+only the name changes. For the active profile this commits the saved enabled
+set, so unsaved toggles are dropped. Rename is metadata-only by design: it does
+not merge the visible mod list order into the profile.
 
 ## Contract extensions (ADR-002)
 

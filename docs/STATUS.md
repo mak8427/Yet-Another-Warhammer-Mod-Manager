@@ -13,8 +13,8 @@ when its acceptance checks are recorded here with command evidence.
 | Milestone | Owner | Scope | State |
 |---|---|---|---|
 | M0 | Katerina | Repo layout, Rust workspace, Tauri shell, TS/Vite shell, typed IPC, ADRs, CI | Done; merged as `abceb50` (PR #1) |
-| M1 | Karl | Steam/WH3 detection, pack parser, mod index, fixtures | Implemented; PR #6 open for QA and tech-lead review |
-| M2 | Karl | Mod list, load order, tags, profiles | Implemented; PR #6 open for QA and tech-lead review |
+| M1 | Karl | Steam/WH3 detection, pack parser, mod index, fixtures | Done; merged as `c1a9cdd` (PR #6) |
+| M2 | Karl | Mod list, load order, tags, profiles | Done; merged as `c1a9cdd` (PR #6) |
 | M3 | Karl | Conflicts, Workshop, launch | Not started |
 | M4 | Katerina + Karl | TW:WH3 visual system, density, keyboard map, states | Not started |
 | M5 | Baltasar + Genny4Real | E2E, performance budgets, Windows installer, release | Not started |
@@ -65,6 +65,10 @@ missing the `icons/icon.ico` that `tauri-build` requires; `2070b7f` fixes it.
 - Branch: `feat/m1-m2-core`, cut from `main` at `abceb50`.
 - Pull request: [#6](https://github.com/mak8427/Warhammer_mod_manager/pull/6)
   ("M1+M2: WH3 detection, pack parsing, mod list, load order, profiles").
+- Merge: `c1a9cddd6da58f2b34a2f7337138af142dbc1d6f` on 2026-10-21, squash-merged
+  after QA approval and tech-lead design approval; branch deleted. Main CI is
+  green at the merge commit
+  ([run 39584703938](https://github.com/mak8427/Warhammer_mod_manager/actions/runs/39584703938)).
 - Contract/ordering decisions: `docs/adr/005-m1-m2-implementation.md`; ADR-002
   and ADR-003 carry the implemented command/persistence details.
 - Rust coverage: VDF and path discovery fixtures (two libraries + one missing),
@@ -81,7 +85,7 @@ missing the `icons/icon.ico` that `tauri-build` requires; `2070b7f` fixes it.
   durations are logged as `wh3mm: timing …` and returned in
   `ModListSnapshot.timings` for WAR-7.
 
-### Verification (2026-10-21, Linux)
+### Verification (PR #6, 2026-10-21, Linux; 70 Rust / 37 frontend tests)
 
 | Command | Result |
 |---|---|
@@ -93,8 +97,10 @@ missing the `icons/icon.ico` that `tauri-build` requires; `2070b7f` fixes it.
 | `pnpm test` | pass, 37 tests |
 | `pnpm build` | pass |
 
-Windows shell compile remains covered by the manual `workflow_dispatch` job
-until M5 packaging.
+The tech lead re-ran these gates at `7c61fa3`, the code-identical head merged
+as `c1a9cdd`, and CI passed again on `main` at the merge commit. Windows shell
+compile remains covered by the manual `workflow_dispatch` job until M5
+packaging.
 
 ## Risks and open items
 
@@ -111,9 +117,6 @@ until M5 packaging.
 
 ## Next
 
-1. Baltasar Gelt: QA review of PR #6, including the no-game and corrupt-file
-   recovery paths.
-2. Katerina Zarina: design/contract review of ADR-005 and the command surface.
-3. Genny4Real: use `ModListSnapshot.timings` and the `wh3mm: timing` log lines
+1. Genny4Real: use `ModListSnapshot.timings` and the `wh3mm: timing` log lines
    as the new-app baseline for WAR-7.
-4. Start M3 (conflicts, Workshop metadata, launch) after PR #6 merges.
+2. Start M3 (conflicts, Workshop metadata, launch).
