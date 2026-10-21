@@ -11,6 +11,7 @@
     "build": "pnpm --filter @wh3mm/desktop build",
     "typecheck": "pnpm --filter @wh3mm/desktop typecheck",
     "lint": "pnpm --filter @wh3mm/desktop lint",
-    "test": "pnpm --filter @wh3mm/desktop test"
+    "test": "pnpm --filter @wh3mm/desktop test",
+    "test:perf": "pnpm --filter @wh3mm/desktop test:perf"
   }
 }
