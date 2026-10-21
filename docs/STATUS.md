@@ -81,7 +81,7 @@ missing the `icons/icon.ico` that `tauri-build` requires; `2070b7f` fixes it.
   durations are logged as `wh3mm: timing …` and returned in
   `ModListSnapshot.timings` for WAR-7.
 
-### Verification at merged head `bb306d4` (2026-10-21, Linux)
+### Verification (2026-10-21, Linux)
 
 | Command | Result |
 |---|---|
@@ -117,7 +117,8 @@ until M5 packaging.
 - Frontend coverage: conflict report rendering and error state, Workshop
   subscriptions/error state, the Workshop state badge (INST/SUB/UPD) in the mod
   list, launch options/error/result, and navigation from the section rail.
-- Manual demo: `docs/M3_MANUAL_QA.md`; fixture generator:
+- Manual QA: the Windows/Steam script in `docs/M3_MANUAL_QA.md` is documented
+  but has not been executed against a real install; fixture generator:
   `docs/fixtures/make_m3_conflicts.py`.
 
 ### Verification at merged head `bb306d4` (2026-10-21, Linux)
@@ -147,10 +148,7 @@ until M5 packaging.
 
 ## Next
 
-1. Baltasar Gelt: QA review of PR #6, including the no-game and corrupt-file
-   recovery paths.
-2. Katerina Zarina: design/contract review of ADR-005 and the command surface.
-3. Genny4Real: use `ModListSnapshot.timings` and the `wh3mm: timing` log lines
+1. Genny4Real: use `ModListSnapshot.timings` and the `wh3mm: timing` log lines
    as the new-app baseline for WAR-7.
-4. Baltasar Gelt: execute the Windows/Steam manual QA script in
+2. Baltasar Gelt: execute the Windows/Steam manual QA script in
    `docs/M3_MANUAL_QA.md` against a real install.
