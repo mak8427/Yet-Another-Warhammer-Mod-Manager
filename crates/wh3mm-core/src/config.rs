@@ -363,6 +363,10 @@ pub struct LoadedConfig {
 /// Loads `config.json`, creating it on first run. A corrupt document falls back
 /// to `.bak`; only a valid fallback is written back. When both copies are
 /// corrupt the app runs with defaults and refuses to write over either file.
+///
+/// A document with an unsupported `schemaVersion` is never recovered from the
+/// backup and never overwritten: it may have been written by a newer build, and
+/// the backup is older by definition (ADR-003).
 pub fn load_or_create(path: &Path) -> Result<LoadedConfig, AppError> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|error| {
@@ -391,7 +395,19 @@ pub fn load_or_create(path: &Path) -> Result<LoadedConfig, AppError> {
             warnings: std::mem::take(&mut warnings),
             path: path.to_path_buf(),
         }),
-        Err(primary_error) => {
+        Err(ParseFailure::UnsupportedVersion(version)) => Ok(LoadedConfig {
+            config: AppConfig::new(),
+            status: ConfigStatus::Corrupt,
+            write_blocked: true,
+            warnings: vec![
+                format!(
+                    "config.json uses unsupported schema version {version}; refusing to load or overwrite it"
+                ),
+                "Running with defaults; config writes are disabled".to_string(),
+            ],
+            path: path.to_path_buf(),
+        }),
+        Err(ParseFailure::Corrupt(primary_error)) => {
             let backup = backup_path(path);
             if let Ok(bytes) = fs::read(&backup) {
                 if let Ok((config, mut warnings)) = parse_config(&bytes) {
@@ -429,18 +445,32 @@ pub fn load_or_create(path: &Path) -> Result<LoadedConfig, AppError> {
     }
 }
 
-fn parse_config(bytes: &[u8]) -> Result<(AppConfig, Vec<String>), AppError> {
+/// The two ways a config document can be unusable. Only `Corrupt` may be
+/// repaired from the backup; an unsupported schema must be left alone so a
+/// newer build's file survives a downgrade.
+enum ParseFailure {
+    Corrupt(AppError),
+    UnsupportedVersion(u64),
+}
+
+impl From<AppError> for ParseFailure {
+    fn from(error: AppError) -> Self {
+        Self::Corrupt(error)
+    }
+}
+
+fn parse_config(bytes: &[u8]) -> Result<(AppConfig, Vec<String>), ParseFailure> {
     let value: serde_json::Value = serde_json::from_slice(bytes).map_err(|error| {
-        AppError::corrupt("config.json is not valid JSON").with_details(error.to_string())
+        ParseFailure::Corrupt(
+            AppError::corrupt("config.json is not valid JSON").with_details(error.to_string()),
+        )
     })?;
     let version = value
         .get("schemaVersion")
         .and_then(serde_json::Value::as_u64)
         .ok_or_else(|| AppError::corrupt("config.json has no schemaVersion"))?;
     if version != u64::from(SCHEMA_VERSION) {
-        return Err(AppError::corrupt(format!(
-            "Unsupported config schema version {version}; refusing to load or overwrite it"
-        )));
+        return Err(ParseFailure::UnsupportedVersion(version));
     }
     let config: AppConfig = serde_json::from_value(value).map_err(|error| {
         AppError::corrupt("config.json does not match schema v1").with_details(error.to_string())
@@ -631,6 +661,31 @@ mod tests {
         assert_eq!(loaded.status, ConfigStatus::Corrupt);
         assert!(loaded.write_blocked);
         assert_eq!(fs::read_to_string(&path).unwrap(), text);
+    }
+
+    #[test]
+    fn future_schema_is_not_downgraded_to_a_stale_backup() {
+        let dir = TempDir::new("config-future-backup");
+        let path = config_path(&dir);
+        let future = r#"{"schemaVersion":2,"activeProfileId":"x","profiles":[]}"#;
+        let backup = serde_json::to_vec(&AppConfig::new()).unwrap();
+        fs::write(&path, future).unwrap();
+        fs::write(backup_path(&path), &backup).unwrap();
+
+        let loaded = load_or_create(&path).unwrap();
+
+        assert_eq!(loaded.status, ConfigStatus::Corrupt);
+        assert!(loaded.write_blocked);
+        assert_eq!(fs::read_to_string(&path).unwrap(), future);
+        assert_eq!(fs::read(backup_path(&path)).unwrap(), backup);
+        assert!(
+            loaded
+                .warnings
+                .iter()
+                .any(|warning| warning.contains("schema version 2")),
+            "{:?}",
+            loaded.warnings
+        );
     }
 
     #[test]
