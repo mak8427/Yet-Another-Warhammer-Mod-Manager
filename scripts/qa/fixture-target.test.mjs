@@ -1,16 +1,24 @@
 /**
- * Regression tests for the `--scale` destruction guard (WAR-24).
+ * Regression tests for the `--scale` destruction guard (WAR-24, WAR-29).
  *
- * These tests only exercise the path predicate. They never run the generator
- * and never delete an input, so a regression here cannot remove the repository.
+ * The predicate tests only exercise the path predicate: they never run the
+ * generator or delete an input, so a regression there cannot remove the
+ * repository. The final test spawns the generator against a disposable temp
+ * directory with a sentinel file, so a missing call-site guard fails the suite
+ * without ever pointing `--scale` at the repository or a protected path.
  */
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import * as nodePath from 'node:path'
 import test from 'node:test'
+import { fileURLToPath } from 'node:url'
 
 import { canonicalPath, checkScaleTarget, SCALE_OUTPUT_SCHEMA } from './fixture-target.mjs'
+
+const REPO_ROOT = nodePath.resolve(nodePath.dirname(fileURLToPath(import.meta.url)), '..', '..')
+const GENERATOR = nodePath.join(REPO_ROOT, 'scripts', 'qa', 'generate-fixtures.mjs')
 
 function tempRoot(t, prefix) {
   const root = mkdtempSync(nodePath.join(tmpdir(), `wh3mm-${prefix}-`))
@@ -146,4 +154,21 @@ test('rejects a target that exists but is not a directory', (t) => {
   const result = checkScaleTarget(target, { repoRoot: repo, home })
   assert.equal(result.ok, false)
   assert.match(result.reason, /not a directory/)
+})
+
+test('the CLI refuses a non-empty --scale target before deleting it', (t) => {
+  const target = nodePath.join(tempRoot(t, 'guard-cli'), 'output')
+  mkdirSync(target)
+  const sentinel = nodePath.join(target, 'precious.txt')
+  writeFileSync(sentinel, 'precious\n')
+
+  const result = spawnSync(process.execPath, [GENERATOR, '--scale', target, '--count', '1'], {
+    cwd: REPO_ROOT,
+    encoding: 'utf8',
+  })
+
+  assert.equal(existsSync(sentinel), true, 'the sentinel file must survive a refused run')
+  assert.equal(readFileSync(sentinel, 'utf8'), 'precious\n')
+  assert.notEqual(result.status, 0, `generator must fail, got status ${result.status}`)
+  assert.match(`${result.stdout}${result.stderr}`, /refusing/)
 })
