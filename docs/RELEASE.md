@@ -132,17 +132,22 @@ number (from the About/app-info surface) and every result.
 7. **Launch.** With the game installed, launch through the app. The game starts
    with the saved load order; if the game is not installed, the button is
    disabled or gives a clear message.
-8. **Corrupt `used_mods.txt` recovery.** Close the app. In the detected WH3 game
+8. **Workshop open.** With at least one Workshop mod subscribed in Steam, open
+   the Workshop screen, choose **Open page** on that item, and confirm the Steam
+   client opens the item's Workshop page. Confirm the app itself never asks for
+   Steam credentials. This is the manual fallback for the automated WS-2 test;
+   record the result even when the automated test passes.
+9. **Corrupt `used_mods.txt` recovery.** Close the app. In the detected WH3 game
    directory, replace `used_mods.txt` (next to `used_mods.txt.bak`) with
    garbage. Start the app: it must report the corrupt file and offer the backup,
    not crash or silently overwrite the user's data. Choose **Restore backup** in
    the app to recover `used_mods.txt.bak`, then confirm the previous order
    returns. Do not restore by copying files while the app is running.
-9. **Uninstall.** Uninstall from Windows Settings. The Start-menu entry and
-   program files are removed. User configuration under `%APPDATA%` may remain;
-   note whether the user data is preserved (expected) and that no game files
-   were touched.
-10. **Unsigned-installer warning.** On a fresh machine, confirm the SmartScreen
+10. **Uninstall.** Uninstall from Windows Settings. The Start-menu entry and
+    program files are removed. User configuration under `%APPDATA%` may remain;
+    note whether the user data is preserved (expected) and that no game files
+    were touched.
+11. **Unsigned-installer warning.** On a fresh machine, confirm the SmartScreen
     warning is the documented "Unknown publisher" flow and that the SHA-256 of
     the downloaded file matches the release notes.
 

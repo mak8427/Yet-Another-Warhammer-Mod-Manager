@@ -8,15 +8,15 @@ Snapshot: **2026-10-21** · weighted scope: `docs/PRODUCT_SCOPE.md`
 
 | Metric | Value |
 |---|---:|
-| **Capability Parity Index** | **91.750%** |
+| **Capability Parity Index** | **92.750%** |
 | Previous snapshot | 87.250% |
-| Change | +4.500 points |
-| Checks | 33 done / 7 partial / 0 missing (40 total) |
+| Change | +5.500 points |
+| Checks | 34 done / 6 partial / 0 missing (40 total) |
 | Legacy oracle coverage | 29/29 (100.0%) |
 | Oracle dispositions | 2 ported / 26 rewritten / 1 not-applicable |
 | Cut-feature scan | 0 findings in 35 UI/IPC files |
-| Rust tests on this tree | 138 |
-| Frontend assertions on this tree | 72 in 9 files |
+| Rust tests on this tree | 139 |
+| Frontend assertions on this tree | 73 in 9 files |
 
 ## Capability table
 
@@ -28,22 +28,22 @@ Snapshot: **2026-10-21** · weighted scope: `docs/PRODUCT_SCOPE.md`
 | 4 | Load order write | 15 | 4 | 0 | 0 | 4.00/4 | 15.00 |
 | 5 | Profiles | 10 | 4 | 0 | 0 | 4.00/4 | 10.00 |
 | 6 | Conflicts | 12 | 4 | 0 | 0 | 4.00/4 | 12.00 |
-| 7 | Workshop | 8 | 2 | 2 | 0 | 3.00/4 | 6.00 |
+| 7 | Workshop | 8 | 3 | 1 | 0 | 3.50/4 | 7.00 |
 | 8 | Launch | 8 | 3 | 1 | 0 | 3.50/4 | 7.00 |
 | 9 | Settings | 5 | 3 | 1 | 0 | 3.50/4 | 4.38 |
 | 10 | Safety | 5 | 4 | 0 | 0 | 4.00/4 | 5.00 |
-| | **Total** | **100** | **33** | **7** | **0** | | **91.750** |
+| | **Total** | **100** | **34** | **6** | **0** | | **92.750** |
 
 ## Corrections to the WAR-3 snapshot
 
-**Recorded index change:** Final release-head pass after M4/WAR-10 merged (`0e051204`). SET-4, ML-3, CF-4, and PRF-2 moved to done with the merged code and tests; DET-1 stays partial for the documented Flatpak/Snap/XDG Linux roots. +4.500 vs the WAR-3 baseline; 0 missing checks.
+**Recorded index change:** WS-2 is done. WAR-106 adds a Rust test that resolves WorkshopAction::Open to the CommunityFilePage URL and reaches the Steam launch boundary, plus a frontend test that the Open page button dispatches the item id. Workshop 3.0 -> 3.5 (+1.000); the verified index is 92.750, net +5.500 from the WAR-3 87.250 snapshot. DSC-1 remains partial (WAR-107).
 
 | Correction | Claim | Verified | Effect |
 |---|---|---|---|
 | set-4-implemented | SET-4 (reset to defaults) is missing. | WAR-10 merged to `0e051204` with the reset command (`crates/wh3mm-app/src/commands.rs`), the Settings confirmation flow (`frontend/src/components/settings/SettingsScreen.tsx`), and the session/config reset path. Tests: `reset_to_defaults_keeps_profiles_and_tags_and_writes_an_empty_order` and the other `reset_to_defaults_*` cases in `crates/wh3mm-core/tests/session_flow.rs`; the store path is asserted in `frontend/src/store.test.ts`. | Settings 2.5 -> 3.5; contributes +1.250; index 85.875 -> 87.125. The older set-4-reset-defaults entry records the pre-WAR-10 state. |
-| m4-blocker-parity | ML-3, CF-4, PRF-2, and DET-1 are still partial after WAR-10. | WAR-10 merged to `0e051204`. ML-3 has the sort control (`ModList.tsx`) and `sorts deterministically with an id tie-break in every non-drag mode`; CF-4 has duplicate rows and `renders duplicate pack names and shows none for a clean report`; PRF-2 has `applying_a_profile_restores_the_saved_order_exactly`; DET-1 has the injectable Windows/Unix candidate tests in `paths.rs`. All four tests pass on the merged tree. | ML-3 +1.875, CF-4 +1.500, PRF-2 +1.250; index 87.125 -> 91.750. DET-1 stays partial for the documented Flatpak/Snap/XDG limitation. DSC-1 (author) and WS-2 (Workshop open) remain partial and are not WAR-79 ship blockers; WAR-104 ruling B resolves them via WAR-106/WAR-107, and both block the WAR-99 `v1.0.0` tag. |
+| m4-blocker-parity | ML-3, CF-4, PRF-2, and DET-1 are still partial after WAR-10. | WAR-10 merged to `0e051204`. ML-3 has the sort control (`ModList.tsx`) and `sorts deterministically with an id tie-break in every non-drag mode`; CF-4 has duplicate rows and `renders duplicate pack names and shows none for a clean report`; PRF-2 has `applying_a_profile_restores_the_saved_order_exactly`; DET-1 has the injectable Windows/Unix candidate tests in `paths.rs`. All four tests pass on the merged tree. | ML-3 +1.875, CF-4 +1.500, PRF-2 +1.250; index 87.125 -> 91.750. DET-1 stays partial for the documented Flatpak/Snap/XDG limitation. DSC-1 (author) remained partial at this pass and is not a WAR-79 ship blocker; WAR-104 ruling B resolves it via WAR-107, and DSC-1 blocks the WAR-99 `v1.0.0` tag. WS-2 (Workshop open) was closed by WAR-106. |
 | discovery-author-missing | DSC-1 (header including author) was done. | The pack author is hardcoded None in crates/wh3mm-core/src/pack.rs:165 and crates/wh3mm-core/src/mod_index.rs:254; the cited test asserts header.author == None. No code path assigns a parsed author. | Discovery 4.0 -> 3.5; contributes -1.250 to the index. WAR-104 ruling B cuts the author requirement, so WAR-107 re-scores DSC-1 against the corrected PRODUCT_SCOPE criterion (name, type, timestamp, dependencies). |
-| workshop-open-untested | WS-2 (open a Workshop item through Steam) was done. | The cited test asserts only the Subscribe and Update URL strings. WorkshopAction::Open is never called by a test and spawn_steam_url (workshop.rs:294) has no test; the UI test clicks Unsubscribe only. | Workshop 3.5 -> 3.0; contributes -1.000 to the index. WS-2 is partial until Open is tested or manually verified on Windows. |
+| workshop-open-untested | WS-2 (open a Workshop item through Steam) was done. | The WAR-104 ruling confirmed the behaviour existed without a test. WAR-106 covers WorkshopAction::Open through the Steam launch seam and covers the UI Open page dispatch. | Workshop 3.0 -> 3.5; contributes +1.000 to the index. WS-2 is done (WAR-106). |
 | set-4-reset-defaults | Reset-to-defaults was Partial. | Missing: no reset command, screen, or test exists. | Settings 3.0 -> 2.5; contributes -0.625 to the index. |
 | detection-partial-reason | The remaining detection gap is real Windows install detection plus manual override. | Manual override and no-game recovery are tested. The untested part is the platform root candidate list (Windows registry, Flatpak, Snap, XDG). | Score unchanged at 3.5; partial reason corrected. |
 | profiles-partial-reason | Rename cannot overwrite a non-active profile; the UI path is unverified. | The UI path is tested in frontend/src/App.test.tsx and store.test.ts. The remaining gap is an assertion that applying a profile restores its saved order, not just its count. | Score unchanged at 3.5; partial reason corrected. |
