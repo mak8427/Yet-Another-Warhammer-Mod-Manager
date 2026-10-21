@@ -202,6 +202,7 @@ export function App() {
         <GameSetup
           error={state.error}
           busy={state.busy}
+          platform={state.appInfo?.platform}
           onSubmit={(path) => void store.setGamePath(path)}
           onDetect={() => void store.setGamePath(null)}
         />
