@@ -4102,6 +4102,7 @@ dependencies = [
  "serde",
  "tauri",
  "tauri-build",
+ "tokio",
  "wh3mm-core",
 ]
 
