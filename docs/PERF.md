@@ -261,6 +261,24 @@ Same host class and the same fixture as the approved legacy baseline, so the rat
 Bar: **≥2x faster** on cold start and 500-mod list; every other metric strictly faster, or the gap
 explained with evidence. A miss is reported as `miss`, with the measured hotspot, not massaged.
 
+### Host-consistency cross-check (same PR)
+
+The legacy baseline workflow also runs on this PR because `scripts/perf/**` changed. Its 12 cold
+runs on the same runner image reproduce the approved medians within 3.1%, so no baseline drift is
+masking the comparison:
+
+| Metric | Approved baseline (WAR-19) | Same-PR legacy re-run | Delta |
+| --- | --- | --- | --- |
+| Cold start | 1322 ms | 1308 ms | -1.1% |
+| Mod list populated (500 packs) | 6862 ms | 6847 ms | -0.2% |
+| PFH5 header scan | 990 ms | 960 ms | -3.0% |
+| Load-order apply/persist | 279 ms | 272 ms | -2.5% |
+| Preset switch | 298 ms | 303 ms | +1.7% |
+| Game-launch handoff (proxy) | 6163 ms | 6182 ms | +0.3% |
+
+This is a cross-check, not a replacement for the approved baseline. The gate table uses the approved
+WAR-19 medians.
+
 ### What the ratios do and do not prove
 
 Two limits stay attached to these verdicts and must be read with the table.
