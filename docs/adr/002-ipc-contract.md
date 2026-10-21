@@ -99,23 +99,36 @@ export interface AppInfo {
 `frontend/src/App.tsx` invokes it on mount and renders the result, proving the
 round trip. This is also the stale-build check: the UI shows both versions.
 
-### Planned command surface (M1-M3)
+### Implemented command surface (M1-M2)
 
 Payloads are fixed here so UI work and core work can proceed in parallel.
 Adding a command or changing a field is a contract change: update this ADR,
-Rust, and `frontend/src/lib/ipc.ts` in one commit.
+Rust, and `frontend/src/lib/ipc.ts` in one commit. ADR-005 records the M1/M2
+payload extensions and the load-order safety rules.
 
 | Milestone | Command | Request | Response |
 |---|---|---|---|
 | M1 | `detect_game` | none | `GameLocation` |
-| M1 | `set_game_path` | `{ gamePath: string }` | `GameLocation` |
-| M1 | `list_mods` | none | `ModSummary[]` |
-| M2 | `set_mod_enabled` | `{ modId: string, enabled: boolean }` | `ModSummary` |
+| M1 | `set_game_path` | `{ gamePath: string \| null }` | `GameLocation` |
+| M1 | `list_mods` | none | `ModListSnapshot` |
+| M2 | `set_mod_enabled` | `{ modId: string, enabled: boolean }` | `ModListSnapshot` |
+| M2 | `set_mods_enabled` | `{ modIds: string[], enabled: boolean }` | `ModListSnapshot` |
 | M2 | `set_load_order` | `{ orderedModIds: string[] }` | `ModListSnapshot` |
-| M2 | `list_profiles` | none | `Profile[]` |
+| M2 | `list_profiles` | none | `ProfilesState` |
 | M2 | `save_profile` | `{ profileId?: string, name: string, enabledModIds: string[] }` | `Profile` |
+| M2 | `duplicate_profile` | `{ profileId: string, name: string }` | `Profile` |
+| M2 | `delete_profile` | `{ profileId: string }` | `ProfilesState` |
 | M2 | `apply_profile` | `{ profileId: string }` | `ModListSnapshot` |
-| M2 | `write_load_order` | none | `LoadOrderWriteReport` |
+| M2 | `list_tags` | none | `Tag[]` |
+| M2 | `create_tag` | `{ name: string, color: string }` | `Tag[]` |
+| M2 | `delete_tag` | `{ tagId: string }` | `Tag[]` |
+| M2 | `set_mod_tags` | `{ modId: string, tagIds: string[] }` | `ModListSnapshot` |
+| M2 | `get_ui_preferences` | none | `UiPreferences` |
+| M2 | `update_ui_preferences` | `{ preferences: UiPreferences }` | `UiPreferences` |
+| M2 | `read_load_order` | none | `LoadOrderReadReport` |
+| M2 | `preview_load_order` | none | `LoadOrderWriteReport` |
+| M2 | `write_load_order` | `{ allowEmpty: boolean, confirmUnmanagedLoss: boolean }` | `LoadOrderWriteReport` |
+| M2 | `restore_load_order` | none | `LoadOrderReadReport` |
 | M3 | `get_conflicts` | none | `ConflictReport` |
 | M3 | `list_workshop_items` | none | `WorkshopItem[]` |
 | M3 | `launch_game` | `{ skipIntro: boolean, scriptLogging: boolean }` | `LaunchResult` |
@@ -125,14 +138,15 @@ type GameLocation = {
   gamePath: string
   dataPath: string
   workshopPath: string
-  steamRoot: string
+  steamRoot: string       // empty for a manual install outside Steam
+  protonPrefix: string | null
   source: 'auto' | 'manual'
 }
 
 type ModSummary = {
   id: string                 // opaque, core-assigned; never a UI-owned path
   name: string               // pack file name, e.g. "mymod.pack"
-  humanName: string          // display name from the pack header
+  humanName: string          // pack stem until M3 adds Workshop titles
   author: string | null
   isWorkshop: boolean
   workshopId: string | null
@@ -140,9 +154,27 @@ type ModSummary = {
   loadOrder: number          // 0-based, top of list = 0
   tags: string[]             // tag ids
   updatedAt: string | null   // ISO-8601 UTC
+  thumbnailPath: string | null
+  dependencies: string[]
+  packError: string | null
+  isMovie: boolean
+  sizeBytes: number
 }
 
-type ModListSnapshot = { mods: ModSummary[]; enabledCount: number }
+type ModListSnapshot = {
+  mods: ModSummary[]
+  enabledCount: number
+  activeProfileId: string
+  loadOrder: LoadOrderReadReport
+  timings: Timings
+  warnings: string[]
+}
+
+type Tag = {
+  id: string
+  name: string
+  color: string  // #RRGGBB
+}
 
 type Profile = {
   id: string
@@ -157,6 +189,48 @@ type LoadOrderWriteReport = {
   backupPath: string | null
   written: number
   skipped: string[]          // names not resolvable to a discovered pack
+  unmanagedDirectives: string[]
+  wouldDropUnmanaged: boolean
+  existingModCount: number
+  resultingModCount: number
+  canWrite: boolean
+  blockedReason: string | null
+  requiresEmptyConfirmation: boolean
+  requiresUnmanagedConfirmation: boolean
+  hardBlocked: boolean
+}
+
+type Timings = {
+  startupMs: number
+  detectionMs: number
+  scanMs: number
+  loadOrderMs: number
+  totalMs: number
+}
+
+type UiPreferences = {
+  density: 'comfortable' | 'compact'
+  showAuthors: boolean
+  showThumbnails: boolean
+  lastScrollTop: number
+}
+
+type ProfilesState = {
+  profiles: Profile[]
+  activeProfileId: string
+}
+
+type LoadOrderReadReport = {
+  path: string
+  present: boolean
+  corrupt: boolean
+  message: string | null
+  modNames: string[]
+  resolvedModIds: string[]
+  missingNames: string[]
+  duplicates: string[]
+  unmanagedDirectives: string[]
+  backupAvailable: boolean
 }
 
 type ConflictReport = {

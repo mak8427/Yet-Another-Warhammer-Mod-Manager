@@ -65,3 +65,108 @@ fn error_codes_use_snake_case_on_the_wire() {
         assert_eq!(json, expected);
     }
 }
+
+#[test]
+fn mod_list_snapshot_uses_the_m1_m2_wire_shape() {
+    use wh3mm_core::ipc::{
+        GameLocation, LoadOrderReadReport, LocationSource, ModListSnapshot, ModSummary,
+        UiPreferences,
+    };
+    use wh3mm_core::timing::Timings;
+
+    let module = ModSummary {
+        id: "C:/game/data/mod.pack".into(),
+        name: "mod.pack".into(),
+        human_name: "mod".into(),
+        author: None,
+        is_workshop: false,
+        workshop_id: None,
+        is_enabled: true,
+        load_order: 0,
+        tags: vec!["tag".into()],
+        updated_at: Some("2026-10-20T12:00:00Z".into()),
+        thumbnail_path: None,
+        dependencies: vec!["data.pack".into()],
+        pack_error: None,
+        is_movie: false,
+        size_bytes: 42,
+    };
+    let snapshot = ModListSnapshot {
+        mods: vec![module],
+        enabled_count: 1,
+        active_profile_id: "profile".into(),
+        load_order: LoadOrderReadReport {
+            path: "C:/game/used_mods.txt".into(),
+            present: true,
+            corrupt: false,
+            message: None,
+            mod_names: vec!["mod.pack".into()],
+            resolved_mod_ids: vec!["C:/game/data/mod.pack".into()],
+            missing_names: vec![],
+            duplicates: vec![],
+            unmanaged_directives: vec![],
+            backup_available: false,
+        },
+        timings: Timings::default(),
+        warnings: vec![],
+    };
+
+    let json = serde_json::to_value(snapshot).unwrap();
+    assert_eq!(json["enabledCount"], 1);
+    assert_eq!(json["activeProfileId"], "profile");
+    assert_eq!(json["mods"][0]["humanName"], "mod");
+    assert_eq!(json["mods"][0]["thumbnailPath"], serde_json::Value::Null);
+    assert_eq!(json["mods"][0]["sizeBytes"], 42);
+    assert!(json.get("mods").is_some());
+    assert_eq!(
+        json["loadOrder"]["resolvedModIds"][0],
+        "C:/game/data/mod.pack"
+    );
+    assert_eq!(json["timings"]["startupMs"], 0);
+
+    let location = GameLocation {
+        game_path: "C:/game".into(),
+        data_path: "C:/game/data".into(),
+        workshop_path: "C:/workshop".into(),
+        steam_root: "C:/steam".into(),
+        proton_prefix: None,
+        source: LocationSource::Manual,
+    };
+    let json = serde_json::to_value(location).unwrap();
+    assert_eq!(json["source"], "manual");
+    assert!(json["protonPrefix"].is_null());
+
+    let preferences = UiPreferences::default();
+    let json = serde_json::to_value(preferences).unwrap();
+    assert_eq!(json["density"], "comfortable");
+    assert_eq!(json["lastScrollTop"], 0);
+}
+
+#[test]
+fn write_report_exposes_confirmation_requirements() {
+    use wh3mm_core::ipc::LoadOrderWriteReport;
+
+    let report = LoadOrderWriteReport {
+        path: "used_mods.txt".into(),
+        backup_path: None,
+        written: 0,
+        skipped: vec!["missing.pack".into()],
+        unmanaged_directives: vec!["add_working_directory \"x\";".into()],
+        would_drop_unmanaged: true,
+        existing_mod_count: 3,
+        resulting_mod_count: 0,
+        can_write: false,
+        blocked_reason: Some("confirm first".into()),
+        requires_empty_confirmation: true,
+        requires_unmanaged_confirmation: true,
+        hard_blocked: false,
+    };
+    let json = serde_json::to_value(report).unwrap();
+    assert_eq!(json["requiresEmptyConfirmation"], true);
+    assert_eq!(json["requiresUnmanagedConfirmation"], true);
+    assert_eq!(json["hardBlocked"], false);
+    assert_eq!(
+        json["unmanagedDirectives"][0],
+        "add_working_directory \"x\";"
+    );
+}

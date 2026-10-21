@@ -1,7 +1,7 @@
 # Project status
 
 - Owner: Katerina Zarina
-- Updated: 2026-10-20
+- Updated: 2026-10-21
 - Product contract: `docs/PRODUCT_SCOPE.md`
 - Architecture: `docs/adr/001-architecture.md`
 
@@ -12,9 +12,9 @@ when its acceptance checks are recorded here with command evidence.
 
 | Milestone | Owner | Scope | State |
 |---|---|---|---|
-| M0 | Katerina | Repo layout, Rust workspace, Tauri shell, TS/Vite shell, typed IPC, ADRs, CI | Implemented; PR open for QA and tech-lead review |
-| M1 | Karl | Steam/WH3 detection, pack parser, mod index, fixtures | Not started |
-| M2 | Karl | Mod list, load order, tags, profiles | Not started |
+| M0 | Katerina | Repo layout, Rust workspace, Tauri shell, TS/Vite shell, typed IPC, ADRs, CI | Done; merged as `abceb50` (PR #1) |
+| M1 | Karl | Steam/WH3 detection, pack parser, mod index, fixtures | Implemented; PR #6 open for QA and tech-lead review |
+| M2 | Karl | Mod list, load order, tags, profiles | Implemented; PR #6 open for QA and tech-lead review |
 | M3 | Karl | Conflicts, Workshop, launch | Not started |
 | M4 | Katerina + Karl | TW:WH3 visual system, density, keyboard map, states | Not started |
 | M5 | Baltasar + Genny4Real | E2E, performance budgets, Windows installer, release | Not started |
@@ -60,6 +60,42 @@ job runs `pnpm build`, `cargo test --workspace --locked`, and
 `tauri-build`, `generate_context!`, and the `app_info` handler. `8d877f9` was
 missing the `icons/icon.ico` that `tauri-build` requires; `2070b7f` fixes it.
 
+## M1/M2 evidence (WAR-5)
+
+- Branch: `feat/m1-m2-core`, cut from `main` at `abceb50`.
+- Pull request: [#6](https://github.com/mak8427/Warhammer_mod_manager/pull/6)
+  ("M1+M2: WH3 detection, pack parsing, mod list, load order, profiles").
+- Contract/ordering decisions: `docs/adr/005-m1-m2-implementation.md`; ADR-002
+  and ADR-003 carry the implemented command/persistence details.
+- Rust coverage: VDF and path discovery fixtures (two libraries + one missing),
+  valid/malformed/truncated PFH5 headers, unicode dependencies, duplicate pack
+  names, Workshop thumbnails, `used_mods.txt` BOM/CRLF/duplicates/unmanaged
+  directives, atomic write + `.bak`, corrupt-file refusal and restore,
+  profile/tag/UI-preference round-trips, no-game startup, and a 500-mod
+  toggle/reorder/save/write flow.
+- Frontend coverage: typed IPC argument mapping and error normalization, store
+  boot/no-game/toggle/reorder/profile/preview/write/filter flows, virtualized
+  500-row mount contract, keyboard reorder, and the load-order confirmation
+  dialog.
+- Instrumentation: startup, detection, pack scan, and mod-list/load-order read
+  durations are logged as `wh3mm: timing …` and returned in
+  `ModListSnapshot.timings` for WAR-7.
+
+### Verification (2026-10-21, Linux)
+
+| Command | Result |
+|---|---|
+| `cargo fmt --all --check` | pass |
+| `cargo clippy --workspace --all-targets --locked -- -D warnings` | pass |
+| `cargo test --workspace --locked` | pass, 60 tests |
+| `pnpm typecheck` | pass |
+| `pnpm lint` | pass |
+| `pnpm test` | pass, 33 tests |
+| `pnpm build` | pass |
+
+Windows shell compile remains covered by the manual `workflow_dispatch` job
+until M5 packaging.
+
 ## Risks and open items
 
 - The Windows Tauri shell is not compiled by the Linux gates. It is verified by
@@ -75,8 +111,9 @@ missing the `icons/icon.ico` that `tauri-build` requires; `2070b7f` fixes it.
 
 ## Next
 
-1. Baltasar Gelt: QA review of the M0 PR and the scaffold on `main`.
-2. Katerina Zarina: architecture review, squash merge, delete the branch, close
-   WAR-4 with the PR link.
-3. Start M1 in WAR-3 with `wh3mm-core::paths` and `wh3mm-core::pack` from
-   ADR-001.
+1. Baltasar Gelt: QA review of PR #6, including the no-game and corrupt-file
+   recovery paths.
+2. Katerina Zarina: design/contract review of ADR-005 and the command surface.
+3. Genny4Real: use `ModListSnapshot.timings` and the `wh3mm: timing` log lines
+   as the new-app baseline for WAR-7.
+4. Start M3 (conflicts, Workshop metadata, launch) after PR #6 merges.

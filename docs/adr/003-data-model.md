@@ -228,3 +228,26 @@ Field rules:
   and migration.
 - Legacy config migration is intentionally out of scope. Only the
   game-compatible `used_mods.txt` is imported.
+
+## M2 implementation notes
+
+- The writer emits `mod "<name>";` lines joined by LF with **no trailing
+  newline**, matching the legacy writer for the same input. Reading tolerates a
+  BOM, CRLF, blank lines, and surrounding whitespace.
+- `.bak` is always the complete previous file, written through its own atomic
+  replace before the target rename. A corrupt current file is never overwritten
+  by a normal write; `restore_load_order` copies a valid `.bak` back atomically
+  and leaves the backup in place.
+- A write that would drop unmanaged directives, or would empty a file that
+  currently has mod lines, is refused until the matching confirmation flag is
+  supplied. A non-empty enabled set that resolves to zero packs is always
+  refused.
+- Toggling a mod or changing the enabled order updates the **active profile**
+  immediately, so the working state survives a restart without a separate
+  "save" action. Creating/renaming/duplicating/deleting profiles remains an
+  explicit command.
+- Changing the game path migrates profile entries by pack file name so a
+  case-only or library-path change does not silently lose the enabled set.
+- Config recovery repairs `config.json` from a valid `.bak` on startup. If both
+  files are corrupt, the in-memory defaults are used and every write is refused
+  with `config_corrupt`; neither file is touched.
