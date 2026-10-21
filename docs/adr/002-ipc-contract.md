@@ -57,6 +57,7 @@ rejects with the final value.
 | `config_corrupt` | Persisted state cannot be parsed or validated | no |
 | `game_not_found` | WH3 install not located | no |
 | `steam_not_found` | Steam install/library data not readable | no |
+| `process_detection_failed` | Whether the game is already running could not be determined; launch is blocked | yes |
 | `pack_parse_failed` | `.pack` header/file is malformed | no |
 | `not_found` | Requested mod/profile/tag does not exist | no |
 | `validation` | Caller-supplied input is invalid | no |
@@ -70,6 +71,9 @@ Rules:
   The key is always present and is `null` when absent.
 - `retryable` is set by core only when retrying without user intervention is
   safe. The UI must not invent it.
+- A failed running-game probe rejects launch with `process_detection_failed`.
+  It is never treated as "not running", so a detection failure cannot start a
+  second game instance.
 - Panics never cross IPC. Command wrappers map unexpected errors to
   `internal`, log the original, and keep the message generic.
 - There is no success/error union type. `Result<T, AppError>` in Rust becomes

@@ -203,12 +203,24 @@ pub fn command_line_mentions_game(cmdline: &[u8]) -> bool {
         .contains(WH3_PROCESS_NAME)
 }
 
+/// Seam for the running-game check so launch refusal and probe failures can be
+/// exercised without spawning a real platform process.
+pub trait GameProcessProbe {
+    fn is_game_running(&self) -> Result<bool, AppError>;
+}
+
+pub struct SystemGameProcessProbe;
+
+impl GameProcessProbe for SystemGameProcessProbe {
+    fn is_game_running(&self) -> Result<bool, AppError> {
+        is_game_running()
+    }
+}
+
 #[cfg(target_os = "linux")]
 pub fn is_game_running() -> Result<bool, AppError> {
-    let entries = match fs::read_dir("/proc") {
-        Ok(entries) => entries,
-        Err(_) => return Ok(false),
-    };
+    let entries = fs::read_dir("/proc")
+        .map_err(|error| AppError::process_detection_failed(format!("/proc: {error}")))?;
     for entry in entries.flatten() {
         let path = entry.path().join("cmdline");
         let Ok(cmdline) = fs::read(path) else {
@@ -225,13 +237,17 @@ pub fn is_game_running() -> Result<bool, AppError> {
 pub fn is_game_running() -> Result<bool, AppError> {
     let output = Command::new("tasklist")
         .args(["/FI", "IMAGENAME eq Warhammer3.exe", "/NH"])
-        .output();
-    match output {
-        Ok(output) => Ok(String::from_utf8_lossy(&output.stdout)
-            .to_lowercase()
-            .contains(WH3_PROCESS_NAME)),
-        Err(_) => Ok(false),
+        .output()
+        .map_err(|error| AppError::process_detection_failed(format!("tasklist: {error}")))?;
+    if !output.status.success() {
+        return Err(AppError::process_detection_failed(format!(
+            "tasklist exited with {}",
+            output.status
+        )));
     }
+    Ok(String::from_utf8_lossy(&output.stdout)
+        .to_lowercase()
+        .contains(WH3_PROCESS_NAME))
 }
 
 #[cfg(not(any(target_os = "linux", windows)))]
@@ -280,13 +296,21 @@ impl Session {
     }
 
     pub fn launch_game(&mut self, options: LaunchOptions) -> Result<LaunchResult, AppError> {
+        self.launch_game_with_probe(options, &SystemGameProcessProbe)
+    }
+
+    pub(crate) fn launch_game_with_probe(
+        &mut self,
+        options: LaunchOptions,
+        probe: &dyn GameProcessProbe,
+    ) -> Result<LaunchResult, AppError> {
         let location = self.location.clone().ok_or_else(|| {
             AppError::new(
                 ErrorCode::GameNotFound,
                 "Could not find a Total War: Warhammer III installation",
             )
         })?;
-        if is_game_running()? {
+        if probe.is_game_running()? {
             return Err(AppError::validation(
                 "Total War: Warhammer III is already running; close it before launching again",
             ));
@@ -326,6 +350,26 @@ mod tests {
             steam_root: dir.path().join("steam"),
             proton_prefix: None,
             source: crate::ipc::LocationSource::Manual,
+        }
+    }
+
+    fn session_with_game(dir: &TempDir) -> Session {
+        let game = dir.path().join("game");
+        fs::create_dir_all(game.join("data")).unwrap();
+        Session::initialize(SessionOptions {
+            config_path: dir.path().join("config.json"),
+            steam_root_candidates: Some(Vec::new()),
+            manual_game_path: Some(game),
+            log_timings: false,
+        })
+        .unwrap()
+    }
+
+    struct StubProbe(Result<bool, AppError>);
+
+    impl GameProcessProbe for StubProbe {
+        fn is_game_running(&self) -> Result<bool, AppError> {
+            self.0.clone()
         }
     }
 
@@ -399,6 +443,51 @@ mod tests {
             b"C:\\Games\\Warhammer3.exe\0--foo"
         ));
         assert!(!command_line_mentions_game(b"C:\\Games\\other.exe"));
+    }
+
+    #[test]
+    fn launch_refuses_while_the_game_is_running() {
+        let dir = TempDir::new("launch-running");
+        let mut session = session_with_game(&dir);
+        let before = session.config.clone();
+        let options = LaunchOptions {
+            skip_intro: true,
+            script_logging: true,
+        };
+
+        let error = session
+            .launch_game_with_probe(options, &StubProbe(Ok(true)))
+            .expect_err("a running game must block launch");
+
+        assert_eq!(error.code, ErrorCode::Validation);
+        assert!(error.message.contains("already running"));
+        assert_eq!(session.config, before);
+        let location = session.location.as_ref().unwrap();
+        assert!(!location.data_path.join(MANAGED_SKIP_INTRO_PACK).exists());
+        assert!(!location
+            .data_path
+            .join("script")
+            .join(SCRIPT_LOG_MARKER)
+            .exists());
+    }
+
+    #[test]
+    fn launch_reports_a_detection_failure_instead_of_launching() {
+        let dir = TempDir::new("launch-detection-failure");
+        let mut session = session_with_game(&dir);
+        let before = session.config.clone();
+        let probe = StubProbe(Err(AppError::process_detection_failed(
+            "tasklist: not found",
+        )));
+
+        let error = session
+            .launch_game_with_probe(LaunchOptions::default(), &probe)
+            .expect_err("a failed probe must block launch");
+
+        assert_eq!(error.code, ErrorCode::ProcessDetectionFailed);
+        assert!(error.retryable);
+        assert_eq!(error.details.as_deref(), Some("tasklist: not found"));
+        assert_eq!(session.config, before);
     }
 
     #[test]

@@ -38,7 +38,10 @@ Environment block to fill in:
 ### WIN-01 — Clean install and first start
 
 1. Uninstall any previous build; remove `%APPDATA%\com.warhammerlabs.wh3mm\`.
-2. Install the artefact; confirm no SmartScreen/AV block on a signed build.
+2. Install the artefact. The v1.0 installer is unsigned, so expect the documented
+   SmartScreen "Unknown publisher" warning (`docs/RELEASE.md`, step 11): verify
+   the SHA-256 against the release notes, then choose **More info → Run anyway**.
+   Any other AV block is a defect.
 3. Start the app.
 
 Expected: the window opens, the mod list loads, no console window, no crash.

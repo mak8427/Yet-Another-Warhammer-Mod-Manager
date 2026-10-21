@@ -18,7 +18,7 @@ when its acceptance checks are recorded here with command evidence.
 | M2 | Karl | Mod list, load order, tags, profiles | Done; merged as `c1a9cdd` (PR #6) |
 | M3 | Karl | Conflicts, Workshop, launch | Done; merged as `bb306d4` (PR #18) |
 | M4 | Katerina + Karl | TW:WH3 visual system, density, keyboard map, states | Done; merged as `0e051204` (PR #26), including the five WAR-79 ship-gate blockers |
-| M5 | Baltasar + Genny4Real | E2E, performance budgets, Windows installer, release | Release machinery merged as `e31eb64` (PR #25); Windows NSIS artifact `wh3mm-windows-1.0.0` produced by `release.yml` run [39637746973](https://github.com/mak8427/Warhammer_mod_manager/actions/runs/39637746973) at `3106dd5`; `v1.0.0` tag run and draft release pending (WAR-99) |
+| M5 | Baltasar + Genny4Real | E2E, performance budgets, Windows installer, release | Release machinery merged as `e31eb64` (PR #25); Windows NSIS artifact `wh3mm-windows-1.0.0` produced by `release.yml` run [39637746973](https://github.com/mak8427/Warhammer_mod_manager/actions/runs/39637746973) at `3106dd5`. `v1.0.0` tag (annotated `cfcf462`) points at [`a1a505b`](https://github.com/mak8427/Warhammer_mod_manager/commit/a1a505b497638d4400c22e6de42494586355cd42); tag run [39648674602](https://github.com/mak8427/Warhammer_mod_manager/actions/runs/39648674602) succeeded 2026-10-21 18:17Z, and draft release [419898051](https://github.com/mak8427/Warhammer_mod_manager/releases/tag/untagged-2476ddb2c37ecb7601bf) holds `WH3.Mod.Manager_1.0.0_x64-setup.exe` with SHA-256 `59646de248bc12f3bb7cd1aa6451fe8ad76124f28046eb4be181a41096782eff`. Publication is pending the WAR-12 audit and the CEO decision. |
 
 ## M0 evidence (WAR-4)
 
@@ -165,10 +165,11 @@ criterion after WAR-107 cut the author surface, and WS-2 is done after WAR-106
 added the Workshop Open test. WAR-106 (`f2e8b0f`) and WAR-107 (`84b11c6`) are
 merged, and neither is a WAR-79 parity-gate blocker. The parity percentage
 itself is a monitoring metric, not the ship gate (WAR-79).
-A `v1.0.0` tag is created only after this docs correction merges, the perf gate
-passes at the tag head, the parity report is **0 missing**, and `main` is green.
-The tag run produces the Windows artifact and a draft release; WAR-12 audits
-that draft, and publishing waits for the WAR-12 sign-off.
+The `v1.0.0` tag was created at `a1a505b` after this docs correction merged, the
+perf gate passed at the tag head, the parity report was **0 missing**, and
+`main` was green. The tag run produced the Windows artifact and a draft release;
+WAR-12 audits that draft, and publishing waits for the WAR-12 sign-off and the
+CEO decision.
 
 ## Risks and open items
 
@@ -199,11 +200,9 @@ that draft, and publishing waits for the WAR-12 sign-off.
 
 ## Next
 
-1. Katerina Zarina: merge the WAR-99 docs correction after QA review and CEO
-   approval; it puts the corrected tag-ordering and perf gate rows on `main`.
-2. Katerina Zarina: tag `v1.0.0` at the green `main` head, let `release.yml`
-   produce the Windows artifact and draft release, and record both on WAR-11.
-3. Baltasar Gelt: run the WAR-12 audit on the draft release produced by the
-   `v1.0.0` tag; publish only on his sign-off.
-4. Torgrim: make the v1.0.0 go/no-go and publish decision after WAR-12, then
+1. Katerina Zarina: close WAR-11 after WAR-124 merges; the `v1.0.0` draft is
+   then ready for the WAR-12 audit.
+2. Baltasar Gelt: run the WAR-12 audit on the draft release; publish only on his
+   sign-off.
+3. Torgrim: make the v1.0.0 go/no-go and publish decision after WAR-12, then
    close WAR-3.

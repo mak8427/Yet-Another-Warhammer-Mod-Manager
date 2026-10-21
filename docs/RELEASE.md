@@ -168,6 +168,25 @@ The installer is **not code-signed**. Windows SmartScreen will show an
 and never to bypass a warning for a file whose SHA-256 does not match the
 checksum published with the release.
 
+Download the installer and `SHA256SUMS.txt` into the same directory, then verify
+them with the exact name that was published:
+
+```bash
+sha256sum -c SHA256SUMS.txt
+```
+
+Releases built after `v1.0.0` write checksum entries with the uploaded asset
+name (`WH3.Mod.Manager_<version>_x64-setup.exe`), not the build path, so this
+command works verbatim. The `v1.0.0` draft keeps its original checksum file;
+verify that asset with the installer-name command in its release notes. On
+Windows PowerShell:
+
+```powershell
+(Get-FileHash .\WH3.Mod.Manager_1.0.0_x64-setup.exe -Algorithm SHA256).Hash.ToLower()
+```
+
+The result must match the SHA-256 printed in the release notes.
+
 ## Known limitations (v1.0)
 
 These are accepted for v1.0. None is a correctness risk, and each has an exact
@@ -195,8 +214,9 @@ name, type, timestamp, and dependencies.
 1. Checks the tag against `tauri.conf.json` and fails on a mismatch.
 2. Runs `cargo test --workspace --locked` and installs the frontend.
 3. Builds the NSIS installer on `windows-latest`.
-4. Writes `SHA256SUMS.txt` and uploads the installer plus that file as the
-   `wh3mm-windows-<version>` run artifact.
+4. Stages the installer and `SHA256SUMS.txt` flat, writes checksum entries with
+   the uploaded asset name, and verifies them with `sha256sum -c` before
+   uploading the pair as the `wh3mm-windows-<version>` run artifact.
 5. Creates a **draft** GitHub release with the installer and checksums attached.
 
 It never publishes a release automatically. A human reviews the draft, edits the
