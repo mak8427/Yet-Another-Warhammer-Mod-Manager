@@ -46,7 +46,7 @@ jobs:
 
       - name: QA generator guard tests
         timeout-minutes: 5
-        run: node --test scripts/qa/
+        run: node --test scripts/qa/*.test.mjs
 
       - name: Rust format
         run: cargo fmt --all --check
