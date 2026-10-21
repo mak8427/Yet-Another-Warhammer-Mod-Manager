@@ -185,7 +185,8 @@ release task.
 - [ ] Publish the draft only after every item above is checked.
 
 At the release head `0e051204` the parity generator reports 0 missing checks
-(91.750%; SET-4, ML-3, CF-4, and PRF-2 are done after WAR-10). WAR-103
-regenerates the index after WAR-106/WAR-107 land. The pre-tag gate stays
+(91.750%; SET-4, ML-3, CF-4, and PRF-2 are done after WAR-10). The parity
+index must be regenerated after WAR-106/WAR-107 merge; no current task covers
+that regeneration. The pre-tag gate stays
 **0 missing**; do not tag while any check is missing, and never hand-edit
 `docs/PARITY.md`.
