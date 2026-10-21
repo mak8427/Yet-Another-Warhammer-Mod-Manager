@@ -143,22 +143,31 @@ These are accepted for v1.0; the full manual scripts are in `docs/RELEASE.md`.
 | WS-3 | Steam subscribe/unsubscribe/update is manual; the app has no custom Steam auth and never automates it. | Subscribe and unsubscribe in Steam, rescan, confirm the mod list follows; confirm the app never asks for Steam credentials. |
 | LA-1 | Launch through Steam is measured as a proxy, not an in-game load time. | Launch in the Windows QA pass and keep the number labelled "proxy". |
 | ML-4 | Persisted scroll position and the 20k-row guard are polish. | A reset scroll is accepted; the 20k fixture must show the guard, not freeze. |
-| SET-2 | Density, author, and thumbnail preferences persist best-effort. | Toggle each, restart, confirm persistence, and record any failure. |
+| SET-2 | Density and thumbnail preferences persist best-effort. | Toggle density and thumbnail display; restart; confirm each value survived. Record any value that did not persist. |
 | DET-1 Linux roots | Flatpak/Snap/XDG discovery is best-effort; Windows registry and native root are fixture-tested on WAR-10. | Detect on Linux Flatpak/Snap or use the manual path; confirm Windows detection without a manual path. |
 
+The pack-author column, author sort, author search dimension, and Settings
+"Show authors" toggle are **removed in v1.0** (WAR-107). No author exists in the
+PFH5 header or the Steam ACF, and the legacy Steamworks persona lookup needs the
+custom Steam auth that v1.0 does not ship. This is a removal, not a limitation.
+
 The capability-parity index in `docs/PARITY.md` is generated from
-`docs/PARITY.yaml`; only WS-3, LA-1, ML-4, and SET-2 may remain `partial` there.
-At the release head `0e051204`, `node scripts/parity-report.mjs` reports
-91.750% with 33 done / 7 partial / **0 missing**. SET-4, ML-3, CF-4, and PRF-2
-moved to done with the WAR-10 code and tests cited in `docs/PARITY.yaml`; DET-1
-stays partial for the documented Flatpak/Snap/XDG Linux roots. The four allowed
-v1.0 limitations are WS-3, LA-1, ML-4, and SET-2. DSC-1 (author parsing) and
-WS-2 (open Workshop page) also remain partial; both are named in
-`docs/PRODUCT_SCOPE.md`, so their v1.0 status is escalated to Torgrim in WAR-104.
+`docs/PARITY.yaml`; only WS-3, LA-1, ML-4, SET-2, and DET-1's Linux roots may
+remain `partial` there. At the release head `0e051204`,
+`node scripts/parity-report.mjs` reports 91.750% with 33 done / 7 partial /
+**0 missing**. SET-4, ML-3, CF-4, and PRF-2 moved to done with the WAR-10 code
+and tests cited in `docs/PARITY.yaml`; DET-1 stays partial for the documented
+Flatpak/Snap/XDG Linux roots. The five documented v1.0 limitations are WS-3,
+LA-1, ML-4, SET-2, and DET-1's Linux roots. DSC-1's author requirement and
+WS-2's open path are not limitations: WAR-104 ruling B resolves them with
+WAR-106 (missing Workshop Open test) and WAR-107 (cut the author surface). Both
+tasks block the `v1.0.0` tag (WAR-99), so it cannot ship ahead of them; neither
+is a WAR-79 parity-gate blocker.
 The parity percentage itself is a monitoring metric, not the ship gate (WAR-79).
 A `v1.0.0` tag and draft release are created only after the `release.yml`
-artifact dispatch on `main` is green and the release gates are on the branch;
-publishing waits for the WAR-12 audit of that draft.
+artifact dispatch on `main` is green, WAR-106/WAR-107 are merged, and the
+release gates are on the branch; publishing waits for the WAR-12 audit of that
+draft.
 
 ## Risks and open items
 
@@ -181,7 +190,9 @@ publishing waits for the WAR-12 audit of that draft.
 
 1. Karl Franz: land WAR-101 (`protocol-asset`) with a green `release.yml` run on
    the fix branch that uploads `wh3mm-windows-1.0.0`.
-2. Katerina Zarina: merge WAR-101 after QA and tech-lead approval, re-dispatch
+2. Karl Franz: land WAR-106 (WS-2 Open test) and WAR-107 (author-surface cut).
+   Both are WAR-104 ruling B and both block the `v1.0.0` tag (WAR-99).
+3. Katerina Zarina: merge WAR-101 after QA and tech-lead approval, re-dispatch
    `release.yml` on `main`, and record the artifact on WAR-95/WAR-73.
-3. Baltasar Gelt: run the WAR-12 audit on the draft release produced by the
+4. Baltasar Gelt: run the WAR-12 audit on the draft release produced by the
    `v1.0.0` tag, after the artifact proof; publish only on his sign-off.

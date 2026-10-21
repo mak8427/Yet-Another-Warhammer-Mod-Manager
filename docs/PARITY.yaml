@@ -58,11 +58,11 @@ corrections:
   - id: m4-blocker-parity
     claim: "ML-3, CF-4, PRF-2, and DET-1 are still partial after WAR-10."
     verified: "WAR-10 merged to `0e051204`. ML-3 has the sort control (`ModList.tsx`) and `sorts deterministically with an id tie-break in every non-drag mode`; CF-4 has duplicate rows and `renders duplicate pack names and shows none for a clean report`; PRF-2 has `applying_a_profile_restores_the_saved_order_exactly`; DET-1 has the injectable Windows/Unix candidate tests in `paths.rs`. All four tests pass on the merged tree."
-    effect: "ML-3 +1.875, CF-4 +1.500, PRF-2 +1.250; index 87.125 -> 91.750. DET-1 stays partial for the documented Flatpak/Snap/XDG limitation. DSC-1 (author) and WS-2 (Workshop open) remain partial and are not WAR-79 ship blockers."
+    effect: "ML-3 +1.875, CF-4 +1.500, PRF-2 +1.250; index 87.125 -> 91.750. DET-1 stays partial for the documented Flatpak/Snap/XDG limitation. DSC-1 (author) and WS-2 (Workshop open) remain partial and are not WAR-79 ship blockers; WAR-104 ruling B resolves them via WAR-106/WAR-107, and both block the WAR-99 v1.0.0 tag."
   - id: discovery-author-missing
     claim: "DSC-1 (header including author) was done."
     verified: "The pack author is hardcoded None in crates/wh3mm-core/src/pack.rs:165 and crates/wh3mm-core/src/mod_index.rs:254; the cited test asserts header.author == None. No code path assigns a parsed author."
-    effect: "Discovery 4.0 -> 3.5; contributes -1.250 to the index. DSC-1 is partial until an author source exists."
+    effect: "Discovery 4.0 -> 3.5; contributes -1.250 to the index. WAR-104 ruling B cuts the author requirement, so WAR-107 re-scores DSC-1 against the corrected PRODUCT_SCOPE criterion (name, type, timestamp, dependencies)."
   - id: workshop-open-untested
     claim: "WS-2 (open a Workshop item through Steam) was done."
     verified: "The cited test asserts only the Subscribe and Update URL strings. WorkshopAction::Open is never called by a test and spawn_steam_url (workshop.rs:294) has no test; the UI test clicks Unsubscribe only."

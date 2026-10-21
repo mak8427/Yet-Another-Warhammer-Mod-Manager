@@ -16,9 +16,9 @@ is `docs/adr/004-testing-strategy.md`.
 - The release tag is `vX.Y.Z` and must match the configured version. The tag
   workflow refuses to build on a mismatch.
 - v1.0.0 is the first release. The tag and draft release are created only after
-  M4 (WAR-10) and the release gates are on `main`. Creating the tag is not
-  publication: the workflow creates a draft, WAR-12 audits that draft, and only
-  then may a human publish it.
+  M4 (WAR-10), WAR-106/WAR-107 (WAR-104 ruling B), and the release gates are on
+  `main`. Creating the tag is not publication: the workflow creates a draft,
+  WAR-12 audits that draft, and only then may a human publish it.
 
 ## Build locally on Windows
 
@@ -70,8 +70,14 @@ manual check in the QA pass below.
 | **WS-3** | Subscribe, unsubscribe, and update through the Steam client only. The app has no custom Steam authentication and never automates these actions. | On a clean Windows machine, subscribe to a Workshop mod in the Steam client, rescan, and confirm the mod appears; unsubscribe and confirm it disappears. Confirm the app never asks for Steam credentials. |
 | **LA-1** | Launch goes through Steam. The measured launch number is a proxy (time from the app request to the Steam process starting), not an in-game load time. | In QA step 7, launch through the app and record the result. Keep the number labelled "proxy" in any report; do not compare it to an in-game load timing. |
 | **ML-4** | Persisted scroll position and the 20k-row guard are polish, not correctness. | Scroll a long mod list, switch screens and back; a reset scroll position is accepted. Load the 20k-row fixture and confirm the guard shows a clear message instead of freezing. |
-| **SET-2** | Density, author, and thumbnail preferences persist best-effort. | Toggle density, author, and thumbnail display; restart; confirm each value survived. Record any value that did not persist. |
+| **SET-2** | Density and thumbnail preferences persist best-effort. | Toggle density and thumbnail display; restart; confirm each value survived. Record any value that did not persist. |
 | **DET-1 Linux roots** | Flatpak, Snap, and XDG game discovery is best-effort and may miss an installation. On Windows, the registry and native root are fixture-tested on WAR-10. | On a Flatpak or Snap install, confirm detection or use the manual path chooser. On Windows, confirm the registry/native detection finds the game without a manual path. |
+
+The pack-author column is **removed in v1.0** (WAR-107), not documented as a
+limitation: the PFH5 header and the Steam ACF carry no author, and the legacy
+Steamworks persona lookup needs the custom Steam auth that v1.0 does not ship.
+The author column, author sort, author search dimension, and Settings
+"Show authors" toggle are gone.
 
 ## Tag workflow (CI)
 
@@ -97,8 +103,9 @@ the default branch. The artifact-producing Windows run therefore comes **after**
 the release-engineering PR merges to `main`: dispatch `release.yml` at the
 release head, link the run and artifact on the task, and only then continue the
 approval path. Do not dispatch from an unmerged feature branch. Create the
-`v1.0.0` tag only after M4 (WAR-10) and the release gates are on `main`; that
-tag exists so WAR-12 can audit the draft installer it produces.
+`v1.0.0` tag only after M4 (WAR-10), the WAR-104 ruling's WAR-106/WAR-107 work,
+the release gates, and a green `main` are in place. The tag run produces the
+artifact and draft that WAR-12 audits; publish only after WAR-12 signs off.
 
 ## Manual Windows QA script
 
@@ -160,10 +167,12 @@ release task.
 ## Pre-release checklist
 
 - [ ] M4 merged (WAR-10), including SET-4, ML-3, CF-4, PRF-2, and DET-1; `main` is green.
+- [ ] WAR-104 ruling B is implemented: WAR-106 (Workshop Open test, WS-2) and
+      WAR-107 (author-surface cut, DSC-1) are merged. Both block the `v1.0.0`
+      tag (WAR-99).
 - [ ] `node scripts/parity-report.mjs` reports **0 missing checks** at the release
       head. The allowed limitations are WS-3, LA-1, ML-4, SET-2, and DET-1's
-      Linux roots; DSC-1 (author) and WS-2 (Workshop open) also remain partial
-      and are escalated to Torgrim in WAR-104 before the tag.
+      Linux roots; DSC-1 and WS-2 are not limitations (WAR-106/WAR-107).
 - [ ] The generated `docs/PARITY.md` and `docs/STATUS.md` are committed at that
       head; `docs/STATUS.md` names the five limitations with their manual checks.
       Never hand-edit `docs/PARITY.md`.
@@ -176,5 +185,7 @@ release task.
 - [ ] Publish the draft only after every item above is checked.
 
 At the release head `0e051204` the parity generator reports 0 missing checks
-(91.750%; SET-4, ML-3, CF-4, and PRF-2 are done after WAR-10). The pre-tag gate
-stays **0 missing**; do not tag while any check is missing.
+(91.750%; SET-4, ML-3, CF-4, and PRF-2 are done after WAR-10). WAR-103
+regenerates the index after WAR-106/WAR-107 land. The pre-tag gate stays
+**0 missing**; do not tag while any check is missing, and never hand-edit
+`docs/PARITY.md`.

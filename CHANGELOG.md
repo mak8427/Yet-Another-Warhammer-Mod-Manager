@@ -40,6 +40,14 @@ See `docs/RELEASE.md`.
   installer, uploads the artifact, and opens a draft release, and this release
   guide plus changelog.
 
+### Removed
+
+- **Pack-author display** (`WAR-107`): the author column, author sort, author
+  search dimension, the Settings "Show authors" toggle, and the `showAuthors`
+  preference are removed for v1.0. The PFH5 header and the Steam ACF carry no
+  author, and the legacy Steamworks persona lookup needs the custom Steam auth
+  that v1.0 does not ship; an empty column is not a feature.
+
 ### Known limitations
 
 v1.0 accepts these limitations; the exact manual checks are in `docs/RELEASE.md`.
@@ -54,9 +62,9 @@ v1.0 accepts these limitations; the exact manual checks are in `docs/RELEASE.md`
 - **ML-4 — scroll persistence and the 20k-row guard are polish.** A reset scroll
   position is accepted; the 20k fixture must show the guard instead of freezing.
   Manual check in the Windows QA pass.
-- **SET-2 — density/author/thumbnail preferences are best-effort.** Manual
-  check: toggle each, restart, confirm the values persist, and record any that
-  do not.
+- **SET-2 — density/thumbnail preferences are best-effort.** Manual check:
+  toggle each, restart, confirm the values persist, and record any that do not.
+  The author surface is removed, not a limitation (see Removed).
 - **DET-1 — Linux Flatpak/Snap/XDG discovery is best-effort.** Windows registry
   and native root are fixture-tested on WAR-10. Manual check: detect on Linux
   Flatpak/Snap or use the manual path; confirm Windows detection without a path.
