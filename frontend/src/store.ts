@@ -689,14 +689,36 @@ export class AppStore {
     }
   }
 
-  async resetUiPreferences(): Promise<void> {
-    const ui = { ...DEFAULT_UI }
-    this.set({ ui })
+  async resetToDefaults(): Promise<void> {
+    this.set({ busy: 'Resetting settings and load order' })
     try {
-      await this.client.updateUiPreferences(ui)
-      this.set({ notice: { kind: 'success', message: 'Settings reset to defaults' } })
+      const report = await this.client.resetToDefaults(true)
+      const [snapshot, profiles, tags, ui] = await Promise.all([
+        this.client.listMods(),
+        this.client.listProfiles(),
+        this.client.listTags(),
+        this.client.getUiPreferences(),
+      ])
+      this.set({
+        snapshot,
+        profiles,
+        tags,
+        ui,
+        busy: null,
+        dirty: false,
+        lastWriteAt: report.loadOrderWritten
+          ? new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : this.state.lastWriteAt,
+        notice: {
+          kind: 'success',
+          message: report.loadOrderWritten
+            ? 'Settings and load order reset to defaults'
+            : 'Settings reset; no game path was available for the load order',
+        },
+      })
+      void this.refreshConflicts()
     } catch (cause) {
-      this.set({ error: toIpcError(cause) })
+      this.set({ busy: null, error: toIpcError(cause) })
     }
   }
 

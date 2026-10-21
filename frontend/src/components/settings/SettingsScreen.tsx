@@ -168,12 +168,12 @@ export function SettingsScreen() {
           </div>
           <div className="setting-row">
             <div className="setting-label">
-              <span>Reset to defaults</span>
-              <p>Returns density and column visibility to defaults. Mods, profiles, and paths are untouched.</p>
+              <span>Reset settings and load order</span>
+              <p>Resets appearance, the game-path override, and the active profile&apos;s load order.</p>
             </div>
             <div className="setting-control">
               <button type="button" className="btn btn-danger-ghost" onClick={() => setResetOpen(true)}>
-                Reset to defaults
+                Reset settings and load order
               </button>
             </div>
           </div>
@@ -214,18 +214,21 @@ export function SettingsScreen() {
                 type="button"
                 className="btn btn-danger"
                 onClick={() => {
-                  void store.resetUiPreferences()
+                  void store.resetToDefaults()
                   setResetOpen(false)
                 }}
               >
-                Reset settings
+                Reset settings and load order
               </button>
             </>
           }
         >
           <p>
-            Reset density, author, and thumbnail visibility to defaults. Mods, profiles, and paths
-            are not touched.
+            Reset density, author and thumbnail visibility, and the scroll position to defaults.
+            Clear the game-path override so detection returns to automatic. Clear the active
+            profile&apos;s enabled set and write an empty <code>used_mods.txt</code> when a game is
+            available. Profiles, tags, mod tags, and launch options are kept. One config backup and
+            one load-order backup are kept.
           </p>
         </Modal>
       )}

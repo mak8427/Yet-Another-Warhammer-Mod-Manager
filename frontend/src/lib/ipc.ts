@@ -146,6 +146,10 @@ export interface UiPreferences {
   lastScrollTop: number
 }
 
+export interface ResetDefaultsReport {
+  loadOrderWritten: boolean
+}
+
 export interface FileConflict {
   path: string
   winnerModId: string
@@ -298,6 +302,7 @@ export type CommandName =
   | 'set_mod_tags'
   | 'get_ui_preferences'
   | 'update_ui_preferences'
+  | 'reset_to_defaults'
   | 'read_load_order'
   | 'preview_load_order'
   | 'write_load_order'
@@ -396,6 +401,10 @@ export async function updateUiPreferences(preferences: UiPreferences): Promise<U
   return invokeCommand<UiPreferences>('update_ui_preferences', { preferences })
 }
 
+export async function resetToDefaults(confirm: boolean): Promise<ResetDefaultsReport> {
+  return invokeCommand<ResetDefaultsReport>('reset_to_defaults', { confirm })
+}
+
 export async function readLoadOrder(): Promise<LoadOrderReadReport> {
   return invokeCommand<LoadOrderReadReport>('read_load_order')
 }
@@ -478,6 +487,7 @@ export const ipc = {
   setModTags,
   getUiPreferences,
   updateUiPreferences,
+  resetToDefaults,
   readLoadOrder,
   previewLoadOrder,
   writeLoadOrder,

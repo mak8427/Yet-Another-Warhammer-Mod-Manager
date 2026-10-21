@@ -12,6 +12,7 @@ import type {
   ModSummary,
   Profile,
   ProfilesState,
+  ResetDefaultsReport,
   Tag,
   UiPreferences,
   WorkshopItem,
@@ -183,6 +184,10 @@ export const LAUNCH_RESULT: LaunchResult = {
   message: 'Warhammer III launch requested through Steam.',
 }
 
+export const RESET_REPORT: ResetDefaultsReport = {
+  loadOrderWritten: true,
+}
+
 export const WRITE_REPORT: LoadOrderWriteReport = {
   path: 'C:/Steam/steamapps/common/Total War WARHAMMER III/used_mods.txt',
   backupPath: null,
@@ -219,6 +224,7 @@ export function makeClient(overrides: Partial<IpcClient> = {}): IpcClient {
     setModTags: vi.fn(async () => makeSnapshot([])),
     getUiPreferences: vi.fn(async () => UI),
     updateUiPreferences: vi.fn(async () => UI),
+    resetToDefaults: vi.fn(async () => RESET_REPORT),
     readLoadOrder: vi.fn(async () => EMPTY_LOAD_ORDER),
     previewLoadOrder: vi.fn(async () => WRITE_REPORT),
     writeLoadOrder: vi.fn(async () => WRITE_REPORT),

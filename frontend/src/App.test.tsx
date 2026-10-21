@@ -194,6 +194,26 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /Write 1 mod/ })).toBeEnabled()
   })
 
+  it('resets settings and the load order after confirmation', async () => {
+    mockReady()
+    render(<App />)
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    const rail = screen.getByRole('navigation', { name: 'Sections' })
+    fireEvent.click(within(rail).getByRole('button', { name: 'Settings' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Reset settings and load order' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Reset to defaults' })
+    expect(dialog).toHaveTextContent(/clear the game-path override/i)
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Reset settings and load order' }))
+
+    await waitFor(() => {
+      expect(ipc.resetToDefaults).toHaveBeenCalledWith(true)
+    })
+    expect(ipc.listMods).toHaveBeenCalled()
+    expect(await screen.findByText('Settings and load order reset to defaults')).toBeInTheDocument()
+  })
+
   it('opens the launch dialog and requests a launch through Steam', async () => {
     mockReady()
     render(<App />)
