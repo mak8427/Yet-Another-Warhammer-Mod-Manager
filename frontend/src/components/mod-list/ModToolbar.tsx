@@ -1,242 +1,295 @@
-import type { Density, ModListSnapshot, ProfilesState, Tag } from '../../lib/ipc'
-import type { MoveTarget } from '../../store'
+import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
+import type { Density, Tag } from '../../lib/ipc'
+import { DENSITIES, DENSITY_LABEL, factionSlotForColor } from '../../lib/ui'
+import type { SortMode } from '../../store'
 
 interface ModToolbarProps {
-  snapshot: ModListSnapshot
-  profiles: ProfilesState
   tags: Tag[]
   density: Density
   showAuthors: boolean
   showThumbnails: boolean
   query: string
   activeTagIds: string[]
-  selectedCount: number
+  sort: SortMode
+  modCount: number
   busy: boolean
   onQuery: (query: string) => void
   onTag: (tagId: string) => void
-  onClearTags: () => void
-  onApplyProfile: (profileId: string) => void
-  onNewProfile: () => void
-  onRenameProfile: () => void
-  onDuplicateProfile: () => void
-  onDeleteProfile: () => void
-  onSetSelected: (enabled: boolean) => void
-  onMove: (target: MoveTarget) => void
+  onClearFilters: () => void
   onDensity: (density: Density) => void
   onShowAuthors: (value: boolean) => void
   onShowThumbnails: (value: boolean) => void
+  onSort: (sort: SortMode) => void
   onWriteLoadOrder: () => void
 }
 
+const SORT_LABEL: Record<SortMode, string> = {
+  'load-order': 'Load order',
+  name: 'Name A–Z',
+  author: 'Author A–Z',
+  updated: 'Updated newest',
+}
+
 export function ModToolbar({
-  snapshot,
-  profiles,
   tags,
   density,
   showAuthors,
   showThumbnails,
   query,
   activeTagIds,
-  selectedCount,
+  sort,
+  modCount,
   busy,
   onQuery,
   onTag,
-  onClearTags,
-  onApplyProfile,
-  onNewProfile,
-  onRenameProfile,
-  onDuplicateProfile,
-  onDeleteProfile,
-  onSetSelected,
-  onMove,
+  onClearFilters,
   onDensity,
   onShowAuthors,
   onShowThumbnails,
+  onSort,
   onWriteLoadOrder,
 }: ModToolbarProps) {
-  const activeProfile = profiles.profiles.find((profile) => profile.id === profiles.activeProfileId)
-  const canDeleteProfile = profiles.profiles.length > 1
+  const activeTags = activeTagIds
+    .map((id) => tags.find((tag) => tag.id === id))
+    .filter((tag): tag is Tag => Boolean(tag))
+  const titleTag = activeTags.length === 1 ? activeTags[0] : null
+  const hasFilters = query.trim().length > 0 || activeTagIds.length > 0
 
   return (
-    <div className="toolbar" aria-label="Mod list toolbar">
-      <div className="toolbar-row">
+    <div className="toolbar" data-region="toolbar">
+      <div
+        className={`toolbar-title${titleTag ? ' has-faction' : ''}`}
+        data-faction={titleTag ? factionSlotForColor(titleTag.color) : undefined}
+      >
+        <h2 tabIndex={-1} data-screen-title>
+          {titleTag ? `Mods · ${titleTag.name}` : 'Mods'}
+        </h2>
+        <span className="toolbar-count">
+          {modCount} mods
+        </span>
+      </div>
+
+      <span className="toolbar-rule" aria-hidden="true" />
+
+      <div className="search-box">
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+          <circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
+          <path d="m10.5 10.5 3 3" stroke="currentColor" strokeWidth="1.2" />
+        </svg>
         <input
+          id="mod-search"
           type="search"
           className="search-input"
-          placeholder="Search names, packs, authors…"
+          placeholder="Search names, packs, authors"
           aria-label="Search mods"
           value={query}
           onChange={(event) => onQuery(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              event.preventDefault()
+              onQuery('')
+              document.querySelector<HTMLElement>('.mod-list-scroll')?.focus()
+            } else if (event.key === 'ArrowDown') {
+              event.preventDefault()
+              document.querySelector<HTMLElement>('.mod-row')?.focus()
+            }
+          }}
         />
-        <span className="toolbar-count">
-          <strong>{snapshot.enabledCount}</strong>/{snapshot.mods.length} enabled
-        </span>
-        <div className="profile-control">
-          <label htmlFor="active-profile">Profile</label>
-          <select
-            id="active-profile"
-            aria-label="Active profile"
-            value={profiles.activeProfileId}
-            disabled={busy}
-            onChange={(event) => onApplyProfile(event.target.value)}
+        <kbd className="search-hint">Ctrl+F</kbd>
+      </div>
+
+      <div className="toolbar-filters">
+        {activeTags.map((tag) => (
+          <button
+            key={tag.id}
+            type="button"
+            className="filter-chip"
+            data-faction={factionSlotForColor(tag.color)}
+            onClick={() => onTag(tag.id)}
+            title={`Remove ${tag.name} filter`}
           >
-            {profiles.profiles.map((profile) => (
-              <option key={profile.id} value={profile.id}>
-                {profile.name}
+            <span className="filter-chip-label">{tag.name}</span>
+            <span className="filter-chip-remove" aria-hidden="true">
+              ×
+            </span>
+          </button>
+        ))}
+        {hasFilters && (
+          <button type="button" className="btn btn-ghost btn-small" onClick={onClearFilters}>
+            Clear filters
+          </button>
+        )}
+      </div>
+
+      <div className="toolbar-actions">
+        <ToolbarMenu label="Tags" badge={tags.length}>
+          {(close) => (
+            <div className="menu-list">
+              {tags.length === 0 && <p className="menu-note">No tags yet. Add tags in the inspector.</p>}
+              {tags.map((tag) => {
+                const active = activeTagIds.includes(tag.id)
+                return (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    role="menuitemcheckbox"
+                    aria-checked={active}
+                    className="menu-item"
+                    data-faction={factionSlotForColor(tag.color)}
+                    onClick={() => onTag(tag.id)}
+                  >
+                    <span className="tag-accent" aria-hidden="true" />
+                    <span>{tag.name}</span>
+                    <span className="menu-check" aria-hidden="true">
+                      {active ? '✓' : ''}
+                    </span>
+                  </button>
+                )
+              })}
+              {activeTagIds.length > 0 && (
+                <>
+                  <div className="menu-rule" role="separator" />
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="menu-item"
+                    onClick={() => {
+                      onClearFilters()
+                      close()
+                    }}
+                  >
+                    Clear filters
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </ToolbarMenu>
+
+        <label className="toolbar-field">
+          <span className="toolbar-label">Sort:</span>
+          <select value={sort} onChange={(event) => onSort(event.target.value as SortMode)}>
+            {(Object.keys(SORT_LABEL) as SortMode[]).map((value) => (
+              <option key={value} value={value}>
+                {SORT_LABEL[value]}
               </option>
             ))}
           </select>
-          <button type="button" className="btn btn-small" onClick={onNewProfile} disabled={busy}>
-            New
-          </button>
-          <button
-            type="button"
-            className="btn btn-small"
-            onClick={onRenameProfile}
-            disabled={busy || !activeProfile}
+        </label>
+
+        <label className="toolbar-field">
+          <span className="toolbar-label">Density:</span>
+          <select
+            value={density}
+            aria-label="Density"
+            onChange={(event) => onDensity(event.target.value as Density)}
           >
-            Rename
-          </button>
-          <button
-            type="button"
-            className="btn btn-small"
-            onClick={onDuplicateProfile}
-            disabled={busy || !activeProfile}
-          >
-            Copy
-          </button>
-          <button
-            type="button"
-            className="btn btn-small btn-danger-ghost"
-            onClick={onDeleteProfile}
-            disabled={busy || !canDeleteProfile}
-            title={canDeleteProfile ? 'Delete the active profile' : 'The last profile cannot be deleted'}
-          >
-            Delete
-          </button>
-        </div>
+            {DENSITIES.map((value) => (
+              <option key={value} value={value}>
+                {DENSITY_LABEL[value]}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <ToolbarMenu label="Columns" icon="▦">
+          {(close) => (
+            <div className="menu-list">
+              <button
+                type="button"
+                role="menuitemcheckbox"
+                aria-checked={showAuthors}
+                className="menu-item"
+                onClick={() => onShowAuthors(!showAuthors)}
+              >
+                <span>Show authors</span>
+                <span className="menu-check" aria-hidden="true">
+                  {showAuthors ? '✓' : ''}
+                </span>
+              </button>
+              <button
+                type="button"
+                role="menuitemcheckbox"
+                aria-checked={showThumbnails}
+                className="menu-item"
+                onClick={() => onShowThumbnails(!showThumbnails)}
+              >
+                <span>Show thumbnails</span>
+                <span className="menu-check" aria-hidden="true">
+                  {showThumbnails ? '✓' : ''}
+                </span>
+              </button>
+              <div className="menu-rule" role="separator" />
+              <button type="button" role="menuitem" className="menu-item" onClick={close}>
+                Close
+              </button>
+            </div>
+          )}
+        </ToolbarMenu>
+
         <button
           type="button"
           className="btn btn-primary"
           onClick={onWriteLoadOrder}
           disabled={busy}
+          title="Preview and write used_mods.txt"
         >
-          Write load order
+          Apply load order
         </button>
       </div>
+    </div>
+  )
+}
 
-      <div className="toolbar-row toolbar-row-secondary">
-        <div className="bulk-actions" aria-label="Selection actions">
-          <span className="toolbar-label">Selection</span>
-          <button
-            type="button"
-            className="btn btn-small"
-            disabled={busy || selectedCount === 0}
-            onClick={() => onSetSelected(true)}
-          >
-            Enable
-          </button>
-          <button
-            type="button"
-            className="btn btn-small"
-            disabled={busy || selectedCount === 0}
-            onClick={() => onSetSelected(false)}
-          >
-            Disable
-          </button>
-          <button
-            type="button"
-            className="btn btn-small"
-            disabled={busy || selectedCount === 0}
-            onClick={() => onMove('top')}
-          >
-            Top
-          </button>
-          <button
-            type="button"
-            className="btn btn-small btn-icon"
-            title="Move up (Alt+ArrowUp)"
-            aria-label="Move selected up"
-            disabled={busy || selectedCount === 0}
-            onClick={() => onMove('up')}
-          >
-            ↑
-          </button>
-          <button
-            type="button"
-            className="btn btn-small btn-icon"
-            title="Move down (Alt+ArrowDown)"
-            aria-label="Move selected down"
-            disabled={busy || selectedCount === 0}
-            onClick={() => onMove('down')}
-          >
-            ↓
-          </button>
-          <button
-            type="button"
-            className="btn btn-small"
-            disabled={busy || selectedCount === 0}
-            onClick={() => onMove('bottom')}
-          >
-            Bottom
-          </button>
-          <span className="selection-count">
-            {selectedCount > 0 ? `${selectedCount} selected` : 'none selected'}
-          </span>
-        </div>
+function ToolbarMenu({
+  label,
+  badge,
+  icon,
+  children,
+}: {
+  label: string
+  badge?: number
+  icon?: string
+  children: (close: () => void) => ReactNode
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
 
-        <div className="tag-filters" aria-label="Tag filters">
-          <span className="toolbar-label">Tags</span>
-          {tags.length === 0 && <span className="muted">No tags yet</span>}
-          {tags.map((tag) => {
-            const active = activeTagIds.includes(tag.id)
-            return (
-              <button
-                key={tag.id}
-                type="button"
-                className={`filter-chip ${active ? 'filter-chip-active' : ''}`}
-                aria-pressed={active}
-                onClick={() => onTag(tag.id)}
-              >
-                <span className="tag-dot" style={{ background: tag.color }} />
-                {tag.name}
-              </button>
-            )
-          })}
-          {activeTagIds.length > 0 && (
-            <button type="button" className="btn btn-ghost btn-small" onClick={onClearTags}>
-              Clear
-            </button>
-          )}
-        </div>
+  useEffect(() => {
+    if (!open) return
+    const onDown = (event: MouseEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false)
+    }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    window.addEventListener('mousedown', onDown)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('mousedown', onDown)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [open])
 
-        <div className="display-controls">
-          <label className="check-control">
-            <input
-              type="checkbox"
-              checked={density === 'compact'}
-              onChange={(event) => onDensity(event.target.checked ? 'compact' : 'comfortable')}
-            />
-            Compact
-          </label>
-          <label className="check-control">
-            <input
-              type="checkbox"
-              checked={showAuthors}
-              onChange={(event) => onShowAuthors(event.target.checked)}
-            />
-            Authors
-          </label>
-          <label className="check-control">
-            <input
-              type="checkbox"
-              checked={showThumbnails}
-              onChange={(event) => onShowThumbnails(event.target.checked)}
-            />
-            Thumbnails
-          </label>
+  return (
+    <div className="toolbar-menu" ref={ref}>
+      <button
+        type="button"
+        className="btn btn-small toolbar-menu-button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        {icon && <span aria-hidden="true">{icon}</span>}
+        {label}
+        {badge !== undefined && <span className="toolbar-menu-badge">{badge}</span>}
+      </button>
+      {open && (
+        <div className="toolbar-popover" role="menu" aria-label={label}>
+          {children(() => setOpen(false))}
         </div>
-      </div>
+      )}
     </div>
   )
 }

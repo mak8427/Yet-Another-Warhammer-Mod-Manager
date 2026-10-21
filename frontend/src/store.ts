@@ -22,7 +22,8 @@ import {
 } from './lib/ipc'
 
 export type AppStatus = 'loading' | 'ready' | 'no-game' | 'error'
-export type View = 'mods' | 'profiles' | 'conflicts' | 'workshop' | 'launch'
+export type View = 'mods' | 'profiles' | 'conflicts' | 'workshop' | 'settings'
+export type SortMode = 'load-order' | 'name' | 'author' | 'updated'
 export type SelectMode = 'single' | 'toggle' | 'range'
 export type MoveTarget = 'up' | 'down' | 'top' | 'bottom'
 
@@ -50,6 +51,11 @@ export interface AppState {
   notice: Notice | null
   preview: LoadOrderWriteReport | null
   previewOpen: boolean
+  launchOpen: boolean
+  inspectorOpen: boolean
+  sort: SortMode
+  dirty: boolean
+  lastWriteAt: string | null
   conflicts: ConflictReport | null
   conflictLoading: boolean
   conflictError: IpcError | null
@@ -89,6 +95,11 @@ export function initialState(): AppState {
     notice: null,
     preview: null,
     previewOpen: false,
+    launchOpen: false,
+    inspectorOpen: false,
+    sort: 'load-order',
+    dirty: false,
+    lastWriteAt: null,
     conflicts: null,
     conflictLoading: false,
     conflictError: null,
@@ -105,7 +116,7 @@ export function initialState(): AppState {
 export function visibleMods(state: AppState): ModSummary[] {
   const mods = state.snapshot?.mods ?? []
   const query = state.query.trim().toLowerCase()
-  return mods.filter((mod) => {
+  const filtered = mods.filter((mod) => {
     if (state.activeTagIds.length > 0) {
       const tags = new Set(mod.tags)
       if (!state.activeTagIds.every((tagId) => tags.has(tagId))) return false
@@ -118,6 +129,25 @@ export function visibleMods(state: AppState): ModSummary[] {
       (mod.workshopId ?? '').includes(query)
     )
   })
+  if (state.sort === 'load-order') return filtered
+  const sorted = filtered.slice()
+  if (state.sort === 'name') {
+    sorted.sort((a, b) => a.humanName.localeCompare(b.humanName, undefined, { sensitivity: 'base' }))
+  } else if (state.sort === 'author') {
+    sorted.sort((a, b) => {
+      const left = a.author ?? ''
+      const right = b.author ?? ''
+      return left.localeCompare(right, undefined, { sensitivity: 'base' }) ||
+        a.humanName.localeCompare(b.humanName, undefined, { sensitivity: 'base' })
+    })
+  } else {
+    sorted.sort((a, b) => {
+      const left = a.updatedAt ? Date.parse(a.updatedAt) : Number.NEGATIVE_INFINITY
+      const right = b.updatedAt ? Date.parse(b.updatedAt) : Number.NEGATIVE_INFINITY
+      return right - left
+    })
+  }
+  return sorted
 }
 
 export function activeProfileName(state: AppState): string {
@@ -382,7 +412,7 @@ export class AppStore {
     try {
       const snapshot = await this.client.setModEnabled(modId, !mod.isEnabled)
       this.setSnapshot(snapshot)
-      this.set({ busy: null })
+      this.set({ busy: null, dirty: true })
       await this.refreshProfiles()
     } catch (cause) {
       this.set({ busy: null, error: toIpcError(cause) })
@@ -395,7 +425,7 @@ export class AppStore {
     try {
       const snapshot = await this.client.setModsEnabled(modIds, enabled)
       this.setSnapshot(snapshot)
-      this.set({ busy: null })
+      this.set({ busy: null, dirty: true })
       await this.refreshProfiles()
     } catch (cause) {
       this.set({ busy: null, error: toIpcError(cause) })
@@ -429,7 +459,7 @@ export class AppStore {
     try {
       const snapshot = await this.client.setLoadOrder(orderedModIds)
       this.setSnapshot(snapshot)
-      this.set({ busy: null })
+      this.set({ busy: null, dirty: true })
       await this.refreshProfiles()
     } catch (cause) {
       this.set({ busy: null, error: toIpcError(cause) })
@@ -459,7 +489,7 @@ export class AppStore {
     try {
       const snapshot = await this.client.applyProfile(profileId)
       this.setSnapshot(snapshot)
-      this.set({ busy: null })
+      this.set({ busy: null, dirty: true })
       await this.refreshProfiles()
       await this.refreshLaunchOptions()
     } catch (cause) {
@@ -599,13 +629,67 @@ export class AppStore {
     this.set({ activeTagIds: [], selection: [], anchorId: null })
   }
 
+  clearFilters(): void {
+    this.set({ query: '', activeTagIds: [], selection: [], anchorId: null })
+  }
+
   setView(view: View): void {
-    this.set({ view })
+    this.set({ view, inspectorOpen: false })
     if (view === 'conflicts' && !this.state.conflicts) void this.refreshConflicts()
     if (view === 'workshop' && !this.state.workshop) void this.refreshWorkshop()
-    if (view === 'launch') {
+    if (view === 'settings') {
       void this.refreshLaunchOptions()
       void this.refreshConflicts()
+    }
+  }
+
+  setSort(sort: SortMode): void {
+    this.set({ sort, selection: [], anchorId: null })
+  }
+
+  openInspector(): void {
+    this.set({ inspectorOpen: true })
+  }
+
+  closeInspector(): void {
+    this.set({ inspectorOpen: false })
+  }
+
+  openLaunch(): void {
+    this.set({ launchOpen: true, launchError: null, launchResult: null })
+    void this.refreshLaunchOptions()
+  }
+
+  closeLaunch(): void {
+    this.set({ launchOpen: false, launchError: null, launchResult: null })
+  }
+
+  async rescan(): Promise<void> {
+    if (this.state.status !== 'ready') return
+    this.set({ busy: 'Rescanning mods' })
+    try {
+      const [snapshot, profiles, tags, ui] = await Promise.all([
+        this.client.listMods(),
+        this.client.listProfiles(),
+        this.client.listTags(),
+        this.client.getUiPreferences(),
+      ])
+      this.setSnapshot(snapshot)
+      this.set({ profiles, tags, ui, busy: null, error: null })
+      await Promise.all([this.refreshConflicts(), this.refreshWorkshop()])
+    } catch (cause) {
+      this.set({ busy: null, error: toIpcError(cause) })
+    }
+  }
+
+  async resetUiPreferences(): Promise<void> {
+    const ui = { ...DEFAULT_UI }
+    this.set({ ui })
+    try {
+      await this.client.updateUiPreferences(ui)
+      this.set({ notice: { kind: 'success', message: 'Settings reset to defaults' } })
+    } catch (cause) {
+      this.set({ error: toIpcError(cause) })
     }
   }
 
@@ -704,6 +788,8 @@ export class AppStore {
         previewOpen: false,
         preview: null,
         busy: null,
+        dirty: false,
+        lastWriteAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         notice: {
           kind: 'success',
           message: `Wrote ${report.written} mod${report.written === 1 ? '' : 's'} to used_mods.txt`,
@@ -722,6 +808,8 @@ export class AppStore {
       this.set({
         snapshot: { ...snapshot, loadOrder },
         busy: null,
+        dirty: false,
+        lastWriteAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         notice: {
           kind: 'success',
           message: `Restored used_mods.txt (${loadOrder.modNames.length} mods)`,
@@ -730,6 +818,10 @@ export class AppStore {
     } catch (cause) {
       this.set({ busy: null, error: toIpcError(cause) })
     }
+  }
+
+  setError(payload: { code: IpcError['code']; message: string; details: string | null; retryable: boolean }): void {
+    this.set({ error: new IpcError(payload) })
   }
 
   dismissError(): void {

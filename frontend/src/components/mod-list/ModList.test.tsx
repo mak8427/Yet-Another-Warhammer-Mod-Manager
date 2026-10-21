@@ -18,14 +18,21 @@ function renderList(overrides: Partial<Parameters<typeof ModList>[0]> = {}) {
     mods: MODS,
     tags: [],
     selection: [],
+    sort: 'load-order',
     density: 'compact',
     showAuthors: true,
     showThumbnails: true,
     initialScrollTop: 0,
+    conflictSummaries: new Map(),
+    missingByMod: new Map(),
+    emptyTitle: 'No mods match this filter',
+    emptyMessage: 'Change the search or filters.',
     viewportHeightOverride: 320,
     onToggle: vi.fn(),
     onSelect: vi.fn(),
     onSelectAll: vi.fn(),
+    onInspect: vi.fn(),
+    onSort: vi.fn(),
     onClearSelection: vi.fn(),
     onMove: vi.fn(),
     onReorder: vi.fn(),
@@ -83,28 +90,6 @@ describe('ModList', () => {
     expect(props.onSelectAll).toHaveBeenCalled()
     fireEvent.keyDown(listbox, { key: 'Escape' })
     expect(props.onClearSelection).toHaveBeenCalled()
-  })
-
-  it('shows the Workshop subscription state on mod rows', () => {
-    const mods = [
-      makeMod({ id: 'mod-ws', name: 'workshop.pack', isWorkshop: true, workshopId: '123' }),
-      makeMod({ id: 'mod-pending', name: 'pending.pack', isWorkshop: true, workshopId: '456' }),
-      makeMod({ id: 'mod-local', name: 'local.pack' }),
-    ]
-    renderList({
-      mods,
-      workshopStates: new Map([
-        ['123', 'installed'],
-        ['456', 'update_pending'],
-      ]),
-    })
-
-    expect(screen.getByText('INST')).toHaveAttribute('title', 'Workshop: installed')
-    expect(screen.getByText('UPD')).toHaveAttribute(
-      'title',
-      'Workshop: update pending — refresh after Steam updates',
-    )
-    expect(screen.queryByText('SUB')).not.toBeInTheDocument()
   })
 
   it('renders an empty state when the filter has no matches', () => {
