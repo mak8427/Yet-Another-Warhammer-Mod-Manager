@@ -5,7 +5,6 @@
   },
   "ui": {
     "density": "comfortable",
-    "showAuthors": true,
     "showThumbnails": true,
     "lastScrollTop": 0
   },

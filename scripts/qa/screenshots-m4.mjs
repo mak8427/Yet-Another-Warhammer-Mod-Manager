@@ -197,21 +197,6 @@ function fixtureScript() {
     'Victory Conditions Rework',
   ]
 
-  const authors = [
-    'Sigmar’s Chosen',
-    'Loremaster Sotek',
-    'Gelt',
-    'The Loremaster',
-    'Wez',
-    'Karak Eight Peaks',
-    'Mixu',
-    'Nox',
-    'Izzy',
-    'Variant',
-    'Prophet of Slaanesh',
-    'Moulder',
-  ]
-
   const tagSets = [
     ['tag-overhaul', 'tag-campaign'],
     ['tag-overhaul'],
@@ -225,7 +210,6 @@ function fixtureScript() {
     ['tag-campaign'],
   ]
 
-  const longName = 'Brutal Battles: Realistic Combat, Morale, and Charge Physics for Total War'
   const mods = names.map((humanName, index) => {
     const slug = humanName
       .toLowerCase()
@@ -233,14 +217,10 @@ function fixtureScript() {
       .replace(/^_|_$/g, '')
       .slice(0, 42) || `pack_${index}`
     const enabled = index < 26
-    const isLong = humanName === longName
     return {
       id: `mod-${index}`,
       name: `${slug}.pack`,
       humanName,
-      author: isLong
-        ? 'The Loremaster of Hoeth and the College of Light, contributors'
-        : authors[index % authors.length],
       isWorkshop: index % 3 !== 0,
       workshopId: index % 3 !== 0 ? String(2800000000 + index) : null,
       isEnabled: enabled,
@@ -381,7 +361,7 @@ function fixtureScript() {
     hardBlocked: false,
   }
 
-  const prefs = { density: 'comfortable', showAuthors: true, showThumbnails: true, lastScrollTop: 0 }
+  const prefs = { density: 'comfortable', showThumbnails: true, lastScrollTop: 0 }
   const launchOptions = { skipIntro: false, scriptLogging: false }
   const game = {
     gamePath: 'C:/Steam/steamapps/common/Total War WARHAMMER III',

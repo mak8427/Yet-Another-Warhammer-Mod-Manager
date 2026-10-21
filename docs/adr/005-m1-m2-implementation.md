@@ -17,16 +17,16 @@ M1/M2 without contradicting the product contract.
 
 WH3 `.pack` files use the PFH5 container. The 28-byte header carries the magic,
 byte mask, dependency-index size, file count, packed-file-index size, and two
-reserved words. **It does not carry a title or an author.** Those values come
-from Steam Workshop metadata (M3) or from the pack file name.
+reserved words. **It does not carry a title or creator metadata.** The title
+comes from Steam Workshop metadata (M3) or from the pack file name; v1.0 does
+not model an author (WAR-104).
 
 Therefore:
 
 - `PackHeader` reports `format`, `version`, `header_len`, `byte_mask`,
   `pack_type` (`movie` when the legacy `byteMask == 4` rule matches, otherwise
-  `data`), and the dependency pack names.
+  `data`), the pack name, the file timestamp, and the dependency pack names.
 - `ModSummary.humanName` is the pack file stem until M3 adds Workshop titles.
-- `ModSummary.author` is `null` for local packs; it is never invented.
 - `ModSummary.updatedAt` is the pack file mtime in ISO-8601 UTC.
 - Pack parsing is bounded: sizes are checked against the real file length and
   sane caps before any allocation. Malformed packs become a per-mod

@@ -71,7 +71,6 @@ export function ModsScreen() {
       <ModToolbar
         tags={state.tags}
         density={state.ui.density}
-        showAuthors={state.ui.showAuthors}
         showThumbnails={state.ui.showThumbnails}
         query={state.query}
         activeTagIds={state.activeTagIds}
@@ -82,7 +81,6 @@ export function ModsScreen() {
         onTag={(tagId) => store.toggleTagFilter(tagId)}
         onClearFilters={() => store.clearFilters()}
         onDensity={(density) => store.setDensity(density)}
-        onShowAuthors={(value) => store.setShowAuthors(value)}
         onShowThumbnails={(value) => store.setShowThumbnails(value)}
         onSort={(sort) => store.setSort(sort)}
         onWriteLoadOrder={() => void store.openLoadOrderDialog()}
@@ -95,7 +93,6 @@ export function ModsScreen() {
           selection={state.selection}
           sort={state.sort}
           density={state.ui.density}
-          showAuthors={state.ui.showAuthors}
           showThumbnails={state.ui.showThumbnails}
           initialScrollTop={state.ui.lastScrollTop}
           conflictSummaries={conflictSummaries}

@@ -5,7 +5,7 @@ import { ROW_HEIGHT, visibleRowCount } from '../../lib/ui'
 import { virtualRange } from '../../lib/virtual'
 import { EmptyState } from '../common/EmptyState'
 import { ModRow } from './ModRow'
-import { gridColumns, showAuthorColumn, showTagsColumn } from './grid'
+import { gridColumns, showTagsColumn } from './grid'
 import type { MoveTarget, SelectMode, SortMode } from '../../store'
 
 interface ModListProps {
@@ -14,7 +14,6 @@ interface ModListProps {
   selection: string[]
   sort: SortMode
   density: 'compact' | 'comfortable' | 'roomy'
-  showAuthors: boolean
   showThumbnails: boolean
   initialScrollTop: number
   conflictSummaries: Map<string, ConflictModSummary>
@@ -50,7 +49,6 @@ export function ModList({
   selection,
   sort,
   density,
-  showAuthors,
   showThumbnails,
   initialScrollTop,
   conflictSummaries,
@@ -93,9 +91,8 @@ export function ModList({
   const effectiveScrollTop = Math.min(scrollTop, maxScrollTop)
   const range = virtualRange(mods.length, rowHeight, viewportHeight, effectiveScrollTop, OVERSCAN)
   const visible = mods.slice(range.start, range.end)
-  const columns = gridColumns({ density, showAuthors, showThumbnails, width: measuredWidth })
+  const columns = gridColumns({ showThumbnails, width: measuredWidth })
   const tagsColumn = showTagsColumn(measuredWidth)
-  const authorColumn = showAuthorColumn({ density, showAuthors, showThumbnails, width: measuredWidth })
 
   useEffect(() => {
     if (viewportHeightOverride !== undefined) return
@@ -384,14 +381,6 @@ export function ModList({
           </button>
         </span>
         {tagsColumn ? <span role="columnheader">Tags</span> : null}
-        {authorColumn ? (
-          <span role="columnheader" aria-sort={sort === 'author' ? 'ascending' : 'none'}>
-            <button type="button" className="header-sort" onClick={() => onSort('author')}>
-              Author
-              {sort === 'author' && <span aria-hidden="true">▴</span>}
-            </button>
-          </span>
-        ) : null}
         <span role="columnheader">Status</span>
         <span role="columnheader" aria-label="Actions" />
       </div>

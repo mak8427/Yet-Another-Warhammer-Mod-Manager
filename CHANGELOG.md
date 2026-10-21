@@ -42,11 +42,13 @@ See `docs/RELEASE.md`.
 
 ### Removed
 
-- **Pack-author display** (`WAR-107`): the author column, author sort, author
-  search dimension, the Settings "Show authors" toggle, and the `showAuthors`
-  preference are removed for v1.0. The PFH5 header and the Steam ACF carry no
-  author, and the legacy Steamworks persona lookup needs the custom Steam auth
-  that v1.0 does not ship; an empty column is not a feature.
+- **Pack-author surface** (`WAR-104`, `WAR-107`): the author column, author
+  sort, author search dimension, Settings "Show authors" toggle, and
+  `showAuthors` preference are removed, along with the unused `author` fields
+  in the pack header and mod summary. PFH5 and the Steam ACF carry no author,
+  and v1.0 does not ship custom Steam authentication, so the column could only
+  be permanently empty. PRODUCT_SCOPE capability 2 now requires name, type,
+  timestamp, and dependencies.
 
 ### Known limitations
 

@@ -96,18 +96,16 @@ describe('ipc', () => {
 
     invokeMock.mockResolvedValue({
       density: 'compact',
-      showAuthors: false,
       showThumbnails: true,
       lastScrollTop: 42,
     })
     await ipc.updateUiPreferences({
       density: 'compact',
-      showAuthors: false,
       showThumbnails: true,
       lastScrollTop: 42,
     })
     expect(invokeMock).toHaveBeenLastCalledWith('update_ui_preferences', {
-      preferences: { density: 'compact', showAuthors: false, showThumbnails: true, lastScrollTop: 42 },
+      preferences: { density: 'compact', showThumbnails: true, lastScrollTop: 42 },
     })
   })
 

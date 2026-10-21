@@ -22,7 +22,7 @@ vi.mock('./lib/ipc', async (importOriginal) => {
 })
 
 const MOD_A = makeMod({ id: 'mod-a', name: 'alpha.pack', humanName: 'Alpha Legion', isEnabled: true, loadOrder: 0, tags: ['tag-overhaul'] })
-const MOD_B = makeMod({ id: 'mod-b', name: 'beta.pack', humanName: 'Beta Bastion', author: 'Gelt', isEnabled: false, loadOrder: 1 })
+const MOD_B = makeMod({ id: 'mod-b', name: 'beta.pack', humanName: 'Beta Bastion', isEnabled: false, loadOrder: 1 })
 const SNAPSHOT = makeSnapshot([MOD_A, MOD_B])
 
 function mockReady(snapshot = SNAPSHOT) {
@@ -321,6 +321,19 @@ describe('App', () => {
       expect(ipc.updateUiPreferences).toHaveBeenCalledWith(expect.objectContaining({ density: 'roomy' }))
     })
     expect(document.documentElement.dataset.density).toBe('roomy')
+  })
+
+  it('offers no author toggle in settings', async () => {
+    mockReady()
+    render(<App />)
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    const rail = screen.getByRole('navigation', { name: 'Sections' })
+    fireEvent.click(within(rail).getByRole('button', { name: 'Settings' }))
+
+    expect(await screen.findByRole('heading', { name: 'Settings' })).toBeInTheDocument()
+    expect(screen.queryByText('Show authors')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Show authors')).not.toBeInTheDocument()
   })
 
   it('switches sections with Ctrl+1..5 and focuses search with Ctrl+F', async () => {

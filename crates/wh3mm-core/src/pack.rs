@@ -2,9 +2,10 @@
 //!
 //! The 28-byte PFH5 header carries the byte mask, dependency-index size, file
 //! count, packed-file-index size, and reserved words. It does not carry a title
-//! or an author; those belong to Workshop metadata (M3). The parser validates
-//! every size against the real file length before reading, so a malformed pack
-//! turns into a typed error instead of a panic or a huge allocation.
+//! or creator metadata; those belong to Workshop metadata (M3). The parser
+//! validates every size against the real file length before reading, so a
+//! malformed pack turns into a typed error instead of a panic or a huge
+//! allocation.
 
 use std::fs::{self, File, Metadata};
 use std::io::{Read, Seek, SeekFrom};
@@ -39,7 +40,6 @@ pub struct PackHeader {
     pub pack_type: PackType,
     /// Pack stem, used as the display name until Workshop metadata exists.
     pub pack_name: String,
-    pub author: Option<String>,
     pub timestamp: Option<String>,
     pub dependency_index_size: u32,
     pub file_count: u32,
@@ -206,7 +206,6 @@ pub fn parse_pack_header(
             PackType::Data
         },
         pack_name,
-        author: None,
         timestamp,
         dependency_index_size,
         file_count,
@@ -290,7 +289,20 @@ mod tests {
         assert_eq!(header.pack_type, PackType::Data);
         assert_eq!(header.dependencies, vec!["data.pack", "ünïcode_dep.pack"]);
         assert_eq!(header.pack_name, "testmod");
-        assert_eq!(header.author, None);
+    }
+
+    #[test]
+    fn keeps_the_timestamp_supplied_by_the_file_reader() {
+        let bytes = valid_header();
+        let header = parse_pack_header(
+            &bytes[..PFH5_HEADER_LEN],
+            &bytes[PFH5_HEADER_LEN..],
+            bytes.len() as u64,
+            Some("2026-10-21T12:00:00Z".to_string()),
+            "testmod".to_string(),
+        )
+        .unwrap();
+        assert_eq!(header.timestamp.as_deref(), Some("2026-10-21T12:00:00Z"));
     }
 
     #[test]

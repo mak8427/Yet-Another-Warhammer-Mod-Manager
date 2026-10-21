@@ -114,7 +114,6 @@ WH3 writes UTF-8.
   },
   "ui": {
     "density": "comfortable",
-    "showAuthors": true,
     "showThumbnails": true,
     "lastScrollTop": 0
   },

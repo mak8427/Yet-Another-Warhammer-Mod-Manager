@@ -533,7 +533,7 @@ const USED_MODS_CORRUPT = [
 const CONFIG_VALID = {
   schemaVersion: 1,
   paths: { gamePathOverride: null },
-  ui: { density: 'comfortable', showAuthors: true, showThumbnails: true, lastScrollTop: 0 },
+  ui: { density: 'comfortable', showThumbnails: true, lastScrollTop: 0 },
   activeProfileId: 'b0f4e7f0-3a55-4b8e-9d4a-8a2f6f4b1c21',
   profiles: [
     {
@@ -611,7 +611,6 @@ function buildScaleIndex(count) {
       id: `${directory}/${name}`.toLowerCase(),
       name,
       humanName: variant === 'unicode' ? `${UNICODE_NAMES[index % UNICODE_NAMES.length]} ${index}` : `QA Scale Mod ${index}`,
-      author: index % 11 === 0 ? null : `Fixture Author ${index % 7}`,
       isWorkshop,
       workshopId,
       isEnabled: index % 4 !== 3,

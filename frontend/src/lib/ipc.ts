@@ -57,7 +57,6 @@ export interface ModSummary {
   id: string
   name: string
   humanName: string
-  author: string | null
   isWorkshop: boolean
   workshopId: string | null
   isEnabled: boolean
@@ -141,7 +140,6 @@ export type Density = 'compact' | 'comfortable' | 'roomy'
 
 export interface UiPreferences {
   density: Density
-  showAuthors: boolean
   showThumbnails: boolean
   lastScrollTop: number
 }

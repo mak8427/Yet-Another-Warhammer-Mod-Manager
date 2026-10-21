@@ -20,7 +20,6 @@ function makeProps(overrides: Partial<Parameters<typeof ModList>[0]> = {}): Para
     selection: [],
     sort: 'load-order',
     density: 'compact',
-    showAuthors: true,
     showThumbnails: true,
     initialScrollTop: 0,
     conflictSummaries: new Map(),
@@ -131,5 +130,12 @@ describe('ModList', () => {
     const rows = screen.getAllByRole('option')
     expect(rows.length).toBeLessThanOrEqual(30)
     expect(rows.length).toBeGreaterThan(0)
+  })
+
+  it('renders no author column at the widest breakpoint', () => {
+    renderList({ density: 'comfortable' })
+
+    expect(screen.queryByRole('columnheader', { name: /author/i })).not.toBeInTheDocument()
+    expect(screen.queryByText('Author')).not.toBeInTheDocument()
   })
 })

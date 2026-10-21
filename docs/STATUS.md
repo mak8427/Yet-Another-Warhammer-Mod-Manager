@@ -147,23 +147,25 @@ These are accepted for v1.0; the full manual scripts are in `docs/RELEASE.md`.
 | DET-1 Linux roots | Flatpak/Snap/XDG discovery is best-effort; Windows registry and native root are fixture-tested on WAR-10. | Detect on Linux Flatpak/Snap or use the manual path; confirm Windows detection without a manual path. |
 
 The pack-author column, author sort, author search dimension, and Settings
-"Show authors" toggle are **removed in v1.0** (WAR-107). No author exists in the
-PFH5 header or the Steam ACF, and the legacy Steamworks persona lookup needs the
-custom Steam auth that v1.0 does not ship. This is a removal, not a limitation.
+"Show authors" toggle are **removed in v1.0** (WAR-104, WAR-107). No author
+exists in the PFH5 header or the Steam ACF, and the legacy Steamworks persona
+lookup needs the custom Steam auth that v1.0 does not ship. The unused `author`
+fields in the pack header and mod summary are gone; PRODUCT_SCOPE capability 2
+now covers name, type, timestamp, and dependencies. This is a removal, not a
+limitation.
 
 The capability-parity index in `docs/PARITY.md` is generated from
-`docs/PARITY.yaml`; only WS-3, LA-1, ML-4, SET-2, and DET-1's Linux roots may
-remain `partial` there. At the release head `0e051204`,
-`node scripts/parity-report.mjs` reports 91.750% with 33 done / 7 partial /
-**0 missing**. SET-4, ML-3, CF-4, and PRF-2 moved to done with the WAR-10 code
-and tests cited in `docs/PARITY.yaml`; DET-1 stays partial for the documented
-Flatpak/Snap/XDG Linux roots. The five documented v1.0 limitations are WS-3,
-LA-1, ML-4, SET-2, and DET-1's Linux roots. DSC-1's author requirement and
-WS-2's open path are not limitations: WAR-104 ruling B resolves them with
-WAR-106 (missing Workshop Open test) and WAR-107 (cut the author surface and
-correct `docs/PRODUCT_SCOPE.md`). Both tasks block the `v1.0.0` tag (WAR-99), so
-it cannot ship ahead of them; neither is a WAR-79 parity-gate blocker.
-The parity percentage itself is a monitoring metric, not the ship gate (WAR-79).
+`docs/PARITY.yaml`. At the WAR-107 head, `node scripts/parity-report.mjs`
+reports **94.000% with 35 done / 5 partial / 0 missing**. SET-4, ML-3, CF-4,
+and PRF-2 moved to done with the WAR-10 code and tests cited in
+`docs/PARITY.yaml`; DET-1 stays partial for the documented Flatpak/Snap/XDG
+Linux roots. The five documented v1.0 limitations are WS-3, LA-1, ML-4, SET-2,
+and DET-1's Linux roots. DSC-1 is done against the corrected PRODUCT_SCOPE
+criterion after WAR-107 cut the author surface, and WS-2 is done after WAR-106
+added the Workshop Open test. WAR-106 is merged (`f2e8b0f`); WAR-107 blocks the
+`v1.0.0` tag (WAR-99) until it merges, and neither is a WAR-79 parity-gate
+blocker. The parity percentage itself is a monitoring metric, not the ship gate
+(WAR-79).
 A `v1.0.0` tag and draft release are created only after the `release.yml`
 artifact dispatch on `main` is green, WAR-106/WAR-107 are merged, and the
 release gates are on the branch; publishing waits for the WAR-12 audit of that
@@ -190,8 +192,8 @@ draft.
 
 1. Karl Franz: land WAR-101 (`protocol-asset`) with a green `release.yml` run on
    the fix branch that uploads `wh3mm-windows-1.0.0`.
-2. Karl Franz: land WAR-106 (WS-2 Open test) and WAR-107 (author-surface cut).
-   Both are WAR-104 ruling B and both block the `v1.0.0` tag (WAR-99).
+2. Karl Franz: land WAR-107 (author-surface cut); WAR-106 (WS-2 Open test) is
+   already merged. WAR-107 blocks the `v1.0.0` tag (WAR-99).
 3. Katerina Zarina: merge WAR-101 after QA and tech-lead approval, re-dispatch
    `release.yml` on `main`, and record the artifact on WAR-95/WAR-73.
 4. Baltasar Gelt: run the WAR-12 audit on the draft release produced by the

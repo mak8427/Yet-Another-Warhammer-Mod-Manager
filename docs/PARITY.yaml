@@ -5,22 +5,34 @@ snapshot:
   previous_index: 87.25
   previous_label: "WAR-3 parity document rev 2 (2026-10-21T11:25Z), reported as 87.3%"
   drop_reason: >-
-    Net change +5.500 vs the WAR-3 87.250 snapshot at release head `0e051204`:
+    Net change +6.750 vs the WAR-3 87.250 snapshot at release head `0e051204`:
     CF-3 (disabled dependency) +1.500, CF-4 (duplicate warning) +1.500, ML-3
-    (sort) +1.875, PRF-2 (profile order) +1.250, SET-4 (reset) +0.625, DSC-1
-    (author) -1.250. WS-2 (Workshop open) is done again (WAR-106) and no longer
-    contributes a negative. The first WAR-68 pass reported 88.125 because DSC-1
-    and WS-2 were over-claimed; QA corrected both to partial, and WAR-106 closed
-    WS-2 with automated evidence.
+    (sort) +1.875, PRF-2 (profile order) +1.250, SET-4 (reset) +0.625. DSC-1
+    and WS-2 contribute no net change: WAR-107 re-scored DSC-1 against the
+    corrected WAR-104 contract and WAR-106 closed WS-2 with automated evidence,
+    restoring both to the scores the first WAR-68 pass over-claimed. QA corrected
+    those two to partial in between; they are now done with evidence.
   history:
+    - date: "2026-10-21"
+      index: 94.0
+      reason: >-
+        Combined WAR-106 + WAR-107 snapshot. WAR-106 closed WS-2 with a Rust
+        test that resolves WorkshopAction::Open to the CommunityFilePage URL and
+        reaches the Steam launch boundary plus a frontend test that the Open page
+        button dispatches the item id (Workshop 3.0 -> 3.5, +1.000). WAR-107
+        implements WAR-104 ruling B: the author surface is cut and DSC-1 is done
+        against the corrected PRODUCT_SCOPE criterion of name, type, timestamp,
+        and dependencies (Discovery 3.5 -> 4.0, +1.250). 35 done / 5 partial /
+        0 missing; net +6.750 from the WAR-3 87.250 snapshot.
     - date: "2026-10-21"
       index: 92.75
       reason: >-
         WS-2 is done. WAR-106 adds a Rust test that resolves WorkshopAction::Open
         to the CommunityFilePage URL and reaches the Steam launch boundary, plus
         a frontend test that the Open page button dispatches the item id.
-        Workshop 3.0 -> 3.5 (+1.000); the verified index is 92.750, net +5.500
-        from the WAR-3 87.250 snapshot. DSC-1 remains partial (WAR-107).
+        Workshop 3.0 -> 3.5 (+1.000); the verified index at `f2e8b0f` is 92.750,
+        net +5.500 from the WAR-3 87.250 snapshot. DSC-1 remains partial
+        pending WAR-107.
     - date: "2026-10-21"
       index: 91.75
       reason: >-
@@ -68,11 +80,15 @@ corrections:
   - id: m4-blocker-parity
     claim: "ML-3, CF-4, PRF-2, and DET-1 are still partial after WAR-10."
     verified: "WAR-10 merged to `0e051204`. ML-3 has the sort control (`ModList.tsx`) and `sorts deterministically with an id tie-break in every non-drag mode`; CF-4 has duplicate rows and `renders duplicate pack names and shows none for a clean report`; PRF-2 has `applying_a_profile_restores_the_saved_order_exactly`; DET-1 has the injectable Windows/Unix candidate tests in `paths.rs`. All four tests pass on the merged tree."
-    effect: "ML-3 +1.875, CF-4 +1.500, PRF-2 +1.250; index 87.125 -> 91.750. DET-1 stays partial for the documented Flatpak/Snap/XDG limitation. DSC-1 (author) remained partial at this pass and is not a WAR-79 ship blocker; WAR-104 ruling B resolves it via WAR-107, and DSC-1 blocks the WAR-99 `v1.0.0` tag. WS-2 (Workshop open) was closed by WAR-106."
+    effect: "ML-3 +1.875, CF-4 +1.500, PRF-2 +1.250; index 87.125 -> 91.750. DET-1 stays partial for the documented Flatpak/Snap/XDG limitation. DSC-1 (author) and WS-2 (Workshop open) remained partial at this pass and are not WAR-79 ship blockers; WAR-106 closes WS-2 and WAR-107 re-scores DSC-1 against the corrected contract. Both blocked the WAR-99 `v1.0.0` tag until closed."
   - id: discovery-author-missing
     claim: "DSC-1 (header including author) was done."
     verified: "The pack author is hardcoded None in crates/wh3mm-core/src/pack.rs:165 and crates/wh3mm-core/src/mod_index.rs:254; the cited test asserts header.author == None. No code path assigns a parsed author."
     effect: "Discovery 4.0 -> 3.5; contributes -1.250 to the index. WAR-104 ruling B cuts the author requirement, so WAR-107 re-scores DSC-1 against the corrected PRODUCT_SCOPE criterion (name, type, timestamp, dependencies)."
+  - id: dsc-1-author-requirement-cut
+    claim: "DSC-1 required the pack author."
+    verified: "WAR-104 ruling B: the PFH5 header and the Steam ACF carry no author, and v1.0 forbids custom Steam auth. WAR-107 removed the author column, sort, search dimension, toggle, preference, and IPC fields; PRODUCT_SCOPE capability 2 now requires name, type, timestamp, and dependencies."
+    effect: "Discovery 3.5 -> 4.0; DSC-1 is done against the corrected contract and contributes +1.250 to the index, reversing the author-driven -1.250 recorded above."
   - id: workshop-open-untested
     claim: "WS-2 (open a Workshop item through Steam) was done."
     verified: "The WAR-104 ruling confirmed the behaviour existed without a test. WAR-106 covers WorkshopAction::Open through the Steam launch seam and covers the UI Open page dispatch."
@@ -169,19 +185,17 @@ capabilities:
     weight: 10
     checks:
       - id: DSC-1
-        title: Parse the PFH5 header, including name, type, author, timestamp, and dependencies
-        status: partial
+        title: Parse the PFH5 header fields (name, type, timestamp, dependencies)
+        status: done
         evidence:
           - path: crates/wh3mm-core/src/pack.rs
             test: parses_valid_header_and_unicode_dependencies
           - path: crates/wh3mm-core/src/pack.rs
+            test: keeps_the_timestamp_supplied_by_the_file_reader
+          - path: crates/wh3mm-core/src/pack.rs
             test: movie_mask_is_reported
           - path: crates/wh3mm-core/tests/pack_fixtures.rs
             test: parses_every_valid_fixture_through_the_product_parser
-        need: >-
-          A source for the pack author and a test that asserts a parsed value. The
-          header parser hardcodes author: None (pack.rs:165) and the index does the
-          same (mod_index.rs:254); the cited header test asserts None.
       - id: DSC-2
         title: Reject malformed and truncated packs without panicking or hiding valid packs
         status: done
@@ -242,7 +256,7 @@ capabilities:
           - path: frontend/src/App.test.tsx
             test: filters the list from the search box
           - path: frontend/src/store.test.ts
-            test: filters by search, author, and tags
+            test: filters by search and tags without an author dimension
           - path: frontend/src/store.test.ts
             test: sorts deterministically with an id tie-break in every non-drag mode
           - path: frontend/src/components/mod-list/ModList.tsx
@@ -486,18 +500,18 @@ capabilities:
           - path: crates/wh3mm-core/src/config.rs
             contains: "pub game_path_override"
       - id: SET-2
-        title: Density, author, and thumbnail preferences are applied and persisted
+        title: Density and thumbnail preferences are applied and persisted
         status: partial
         evidence:
           - path: crates/wh3mm-core/src/config.rs
             test: round_trips_profiles_tags_and_ui_preferences
           - path: crates/wh3mm-core/tests/session_flow.rs
             test: ui_preferences_round_trip
-          - path: frontend/src/components/mod-list/ModToolbar.tsx
-            contains: "onShowAuthors"
+          - path: frontend/src/components/settings/SettingsScreen.tsx
+            contains: "store.setShowThumbnails"
         need: >-
-          An end-to-end test of the density, author, and thumbnail toggles in the UI
-          and their application on the next boot. The persistence layer is tested; the
+          An end-to-end test of the density and thumbnail toggles in the UI and
+          their application on the next boot. The persistence layer is tested; the
           toggle path is not.
       - id: SET-3
         title: Back up on write and restore the load order from the UI, gated on a present backup
@@ -734,11 +748,12 @@ oracle:
       disposition: rewritten
       reason: >-
         Substring search and tag filtering are ported. Regex search, natural
-        alphanumeric sort, title/author sort, and load-order-rule sort are not
-        ported; sort is the ML-3 gap, so this file is the oracle for that gap.
+        alphanumeric sort, title sort, and load-order-rule sort are not ported;
+        author sort is cut with the author surface (WAR-104). The in-scope sort
+        control is covered by the ML-3 evidence.
       evidence:
         - path: frontend/src/store.test.ts
-          test: filters by search, author, and tags
+          test: filters by search and tags without an author dimension
         - path: frontend/src/App.test.tsx
           test: filters the list from the search box
     - path: test/modRowSorting.node.test.ts
@@ -770,7 +785,7 @@ oracle:
         collapse are not in v1; tag filtering is covered by the store and App tests.
       evidence:
         - path: frontend/src/store.test.ts
-          test: filters by search, author, and tags
+          test: filters by search and tags without an author dimension
         - path: frontend/src/App.test.tsx
           test: renders the mod list, counts, tags, and the active profile after boot
     - path: test/categories.node.test.ts
@@ -785,7 +800,7 @@ oracle:
         - path: crates/wh3mm-core/src/config.rs
           test: round_trips_profiles_tags_and_ui_preferences
         - path: frontend/src/store.test.ts
-          test: filters by search, author, and tags
+          test: filters by search and tags without an author dimension
     - path: test/categories.dom.test.tsx
       capability: mod-list
       assertions: 12

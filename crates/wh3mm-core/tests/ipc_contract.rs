@@ -126,7 +126,6 @@ fn mod_list_snapshot_uses_the_m1_m2_wire_shape() {
         id: "C:/game/data/mod.pack".into(),
         name: "mod.pack".into(),
         human_name: "mod".into(),
-        author: None,
         is_workshop: false,
         workshop_id: None,
         is_enabled: true,

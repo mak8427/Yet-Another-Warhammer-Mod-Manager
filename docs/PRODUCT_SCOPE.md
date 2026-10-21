@@ -24,14 +24,14 @@ Legacy features that are not in the "In scope" list are cut on purpose.
 | # | Capability | Minimum behaviour |
 |---|------------|-------------------|
 | 1 | Game & Steam detection | Locate WH3 install, data dir, Workshop content dir across Steam library folders (incl. Flatpak/Snap on Linux, Proton prefix). Clear manual override. |
-| 2 | Mod discovery | Local `.pack` mods + Workshop items. Parse pack header (name, type, author, timestamp, dependencies). Handle malformed packs without crashing. |
+| 2 | Mod discovery | Local `.pack` mods + Workshop items. Parse pack header (name, type, timestamp, dependencies). Handle malformed packs without crashing. |
 | 3 | Mod list | Enable/disable, multi-select, drag reorder, move to top/bottom, search, sort, tag/category filter, virtualized rows, persisted scroll. |
 | 4 | Load order write | Read/write `used_mods.txt` compatibly; atomic write + `.bak`; report what will be written before destructive changes. |
 | 5 | Profiles | Create/save/rename/duplicate/delete; restore enabled set + order; default profile on first run. |
 | 6 | Conflicts | Compare enabled packs' file indexes; show which mod wins each conflicting path; warn on missing dependencies and duplicate pack names. |
 | 7 | Workshop | List subscriptions and update state from Steam metadata; open item page; subscribe/unsubscribe/update through the Steam client. No custom Steam auth. |
 | 8 | Launch | Launch WH3 through Steam with skip-intro and script-logging options; verify game is not already running. |
-| 9 | Settings | Paths, density, thumbnail/author columns, backup/restore load order, reset to defaults. English UI only. |
+| 9 | Settings | Paths, density, thumbnail columns, backup/restore load order, reset to defaults. English UI only. |
 | 10 | Safety | Atomic config writes, corrupt-file recovery, structured error messages, no silent data loss. |
 
 ## Cut — do not port
@@ -76,3 +76,4 @@ Legacy features that are not in the "In scope" list are cut on purpose.
 
 - 2026-10-20 — Scope fixed to WH3-only v1.0; parity with legacy app explicitly rejected.
 - 2026-10-20 — Tauri 2 chosen as the only architecture candidate (Rust backend + TS frontend, no Node main process).
+- 2026-10-21 — Pack-author surface cut from v1.0: PFH5/ACF carry no author and custom Steam auth is forbidden (WAR-104; implemented in WAR-107).

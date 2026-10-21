@@ -1026,11 +1026,6 @@ input[aria-invalid='true'] {
   text-overflow: ellipsis;
 }
 
-.row-meta-author {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .row-inline-tags {
   display: none;
   align-items: center;
@@ -1044,14 +1039,6 @@ input[aria-invalid='true'] {
   gap: var(--space-1);
   min-width: 0;
   overflow: hidden;
-}
-
-.row-author {
-  overflow: hidden;
-  color: var(--color-text-secondary);
-  font-size: var(--text-2xs);
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .row-status {

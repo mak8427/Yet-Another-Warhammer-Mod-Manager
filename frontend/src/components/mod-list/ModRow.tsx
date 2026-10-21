@@ -60,8 +60,6 @@ export function ModRow({
   ]
     .filter(Boolean)
     .join(' and ')
-  const authorHidden = !columns.includes('var(--row-author-w)')
-
   const openMenuAt = (x: number, y: number) => onOpenMenu(mod.id, x, y)
 
   return (
@@ -150,9 +148,8 @@ export function ModRow({
             </span>
           )}
         </span>
-        <span className="row-meta" title={`${mod.name}${authorHidden && mod.author ? ` · ${mod.author}` : ''}`}>
+        <span className="row-meta" title={mod.name}>
           <span className="row-pack">{mod.name}</span>
-          {authorHidden && mod.author && <span className="row-meta-author"> · {mod.author}</span>}
         </span>
         {!columns.includes('var(--row-tags-w)') && visibleTags.length > 0 && (
           <span className="row-inline-tags">
@@ -183,12 +180,6 @@ export function ModRow({
             </span>
           ))}
           {extraTags > 0 && <span className="tag-more">+{extraTags}</span>}
-        </span>
-      )}
-
-      {columns.includes('var(--row-author-w)') && (
-        <span className="row-author" title={mod.author ?? 'No author declared'}>
-          {mod.author ?? '—'}
         </span>
       )}
 

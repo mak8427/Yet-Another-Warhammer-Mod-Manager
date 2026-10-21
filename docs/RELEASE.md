@@ -73,11 +73,12 @@ manual check in the QA pass below.
 | **SET-2** | Density and thumbnail preferences persist best-effort. | Toggle density and thumbnail display; restart; confirm each value survived. Record any value that did not persist. |
 | **DET-1 Linux roots** | Flatpak, Snap, and XDG game discovery is best-effort and may miss an installation. On Windows, the registry and native root are fixture-tested on WAR-10. | On a Flatpak or Snap install, confirm detection or use the manual path chooser. On Windows, confirm the registry/native detection finds the game without a manual path. |
 
-The pack-author column is **removed in v1.0** (WAR-107), not documented as a
-limitation: the PFH5 header and the Steam ACF carry no author, and the legacy
-Steamworks persona lookup needs the custom Steam auth that v1.0 does not ship.
-The author column, author sort, author search dimension, and Settings
-"Show authors" toggle are gone.
+The pack-author column is **removed in v1.0** (WAR-104, WAR-107), not
+documented as a limitation: the PFH5 header and the Steam ACF carry no author,
+and the legacy Steamworks persona lookup needs the custom Steam auth that v1.0
+does not ship. The author column, author sort, author search dimension, and
+Settings "Show authors" toggle are gone; PRODUCT_SCOPE capability 2 now covers
+name, type, timestamp, and dependencies.
 
 ## Tag workflow (CI)
 
@@ -174,12 +175,12 @@ release task.
 - [ ] M4 merged (WAR-10), including SET-4, ML-3, CF-4, PRF-2, and DET-1; `main` is green.
 - [ ] `node scripts/parity-report.mjs` reports **0 missing checks** at the release
       head. The allowed limitations are WS-3, LA-1, ML-4, SET-2, and DET-1's
-      Linux roots; DSC-1 (author) and WS-2 (Workshop open) are not limitations
-      and are resolved by WAR-106/WAR-107 (see below).
+      Linux roots. DSC-1 is done against the corrected PRODUCT_SCOPE after
+      WAR-107, and WS-2 is done after WAR-106.
 - [ ] The generated `docs/PARITY.md` and `docs/STATUS.md` are committed at that
       head; `docs/STATUS.md` names the five limitations with their manual checks.
       Never hand-edit `docs/PARITY.md`.
-- [ ] WAR-106 (WS-2 Workshop Open test) is merged and QA-approved; it blocks the `v1.0.0` tag.
+- [x] WAR-106 (WS-2 Workshop Open test) is merged and QA-approved (`f2e8b0f`).
 - [ ] WAR-107 (DSC-1 author surface cut and `PRODUCT_SCOPE` correction) is merged and QA-approved; it blocks the `v1.0.0` tag.
 - [ ] Version matches in `tauri.conf.json`, `Cargo.toml`, and both `package.json` files.
 - [ ] `CHANGELOG.md` reflects the merged scope.
@@ -190,8 +191,9 @@ release task.
 - [ ] Publish the draft only after every item above is checked.
 
 At the release head `0e051204` the parity generator reports 0 missing checks
-(91.750%; SET-4, ML-3, CF-4, and PRF-2 are done after WAR-10). The parity
-index must be regenerated after WAR-106/WAR-107 merge; no current task covers
-that regeneration. The pre-tag gate stays
-**0 missing**; do not tag while any check is missing, and never hand-edit
-`docs/PARITY.md`.
+(91.750%; SET-4, ML-3, CF-4, and PRF-2 are done after WAR-10). After WAR-106
+(`f2e8b0f`) and WAR-107 merge, the combined report is **94.000% with 35 done /
+5 partial / 0 missing**, with DSC-1 done against the corrected PRODUCT_SCOPE
+criteria and WS-2 done with automated evidence. Regenerate the report at the
+release head. The pre-tag gate stays **0 missing**; do not tag while any check
+is missing, and never hand-edit `docs/PARITY.md`.
