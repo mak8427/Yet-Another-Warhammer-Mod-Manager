@@ -236,220 +236,253 @@ pub fn app_info() -> AppInfo {
     }
 }
 
+/// Runs session work on a blocking thread so no IPC handler occupies the main
+/// thread. Tauri executes synchronous commands on the main thread, and every
+/// session command can reach the filesystem or wait on the session mutex that a
+/// scan or write holds.
+///
+/// The Tauri shell is Windows-only; Linux tests compile the same seam against
+/// Tokio so CI can test the off-main-thread contract.
+#[cfg(any(windows, test))]
+async fn run_blocking<T, F>(work: F) -> Result<T, AppError>
+where
+    F: FnOnce() -> Result<T, AppError> + Send + 'static,
+    T: Send + 'static,
+{
+    #[cfg(windows)]
+    let joined = tauri::async_runtime::spawn_blocking(work).await;
+    #[cfg(not(windows))]
+    let joined = tokio::task::spawn_blocking(work).await;
+
+    joined.map_err(|error| {
+        AppError::internal("A background mod-manager task failed").with_details(error.to_string())
+    })?
+}
+
 /// Tauri command wrappers. They stay Windows-only so Linux CI can exercise the
 /// full core and the Manager methods without linking a WebView.
 #[cfg(windows)]
 mod tauri_commands {
     use super::*;
+    use tauri::Manager as _;
 
     #[tauri::command]
-    pub fn detect_game(state: tauri::State<'_, Manager>) -> Result<GameLocation, AppError> {
-        state.detect_game()
+    pub async fn detect_game(app: tauri::AppHandle) -> Result<GameLocation, AppError> {
+        run_blocking(move || app.state::<Manager>().detect_game()).await
     }
 
     #[tauri::command]
-    pub fn set_game_path(
-        state: tauri::State<'_, Manager>,
+    pub async fn set_game_path(
+        app: tauri::AppHandle,
         game_path: Option<String>,
     ) -> Result<GameLocation, AppError> {
-        state.set_game_path(game_path)
+        run_blocking(move || app.state::<Manager>().set_game_path(game_path)).await
     }
 
     #[tauri::command]
-    pub fn list_mods(state: tauri::State<'_, Manager>) -> Result<ModListSnapshot, AppError> {
-        state.list_mods()
+    pub async fn list_mods(app: tauri::AppHandle) -> Result<ModListSnapshot, AppError> {
+        run_blocking(move || app.state::<Manager>().list_mods()).await
     }
 
     #[tauri::command]
-    pub fn set_mod_enabled(
-        state: tauri::State<'_, Manager>,
+    pub async fn set_mod_enabled(
+        app: tauri::AppHandle,
         mod_id: String,
         enabled: bool,
     ) -> Result<ModListSnapshot, AppError> {
-        state.set_mod_enabled(mod_id, enabled)
+        run_blocking(move || app.state::<Manager>().set_mod_enabled(mod_id, enabled)).await
     }
 
     #[tauri::command]
-    pub fn set_mods_enabled(
-        state: tauri::State<'_, Manager>,
+    pub async fn set_mods_enabled(
+        app: tauri::AppHandle,
         mod_ids: Vec<String>,
         enabled: bool,
     ) -> Result<ModListSnapshot, AppError> {
-        state.set_mods_enabled(mod_ids, enabled)
+        run_blocking(move || app.state::<Manager>().set_mods_enabled(mod_ids, enabled)).await
     }
 
     #[tauri::command]
-    pub fn set_load_order(
-        state: tauri::State<'_, Manager>,
+    pub async fn set_load_order(
+        app: tauri::AppHandle,
         ordered_mod_ids: Vec<String>,
     ) -> Result<ModListSnapshot, AppError> {
-        state.set_load_order(ordered_mod_ids)
+        run_blocking(move || app.state::<Manager>().set_load_order(ordered_mod_ids)).await
     }
 
     #[tauri::command]
-    pub fn list_profiles(state: tauri::State<'_, Manager>) -> Result<ProfilesState, AppError> {
-        state.list_profiles()
+    pub async fn list_profiles(app: tauri::AppHandle) -> Result<ProfilesState, AppError> {
+        run_blocking(move || app.state::<Manager>().list_profiles()).await
     }
 
     #[tauri::command]
-    pub fn save_profile(
-        state: tauri::State<'_, Manager>,
+    pub async fn save_profile(
+        app: tauri::AppHandle,
         profile_id: Option<String>,
         name: String,
         enabled_mod_ids: Vec<String>,
     ) -> Result<Profile, AppError> {
-        state.save_profile(profile_id, name, enabled_mod_ids)
+        run_blocking(move || {
+            app.state::<Manager>()
+                .save_profile(profile_id, name, enabled_mod_ids)
+        })
+        .await
     }
 
     #[tauri::command]
-    pub fn duplicate_profile(
-        state: tauri::State<'_, Manager>,
+    pub async fn duplicate_profile(
+        app: tauri::AppHandle,
         profile_id: String,
         name: String,
     ) -> Result<Profile, AppError> {
-        state.duplicate_profile(profile_id, name)
+        run_blocking(move || app.state::<Manager>().duplicate_profile(profile_id, name)).await
     }
 
     #[tauri::command]
-    pub fn delete_profile(
-        state: tauri::State<'_, Manager>,
+    pub async fn delete_profile(
+        app: tauri::AppHandle,
         profile_id: String,
     ) -> Result<ProfilesState, AppError> {
-        state.delete_profile(profile_id)
+        run_blocking(move || app.state::<Manager>().delete_profile(profile_id)).await
     }
 
     #[tauri::command]
-    pub fn apply_profile(
-        state: tauri::State<'_, Manager>,
+    pub async fn apply_profile(
+        app: tauri::AppHandle,
         profile_id: String,
     ) -> Result<ModListSnapshot, AppError> {
-        state.apply_profile(profile_id)
+        run_blocking(move || app.state::<Manager>().apply_profile(profile_id)).await
     }
 
     #[tauri::command]
-    pub fn list_tags(state: tauri::State<'_, Manager>) -> Result<Vec<Tag>, AppError> {
-        state.list_tags()
+    pub async fn list_tags(app: tauri::AppHandle) -> Result<Vec<Tag>, AppError> {
+        run_blocking(move || app.state::<Manager>().list_tags()).await
     }
 
     #[tauri::command]
-    pub fn create_tag(
-        state: tauri::State<'_, Manager>,
+    pub async fn create_tag(
+        app: tauri::AppHandle,
         name: String,
         color: String,
     ) -> Result<Vec<Tag>, AppError> {
-        state.create_tag(name, color)
+        run_blocking(move || app.state::<Manager>().create_tag(name, color)).await
     }
 
     #[tauri::command]
-    pub fn delete_tag(
-        state: tauri::State<'_, Manager>,
-        tag_id: String,
-    ) -> Result<Vec<Tag>, AppError> {
-        state.delete_tag(tag_id)
+    pub async fn delete_tag(app: tauri::AppHandle, tag_id: String) -> Result<Vec<Tag>, AppError> {
+        run_blocking(move || app.state::<Manager>().delete_tag(tag_id)).await
     }
 
     #[tauri::command]
-    pub fn set_mod_tags(
-        state: tauri::State<'_, Manager>,
+    pub async fn set_mod_tags(
+        app: tauri::AppHandle,
         mod_id: String,
         tag_ids: Vec<String>,
     ) -> Result<ModListSnapshot, AppError> {
-        state.set_mod_tags(mod_id, tag_ids)
+        run_blocking(move || app.state::<Manager>().set_mod_tags(mod_id, tag_ids)).await
     }
 
     #[tauri::command]
-    pub fn get_ui_preferences(state: tauri::State<'_, Manager>) -> Result<UiPreferences, AppError> {
-        state.get_ui_preferences()
+    pub async fn get_ui_preferences(app: tauri::AppHandle) -> Result<UiPreferences, AppError> {
+        run_blocking(move || app.state::<Manager>().get_ui_preferences()).await
     }
 
     #[tauri::command]
-    pub fn update_ui_preferences(
-        state: tauri::State<'_, Manager>,
+    pub async fn update_ui_preferences(
+        app: tauri::AppHandle,
         preferences: UiPreferences,
     ) -> Result<UiPreferences, AppError> {
-        state.update_ui_preferences(preferences)
+        run_blocking(move || app.state::<Manager>().update_ui_preferences(preferences)).await
     }
 
     #[tauri::command]
-    pub fn reset_to_defaults(
-        state: tauri::State<'_, Manager>,
+    pub async fn reset_to_defaults(
+        app: tauri::AppHandle,
         confirm: bool,
         confirm_unmanaged_loss: bool,
     ) -> Result<ResetDefaultsReport, AppError> {
-        state.reset_to_defaults(confirm, confirm_unmanaged_loss)
+        run_blocking(move || {
+            app.state::<Manager>()
+                .reset_to_defaults(confirm, confirm_unmanaged_loss)
+        })
+        .await
     }
 
     #[tauri::command]
-    pub fn read_load_order(
-        state: tauri::State<'_, Manager>,
-    ) -> Result<LoadOrderReadReport, AppError> {
-        state.read_load_order()
+    pub async fn read_load_order(app: tauri::AppHandle) -> Result<LoadOrderReadReport, AppError> {
+        run_blocking(move || app.state::<Manager>().read_load_order()).await
     }
 
     #[tauri::command]
-    pub fn preview_load_order(
-        state: tauri::State<'_, Manager>,
+    pub async fn preview_load_order(
+        app: tauri::AppHandle,
     ) -> Result<LoadOrderWriteReport, AppError> {
-        state.preview_load_order()
+        run_blocking(move || app.state::<Manager>().preview_load_order()).await
     }
 
     #[tauri::command]
-    pub fn write_load_order(
-        state: tauri::State<'_, Manager>,
+    pub async fn write_load_order(
+        app: tauri::AppHandle,
         allow_empty: bool,
         confirm_unmanaged_loss: bool,
     ) -> Result<LoadOrderWriteReport, AppError> {
-        state.write_load_order(allow_empty, confirm_unmanaged_loss)
+        run_blocking(move || {
+            app.state::<Manager>()
+                .write_load_order(allow_empty, confirm_unmanaged_loss)
+        })
+        .await
     }
 
     #[tauri::command]
-    pub fn restore_load_order(
-        state: tauri::State<'_, Manager>,
+    pub async fn restore_load_order(
+        app: tauri::AppHandle,
     ) -> Result<LoadOrderReadReport, AppError> {
-        state.restore_load_order()
+        run_blocking(move || app.state::<Manager>().restore_load_order()).await
     }
 
     #[tauri::command]
-    pub fn get_conflicts(state: tauri::State<'_, Manager>) -> Result<ConflictReport, AppError> {
-        state.get_conflicts()
+    pub async fn get_conflicts(app: tauri::AppHandle) -> Result<ConflictReport, AppError> {
+        run_blocking(move || app.state::<Manager>().get_conflicts()).await
     }
 
     #[tauri::command]
-    pub fn list_workshop_items(
-        state: tauri::State<'_, Manager>,
-    ) -> Result<Vec<WorkshopItem>, AppError> {
-        state.list_workshop_items()
+    pub async fn list_workshop_items(app: tauri::AppHandle) -> Result<Vec<WorkshopItem>, AppError> {
+        run_blocking(move || app.state::<Manager>().list_workshop_items()).await
     }
 
     #[tauri::command]
-    pub fn workshop_action(
-        state: tauri::State<'_, Manager>,
+    pub async fn workshop_action(
+        app: tauri::AppHandle,
         action: WorkshopAction,
         workshop_id: String,
     ) -> Result<SteamActionResult, AppError> {
-        state.workshop_action(action, workshop_id)
+        run_blocking(move || app.state::<Manager>().workshop_action(action, workshop_id)).await
     }
 
     #[tauri::command]
-    pub fn get_launch_options(state: tauri::State<'_, Manager>) -> Result<LaunchOptions, AppError> {
-        state.get_launch_options()
+    pub async fn get_launch_options(app: tauri::AppHandle) -> Result<LaunchOptions, AppError> {
+        run_blocking(move || app.state::<Manager>().get_launch_options()).await
     }
 
     #[tauri::command]
-    pub fn set_launch_options(
-        state: tauri::State<'_, Manager>,
+    pub async fn set_launch_options(
+        app: tauri::AppHandle,
         options: LaunchOptions,
     ) -> Result<LaunchOptions, AppError> {
-        state.set_launch_options(options)
+        run_blocking(move || app.state::<Manager>().set_launch_options(options)).await
     }
 
     #[tauri::command]
-    pub fn launch_game(
-        state: tauri::State<'_, Manager>,
+    pub async fn launch_game(
+        app: tauri::AppHandle,
         skip_intro: bool,
         script_logging: bool,
     ) -> Result<LaunchResult, AppError> {
-        state.launch_game(skip_intro, script_logging)
+        run_blocking(move || {
+            app.state::<Manager>()
+                .launch_game(skip_intro, script_logging)
+        })
+        .await
     }
 }
 
@@ -460,6 +493,9 @@ pub use tauri_commands::*;
 mod tests {
     use super::*;
     use std::fs;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+    use std::time::Duration;
     use wh3mm_core::error::ErrorCode;
     use wh3mm_core::pack::{synthetic_pack_bytes, PFH5_HEADER_LEN};
     use wh3mm_core::test_support::TempDir;
@@ -573,5 +609,82 @@ mod tests {
             .set_mods_enabled(vec!["unknown".to_string()], true)
             .unwrap_err();
         assert_eq!(error.code, ErrorCode::NotFound);
+    }
+
+    fn manager_with_one_pack(label: &str) -> Arc<Manager> {
+        let dir = TempDir::new(label);
+        let game = dir.path().join("game");
+        fs::create_dir_all(game.join("data")).unwrap();
+        fs::write(
+            game.join("data").join("a.pack"),
+            synthetic_pack_bytes(0, &[], 0),
+        )
+        .unwrap();
+        let session = Session::initialize(SessionOptions {
+            config_path: dir.path().join("config.json"),
+            steam_root_candidates: Some(Vec::new()),
+            manual_game_path: Some(game),
+            log_timings: false,
+        })
+        .unwrap();
+        Arc::new(Manager::from_session(session))
+    }
+
+    #[test]
+    fn command_work_runs_off_the_caller_thread() {
+        let manager = manager_with_one_pack("app-command-off-thread");
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_time()
+            .build()
+            .unwrap();
+
+        runtime.block_on(async move {
+            let caller = std::thread::current().id();
+            let blocking_manager = Arc::clone(&manager);
+            let (worker, snapshot) = run_blocking(move || {
+                Ok::<_, AppError>((std::thread::current().id(), blocking_manager.list_mods()?))
+            })
+            .await
+            .unwrap();
+
+            assert_ne!(caller, worker, "command work ran on the caller thread");
+            assert_eq!(snapshot.mods.len(), 1);
+        });
+    }
+
+    #[test]
+    fn command_work_leaves_the_async_thread_free() {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_time()
+            .build()
+            .unwrap();
+
+        runtime.block_on(async {
+            let ticks = Arc::new(AtomicUsize::new(0));
+            let ticker = {
+                let ticks = Arc::clone(&ticks);
+                tokio::spawn(async move {
+                    for _ in 0..4 {
+                        tokio::time::sleep(Duration::from_millis(10)).await;
+                        ticks.fetch_add(1, Ordering::SeqCst);
+                    }
+                })
+            };
+
+            let probe = Arc::clone(&ticks);
+            let ticks_while_blocked = run_blocking(move || {
+                std::thread::sleep(Duration::from_millis(120));
+                Ok::<_, AppError>(probe.load(Ordering::SeqCst))
+            })
+            .await
+            .unwrap();
+
+            assert!(
+                ticks_while_blocked >= 2,
+                "the async thread was blocked by command work: {ticks_while_blocked} ticks"
+            );
+            ticker.await.unwrap();
+            assert_eq!(ticks.load(Ordering::SeqCst), 4);
+        });
     }
 }

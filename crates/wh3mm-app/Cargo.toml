@@ -23,3 +23,7 @@ serde.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 tauri = { version = "2", features = ["protocol-asset"] }
+
+# Backs the blocking seam in Linux tests; the Windows shell uses Tauri's runtime.
+[dev-dependencies]
+tokio = { version = "1", features = ["rt", "time"] }
