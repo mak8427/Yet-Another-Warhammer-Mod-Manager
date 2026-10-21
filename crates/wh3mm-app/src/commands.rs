@@ -2,12 +2,15 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::Instant;
 
+use wh3mm_core::conflicts::ConflictReport;
 use wh3mm_core::error::AppError;
 use wh3mm_core::ipc::{
     AppInfo, GameLocation, LoadOrderReadReport, LoadOrderWriteReport, ModListSnapshot, Profile,
     ProfilesState, Tag, UiPreferences,
 };
+use wh3mm_core::launch::{LaunchOptions, LaunchResult};
 use wh3mm_core::session::{Session, SessionOptions};
+use wh3mm_core::workshop::{SteamActionResult, WorkshopAction, WorkshopItem};
 
 /// Owns the single mutable session. Every filesystem mutation is serialized by
 /// this mutex; the command layer adds no business logic of its own.
@@ -169,6 +172,43 @@ impl Manager {
 
     pub fn restore_load_order(&self) -> Result<LoadOrderReadReport, AppError> {
         self.with_mut(|session| session.restore_load_order())
+    }
+
+    pub fn get_conflicts(&self) -> Result<ConflictReport, AppError> {
+        self.with(|session| session.conflict_report())?
+    }
+
+    pub fn list_workshop_items(&self) -> Result<Vec<WorkshopItem>, AppError> {
+        self.with(|session| session.workshop_items())?
+    }
+
+    pub fn workshop_action(
+        &self,
+        action: WorkshopAction,
+        workshop_id: String,
+    ) -> Result<SteamActionResult, AppError> {
+        self.with(|session| session.workshop_action(action, &workshop_id))?
+    }
+
+    pub fn get_launch_options(&self) -> Result<LaunchOptions, AppError> {
+        self.with(|session| session.launch_options())
+    }
+
+    pub fn set_launch_options(&self, options: LaunchOptions) -> Result<LaunchOptions, AppError> {
+        self.with_mut(|session| session.set_launch_options(options))
+    }
+
+    pub fn launch_game(
+        &self,
+        skip_intro: bool,
+        script_logging: bool,
+    ) -> Result<LaunchResult, AppError> {
+        self.with_mut(|session| {
+            session.launch_game(LaunchOptions {
+                skip_intro,
+                script_logging,
+            })
+        })
     }
 }
 
@@ -351,6 +391,49 @@ mod tauri_commands {
     ) -> Result<LoadOrderReadReport, AppError> {
         state.restore_load_order()
     }
+
+    #[tauri::command]
+    pub fn get_conflicts(state: tauri::State<'_, Manager>) -> Result<ConflictReport, AppError> {
+        state.get_conflicts()
+    }
+
+    #[tauri::command]
+    pub fn list_workshop_items(
+        state: tauri::State<'_, Manager>,
+    ) -> Result<Vec<WorkshopItem>, AppError> {
+        state.list_workshop_items()
+    }
+
+    #[tauri::command]
+    pub fn workshop_action(
+        state: tauri::State<'_, Manager>,
+        action: WorkshopAction,
+        workshop_id: String,
+    ) -> Result<SteamActionResult, AppError> {
+        state.workshop_action(action, workshop_id)
+    }
+
+    #[tauri::command]
+    pub fn get_launch_options(state: tauri::State<'_, Manager>) -> Result<LaunchOptions, AppError> {
+        state.get_launch_options()
+    }
+
+    #[tauri::command]
+    pub fn set_launch_options(
+        state: tauri::State<'_, Manager>,
+        options: LaunchOptions,
+    ) -> Result<LaunchOptions, AppError> {
+        state.set_launch_options(options)
+    }
+
+    #[tauri::command]
+    pub fn launch_game(
+        state: tauri::State<'_, Manager>,
+        skip_intro: bool,
+        script_logging: bool,
+    ) -> Result<LaunchResult, AppError> {
+        state.launch_game(skip_intro, script_logging)
+    }
 }
 
 #[cfg(windows)]
@@ -361,7 +444,7 @@ mod tests {
     use super::*;
     use std::fs;
     use wh3mm_core::error::ErrorCode;
-    use wh3mm_core::pack::synthetic_pack_bytes;
+    use wh3mm_core::pack::{synthetic_pack_bytes, PFH5_HEADER_LEN};
     use wh3mm_core::test_support::TempDir;
 
     #[test]
@@ -373,6 +456,69 @@ mod tests {
         assert_eq!(info.core_version, wh3mm_core::VERSION);
         assert!(!info.platform.is_empty());
         assert!(!info.arch.is_empty());
+    }
+
+    fn pack_with_file(path: &str) -> Vec<u8> {
+        let name = path.as_bytes();
+        let body = b"x";
+        let mut index = Vec::new();
+        index.extend_from_slice(&(body.len() as u32).to_le_bytes());
+        index.push(0);
+        index.extend_from_slice(name);
+        index.push(0);
+        let mut bytes = vec![0u8; PFH5_HEADER_LEN];
+        bytes[0..4].copy_from_slice(b"PFH5");
+        bytes[4..8].copy_from_slice(&3u32.to_le_bytes());
+        bytes[16..20].copy_from_slice(&1u32.to_le_bytes());
+        bytes[20..24].copy_from_slice(&(index.len() as u32).to_le_bytes());
+        bytes.extend_from_slice(&index);
+        bytes.extend_from_slice(body);
+        bytes
+    }
+
+    #[test]
+    fn manager_forwards_m3_conflict_workshop_and_launch_commands() {
+        let dir = TempDir::new("app-manager-m3");
+        let game = dir.path().join("game");
+        let data = game.join("data");
+        fs::create_dir_all(&data).unwrap();
+        for name in ["m3_a.pack", "m3_b.pack", "m3_c.pack"] {
+            fs::write(data.join(name), pack_with_file("db\\units_tables\\same")).unwrap();
+        }
+
+        let session = Session::initialize(SessionOptions {
+            config_path: dir.path().join("config.json"),
+            steam_root_candidates: Some(Vec::new()),
+            manual_game_path: Some(game),
+            log_timings: false,
+        })
+        .unwrap();
+        let manager = Manager::from_session(session);
+        let ids: Vec<String> = manager
+            .list_mods()
+            .unwrap()
+            .mods
+            .iter()
+            .map(|module| module.id.clone())
+            .collect();
+        manager.set_mods_enabled(ids.clone(), true).unwrap();
+
+        let report = manager.get_conflicts().unwrap();
+        assert_eq!(report.conflicts.len(), 1);
+        assert_eq!(report.conflicts[0].winner_mod_id, ids[2]);
+        assert_eq!(report.conflicts[0].loser_mod_ids.len(), 2);
+
+        let error = manager.list_workshop_items().unwrap_err();
+        assert_eq!(error.code, ErrorCode::SteamNotFound);
+
+        let options = manager
+            .set_launch_options(wh3mm_core::launch::LaunchOptions {
+                skip_intro: true,
+                script_logging: true,
+            })
+            .unwrap();
+        assert!(options.skip_intro);
+        assert!(manager.get_launch_options().unwrap().script_logging);
     }
 
     #[test]

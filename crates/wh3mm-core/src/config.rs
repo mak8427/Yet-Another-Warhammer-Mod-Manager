@@ -14,6 +14,7 @@ use crate::atomic::{atomic_write_no_backup, atomic_write_with_backup};
 use crate::clock::now_iso8601;
 use crate::error::AppError;
 use crate::ipc::{Profile, Tag, UiPreferences};
+use crate::launch::LaunchOptions;
 
 pub const SCHEMA_VERSION: u32 = 1;
 pub const CONFIG_FILE: &str = "config.json";
@@ -39,6 +40,10 @@ pub struct AppConfig {
     pub tags: Vec<Tag>,
     #[serde(default)]
     pub mod_tags: BTreeMap<String, Vec<String>>,
+    /// Launch options keyed by profile id. Kept in the same document so a
+    /// profile switch cannot leave half-written launch state behind.
+    #[serde(default)]
+    pub launch_options: BTreeMap<String, LaunchOptions>,
 }
 
 impl AppConfig {
@@ -52,6 +57,7 @@ impl AppConfig {
             profiles: vec![profile],
             tags: Vec::new(),
             mod_tags: BTreeMap::new(),
+            launch_options: BTreeMap::new(),
         }
     }
 
@@ -306,6 +312,13 @@ impl AppConfig {
             }
         }
         self.mod_tags.retain(|_, tag_ids| !tag_ids.is_empty());
+        let profile_ids: HashSet<String> = self
+            .profiles
+            .iter()
+            .map(|profile| profile.id.clone())
+            .collect();
+        self.launch_options
+            .retain(|profile_id, _| profile_ids.contains(profile_id));
 
         Ok((self, warnings))
     }

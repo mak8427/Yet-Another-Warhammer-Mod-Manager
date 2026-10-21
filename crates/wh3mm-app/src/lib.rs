@@ -40,6 +40,12 @@ pub fn run() -> tauri::Result<()> {
             commands::preview_load_order,
             commands::write_load_order,
             commands::restore_load_order,
+            commands::get_conflicts,
+            commands::list_workshop_items,
+            commands::workshop_action,
+            commands::get_launch_options,
+            commands::set_launch_options,
+            commands::launch_game,
         ])
         .run(tauri::generate_context!())
 }

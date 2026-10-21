@@ -6,8 +6,10 @@
 pub mod atomic;
 pub mod clock;
 pub mod config;
+pub mod conflicts;
 pub mod error;
 pub mod ipc;
+pub mod launch;
 pub mod load_order;
 pub mod mod_index;
 pub mod pack;
@@ -15,6 +17,7 @@ pub mod paths;
 pub mod session;
 pub mod test_support;
 pub mod timing;
+pub mod workshop;
 
 /// Semantic version of the core crate, reported through the IPC contract.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
