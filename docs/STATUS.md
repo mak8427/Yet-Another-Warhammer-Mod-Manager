@@ -18,7 +18,7 @@ when its acceptance checks are recorded here with command evidence.
 | M2 | Karl | Mod list, load order, tags, profiles | Done; merged as `c1a9cdd` (PR #6) |
 | M3 | Karl | Conflicts, Workshop, launch | Done; merged as `bb306d4` (PR #18) |
 | M4 | Katerina + Karl | TW:WH3 visual system, density, keyboard map, states | Done; merged as `0e051204` (PR #26), including the five WAR-79 ship-gate blockers |
-| M5 | Baltasar + Genny4Real | E2E, performance budgets, Windows installer, release | Release machinery merged as `e31eb64` (PR #25); Windows NSIS artifact blocked on WAR-101 |
+| M5 | Baltasar + Genny4Real | E2E, performance budgets, Windows installer, release | Release machinery merged as `e31eb64` (PR #25); Windows NSIS artifact `wh3mm-windows-1.0.0` produced by `release.yml` run [39637746973](https://github.com/mak8427/Warhammer_mod_manager/actions/runs/39637746973) at `3106dd5`; `v1.0.0` tag run and draft release pending (WAR-99) |
 
 ## M0 evidence (WAR-4)
 
@@ -155,21 +155,20 @@ now covers name, type, timestamp, and dependencies. This is a removal, not a
 limitation.
 
 The capability-parity index in `docs/PARITY.md` is generated from
-`docs/PARITY.yaml`. At the WAR-107 head, `node scripts/parity-report.mjs`
+`docs/PARITY.yaml`. At `84b11c6` (WAR-107 merged), `node scripts/parity-report.mjs`
 reports **94.000% with 35 done / 5 partial / 0 missing**. SET-4, ML-3, CF-4,
 and PRF-2 moved to done with the WAR-10 code and tests cited in
 `docs/PARITY.yaml`; DET-1 stays partial for the documented Flatpak/Snap/XDG
 Linux roots. The five documented v1.0 limitations are WS-3, LA-1, ML-4, SET-2,
 and DET-1's Linux roots. DSC-1 is done against the corrected PRODUCT_SCOPE
 criterion after WAR-107 cut the author surface, and WS-2 is done after WAR-106
-added the Workshop Open test. WAR-106 is merged (`f2e8b0f`); WAR-107 blocks the
-`v1.0.0` tag (WAR-99) until it merges, and neither is a WAR-79 parity-gate
-blocker. The parity percentage itself is a monitoring metric, not the ship gate
-(WAR-79).
-A `v1.0.0` tag and draft release are created only after the `release.yml`
-artifact dispatch on `main` is green, WAR-106/WAR-107 are merged, and the
-release gates are on the branch; publishing waits for the WAR-12 audit of that
-draft.
+added the Workshop Open test. WAR-106 (`f2e8b0f`) and WAR-107 (`84b11c6`) are
+merged, and neither is a WAR-79 parity-gate blocker. The parity percentage
+itself is a monitoring metric, not the ship gate (WAR-79).
+A `v1.0.0` tag is created only after this docs correction merges, the perf gate
+passes at the tag head, the parity report is **0 missing**, and `main` is green.
+The tag run produces the Windows artifact and a draft release; WAR-12 audits
+that draft, and publishing waits for the WAR-12 sign-off.
 
 ## Risks and open items
 
@@ -177,9 +176,10 @@ draft.
   `tauri-build` are `cfg(windows)`-only dependencies, so `cargo test --workspace`
   never runs their build scripts. The first release dispatch on `main`
   (`e31eb64`, run `39628830515`) failed on a missing `protocol-asset` feature
-  that Linux CI could not see; WAR-101 fixes it. Until a required Windows PR
-  check exists, treat every Windows-only dependency/feature change as untested
-  by the Linux gates.
+  that Linux CI could not see; WAR-101 fixed it (`3106dd5`), and the follow-up
+  dispatch (run `39637746973`) succeeded with artifact `wh3mm-windows-1.0.0`.
+  Until a required Windows PR check exists, treat every Windows-only
+  dependency/feature change as untested by the Linux gates.
 - `main` has no GitHub branch protection; the branch/PR policy is enforced by
   review. Enabling protection is an owner action for Torgrim.
 - The M0 scaffold commit reached `main` before the CEO's no-direct-push
@@ -190,11 +190,11 @@ draft.
 
 ## Next
 
-1. Karl Franz: land WAR-101 (`protocol-asset`) with a green `release.yml` run on
-   the fix branch that uploads `wh3mm-windows-1.0.0`.
-2. Karl Franz: land WAR-107 (author-surface cut); WAR-106 (WS-2 Open test) is
-   already merged. WAR-107 blocks the `v1.0.0` tag (WAR-99).
-3. Katerina Zarina: merge WAR-101 after QA and tech-lead approval, re-dispatch
-   `release.yml` on `main`, and record the artifact on WAR-95/WAR-73.
-4. Baltasar Gelt: run the WAR-12 audit on the draft release produced by the
-   `v1.0.0` tag, after the artifact proof; publish only on his sign-off.
+1. Katerina Zarina: merge the WAR-99 docs correction after QA review and CEO
+   approval; it puts the corrected tag-ordering and perf gate rows on `main`.
+2. Katerina Zarina: tag `v1.0.0` at the green `main` head, let `release.yml`
+   produce the Windows artifact and draft release, and record both on WAR-11.
+3. Baltasar Gelt: run the WAR-12 audit on the draft release produced by the
+   `v1.0.0` tag; publish only on his sign-off.
+4. Torgrim: make the v1.0.0 go/no-go and publish decision after WAR-12, then
+   close WAR-3.
