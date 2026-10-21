@@ -1,0 +1,137 @@
+{
+  "schema": "wh3mm.qa.fixtures.v1",
+  "files": {
+    "config/config_corrupt.json": {
+      "sha256": "1693d2fa39f5d2df9ce6dfed5d48d4c51ced51e38de7856754e075e8798ab5c6",
+      "bytes": 57
+    },
+    "config/config_future_version.json": {
+      "sha256": "ea31f75dba426b4a021d064040711aaace9b71172936d5756e89b534490dc65d",
+      "bytes": 901
+    },
+    "config/config_truncated.json": {
+      "sha256": "f40bcbc032db34576f6c2551e8452ac0c1e72566ceef64e4802805136d010492",
+      "bytes": 27
+    },
+    "config/config_unknown_fields.json": {
+      "sha256": "6006446f79253fd841796d160a838747c8b644165b25824a76cee4915e87f4e3",
+      "bytes": 1040
+    },
+    "config/config_valid.json": {
+      "sha256": "edb2e7484edd8fba5ea745401c7e7004f492ac892c26830f90935f5797d22c26",
+      "bytes": 901
+    },
+    "load_order/used_mods_bom.txt": {
+      "sha256": "4d80bea6235b7b3709b99f0556f5091165350d301750b0f03b00fb8c7d4b5578",
+      "bytes": 91
+    },
+    "load_order/used_mods_corrupt.txt": {
+      "sha256": "e654656eb1e0f8b18b8cbf0ef094bbf02f1f89428e9c3d4849e231fe037ba7ec",
+      "bytes": 99
+    },
+    "load_order/used_mods_crlf.txt": {
+      "sha256": "b5cedfd9bc365a50a955ae31b943f7aae9789fd90291147246cfcaebc18b326b",
+      "bytes": 92
+    },
+    "load_order/used_mods_duplicates.txt": {
+      "sha256": "62942cb244f418e34ecbd07b108042a34d1d4feb9c3f760b8dd13de13251bab3",
+      "bytes": 90
+    },
+    "load_order/used_mods_empty.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "load_order/used_mods_no_final_newline.txt": {
+      "sha256": "05a135a0ea39fd22797cb20881d193e89e6c9402cc0d74b8938968014d5e3627",
+      "bytes": 87
+    },
+    "load_order/used_mods_unknown_directive.txt": {
+      "sha256": "addbb6c0ac38810e4535334ab0174db2ca214ffe37623ea4fda5a3637e6fa34b",
+      "bytes": 196
+    },
+    "load_order/used_mods_valid.txt": {
+      "sha256": "b5932c38da056e18de1bbf9f436eebea169e35e0b6528f0488e0bedea9695275",
+      "bytes": 88
+    },
+    "packs/malformed_bad_magic.pack": {
+      "sha256": "534646c1653a1f5f563f95927d2dbf3f39bb354dfe1991826c276da9aaa3cf11",
+      "bytes": 47
+    },
+    "packs/malformed_count_mismatch.pack": {
+      "sha256": "6d452d9658bf7f68cabe4e1d44b7386825f7cd426c1ebce317918ac4a5e7c455",
+      "bytes": 47
+    },
+    "packs/malformed_empty.pack": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "packs/malformed_oversized_dependency_header.pack": {
+      "sha256": "e31a4a43177a0d5621b0a24597ddb1ed30e65314df9f1365282fadad07780c4d",
+      "bytes": 47
+    },
+    "packs/malformed_oversized_file_index.pack": {
+      "sha256": "2144418fae2e0d5cd301d1f1e328d05b8d80e56b3a79b1024b4ba35043237d5b",
+      "bytes": 47
+    },
+    "packs/malformed_truncated_header.pack": {
+      "sha256": "f5043379e8b3f464899a64cc344256d2b759281f17a3109c47a32608570e1909",
+      "bytes": 12
+    },
+    "packs/malformed_unterminated_name.pack": {
+      "sha256": "1428ae2938232a5b8b0f02e5bf07001c7f6a0241918ec8299593242de8dbb121",
+      "bytes": 46
+    },
+    "packs/valid_hashed.pack": {
+      "sha256": "a8c6500ff99056c6debde9c2fec1c8dfb0c638f8f7ae805189f5bd5e720fd1e8",
+      "bytes": 180
+    },
+    "packs/valid_minimal.pack": {
+      "sha256": "3b0c4cecceeeaaa3af0647bcb5e7a992ba6b658a5133d1504a8a1675fee0bb0d",
+      "bytes": 115
+    },
+    "packs/valid_movie.pack": {
+      "sha256": "11c645dfa6908578bef3125e29c7aeaa7f2d834c98c921b8b788d474007402f8",
+      "bytes": 149
+    },
+    "packs/valid_multi.pack": {
+      "sha256": "fd9008d2edf2a746df611f102d47cc84bc0ef4d8ebeb15f2c839223ac5d65737",
+      "bytes": 243
+    },
+    "packs/valid_unicode.pack": {
+      "sha256": "eb544918497175b16ef486671666c1ab1ad7ad554f41d05596a92884567c0c5a",
+      "bytes": 291
+    },
+    "packs/valid_with_deps.pack": {
+      "sha256": "3737048668b5f50cf2e962445c5bf9532e4accd31441f62a0370290a17673478",
+      "bytes": 160
+    },
+    "scale/index-500.json": {
+      "sha256": "2c03854a0094391f91b973b69c21d0a6dbc4754d87ffc63e1a9696dd43d418b9",
+      "bytes": 216122
+    },
+    "steam/appmanifest_1142710.acf": {
+      "sha256": "145872c3adf498b9fa29082e36183e1b2dfdba7ae6394bd24409c51fdb1b001d",
+      "bytes": 346
+    },
+    "steam/appworkshop_1142710_empty.acf": {
+      "sha256": "fa10620541ba3336d3ae00acc26dd9555e520896faf097ff6416643088ba9c66",
+      "bytes": 131
+    },
+    "steam/appworkshop_1142710.acf": {
+      "sha256": "7d672111966728a9a73332e35207a7a7a90fca80e70fd5079edaf196d22e3984",
+      "bytes": 836
+    },
+    "steam/libraryfolders_flatpak.vdf": {
+      "sha256": "88fbdf33a40a38259539184ad6b5757a3fc0651ffad88150174a023faf586baf",
+      "bytes": 241
+    },
+    "steam/libraryfolders_malformed.vdf": {
+      "sha256": "f6ca571aa06907c442e43029c68675fdc9c95ec5317c9eecb86740ec3f4d9c42",
+      "bytes": 111
+    },
+    "steam/libraryfolders.vdf": {
+      "sha256": "0b4ed60223fc0a32521e4900929e5b024675dd0743a6c651134bdb38a300736c",
+      "bytes": 671
+    }
+  }
+}

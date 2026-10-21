@@ -2,6 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-20
+- Amended: 2026-10-21 (fixture location; see "Fixtures — amendment")
 - Owner: Katerina Zarina
 - Depends on: ADR-001, ADR-002, ADR-003
 
@@ -52,7 +53,8 @@ time.
 
 - All fixtures are synthetic. No copyrighted game data, no user mods, no
   downloaded Workshop content is committed.
-- Location: `crates/wh3mm-core/tests/fixtures/<domain>/`.
+- Location: `fixtures/<domain>/` at the repository root (amended 2026-10-21;
+  see below).
 - Minimum M1 fixtures:
   - Steam `libraryfolders.vdf` with two libraries and one missing path.
   - WH3 install marker/data directory layout.
@@ -67,6 +69,24 @@ time.
   user's config directory.
 - Failure-injection tests cover: temp-file write failure, rename failure,
   read-only target, missing parent directory, and a backup that is also corrupt.
+
+#### Fixtures — amendment 2026-10-21
+
+The committed fixture set lives at the repository root, `fixtures/<domain>/`,
+with `fixtures/manifest.json` and a deterministic generator in `scripts/qa/`.
+This replaces the earlier `crates/wh3mm-core/tests/fixtures/<domain>/` location.
+
+Reason: the same bytes are consumed by the Rust core integration tests, the
+frontend scale tests, the fixture generator, and the QA documents. A crate-local
+path would force the frontend and the generator to reach into a Rust crate's
+test directory and would make the ownership of fixture drift ambiguous. Rust
+tests read the root path as `CARGO_MANIFEST_DIR/../../fixtures`; the crate is
+not published, so self-containment has no value here.
+
+Rules: `fixtures/**` stays `-text` in `.gitattributes`; every data fixture is
+listed in `fixtures/manifest.json` and checked by
+`node scripts/qa/generate-fixtures.mjs --verify` in CI; tests never write into
+`fixtures/`.
 
 ### What must be true before a milestone is "done"
 
