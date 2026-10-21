@@ -13,9 +13,9 @@ when its acceptance checks are recorded here with command evidence.
 | Milestone | Owner | Scope | State |
 |---|---|---|---|
 | M0 | Katerina | Repo layout, Rust workspace, Tauri shell, TS/Vite shell, typed IPC, ADRs, CI | Done; merged as `abceb50` (PR #1) |
-| M1 | Karl | Steam/WH3 detection, pack parser, mod index, fixtures | Implemented; PR #6 open for QA and tech-lead review |
-| M2 | Karl | Mod list, load order, tags, profiles | Implemented; PR #6 open for QA and tech-lead review |
-| M3 | Karl | Conflicts, Workshop, launch | Implemented; PR #12 open for QA and tech-lead review |
+| M1 | Karl | Steam/WH3 detection, pack parser, mod index, fixtures | Done; merged as `c1a9cdd` (PR #6) |
+| M2 | Karl | Mod list, load order, tags, profiles | Done; merged as `c1a9cdd` (PR #6) |
+| M3 | Karl | Conflicts, Workshop, launch | Done; merged as `bb306d4` (PR #18) |
 | M4 | Katerina + Karl | TW:WH3 visual system, density, keyboard map, states | Not started |
 | M5 | Baltasar + Genny4Real | E2E, performance budgets, Windows installer, release | Not started |
 
@@ -100,7 +100,8 @@ until M5 packaging.
 
 - Branch: `feat/m3-conflicts-workshop-launch`, cut from `feat/m1-m2-core` at
   `6998a15` (PR #6 head), per the CEO ruling in WAR-35.
-- Pull request: [#12](https://github.com/mak8427/Warhammer_mod_manager/pull/12)
+- Branch head `b6696e5`, merged as `bb306d4`.
+- Pull request: [#18](https://github.com/mak8427/Warhammer_mod_manager/pull/18)
   ("M3: conflict analysis, Workshop integration, and game launch").
 - New modules: `crates/wh3mm-core/src/conflicts.rs`, `workshop.rs`, `launch.rs`;
   new screens under `frontend/src/components/{conflicts,workshop,launch}`.
@@ -116,19 +117,20 @@ until M5 packaging.
 - Frontend coverage: conflict report rendering and error state, Workshop
   subscriptions/error state, the Workshop state badge (INST/SUB/UPD) in the mod
   list, launch options/error/result, and navigation from the section rail.
-- Manual demo: `docs/M3_MANUAL_QA.md`; fixture generator:
+- Manual QA: the Windows/Steam script in `docs/M3_MANUAL_QA.md` is documented
+  but has not been executed against a real install; fixture generator:
   `docs/fixtures/make_m3_conflicts.py`.
 
-### Verification (2026-10-21, Linux)
+### Verification at merged head `bb306d4` (2026-10-21, Linux)
 
 | Command | Result |
 |---|---|
 | `cargo fmt --all --check` | pass |
 | `cargo clippy --workspace --all-targets --locked -- -D warnings` | pass |
-| `cargo test --workspace --locked` | pass, 82 tests |
+| `cargo test --workspace --locked` | pass, 120 tests at `bb306d4` |
 | `pnpm typecheck` | pass |
 | `pnpm lint` | pass |
-| `pnpm test` | pass, 41 tests |
+| `pnpm test` | pass, 58 tests at `bb306d4` |
 | `pnpm build` | pass |
 
 ## Risks and open items
@@ -146,10 +148,7 @@ until M5 packaging.
 
 ## Next
 
-1. Baltasar Gelt: QA review of PR #6, including the no-game and corrupt-file
-   recovery paths.
-2. Katerina Zarina: design/contract review of ADR-005 and the command surface.
-3. Genny4Real: use `ModListSnapshot.timings` and the `wh3mm: timing` log lines
+1. Genny4Real: use `ModListSnapshot.timings` and the `wh3mm: timing` log lines
    as the new-app baseline for WAR-7.
-4. Baltasar Gelt and Katerina Zarina: review M3 at PR #12; the Windows manual QA
-   script in `docs/M3_MANUAL_QA.md` still needs a real-install run.
+2. Baltasar Gelt: execute the Windows/Steam manual QA script in
+   `docs/M3_MANUAL_QA.md` against a real install.
