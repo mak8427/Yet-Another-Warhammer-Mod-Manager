@@ -5,20 +5,34 @@ snapshot:
   previous_index: 87.25
   previous_label: "WAR-3 parity document rev 2 (2026-10-21T11:25Z), reported as 87.3%"
   drop_reason: >-
-    Net change +4.500 vs the WAR-3 87.250 snapshot at release head `0e051204`:
+    Net change +6.750 vs the WAR-3 87.250 snapshot at release head `0e051204`:
     CF-3 (disabled dependency) +1.500, CF-4 (duplicate warning) +1.500, ML-3
-    (sort) +1.875, PRF-2 (profile order) +1.250, SET-4 (reset) +0.625, DSC-1
-    (author) -1.250, WS-2 (Workshop open) -1.000. The first WAR-68 pass reported
-    88.125 because DSC-1 and WS-2 were over-claimed; QA corrected both to partial.
+    (sort) +1.875, PRF-2 (profile order) +1.250, SET-4 (reset) +0.625. DSC-1
+    and WS-2 contribute no net change: WAR-107 re-scored DSC-1 against the
+    corrected WAR-104 contract and WAR-106 closed WS-2 with automated evidence,
+    restoring both to the scores the first WAR-68 pass over-claimed. QA corrected
+    those two to partial in between; they are now done with evidence.
   history:
     - date: "2026-10-21"
-      index: 93.0
+      index: 94.0
       reason: >-
-        WAR-107 contract correction after the release-head pass. WAR-104 cut the
-        author requirement from DSC-1, so the parser's name, type, timestamp,
-        and dependency evidence is done against the corrected PRODUCT_SCOPE.
-        This reverses the -1.250 author correction; 34 done / 6 partial /
-        0 missing, with WS-2 still partial pending WAR-106.
+        Combined WAR-106 + WAR-107 snapshot. WAR-106 closed WS-2 with a Rust
+        test that resolves WorkshopAction::Open to the CommunityFilePage URL and
+        reaches the Steam launch boundary plus a frontend test that the Open page
+        button dispatches the item id (Workshop 3.0 -> 3.5, +1.000). WAR-107
+        implements WAR-104 ruling B: the author surface is cut and DSC-1 is done
+        against the corrected PRODUCT_SCOPE criterion of name, type, timestamp,
+        and dependencies (Discovery 3.5 -> 4.0, +1.250). 35 done / 5 partial /
+        0 missing; net +6.750 from the WAR-3 87.250 snapshot.
+    - date: "2026-10-21"
+      index: 92.75
+      reason: >-
+        WS-2 is done. WAR-106 adds a Rust test that resolves WorkshopAction::Open
+        to the CommunityFilePage URL and reaches the Steam launch boundary, plus
+        a frontend test that the Open page button dispatches the item id.
+        Workshop 3.0 -> 3.5 (+1.000); the verified index at `f2e8b0f` is 92.750,
+        net +5.500 from the WAR-3 87.250 snapshot. DSC-1 remains partial
+        pending WAR-107.
     - date: "2026-10-21"
       index: 91.75
       reason: >-
@@ -66,15 +80,19 @@ corrections:
   - id: m4-blocker-parity
     claim: "ML-3, CF-4, PRF-2, and DET-1 are still partial after WAR-10."
     verified: "WAR-10 merged to `0e051204`. ML-3 has the sort control (`ModList.tsx`) and `sorts deterministically with an id tie-break in every non-drag mode`; CF-4 has duplicate rows and `renders duplicate pack names and shows none for a clean report`; PRF-2 has `applying_a_profile_restores_the_saved_order_exactly`; DET-1 has the injectable Windows/Unix candidate tests in `paths.rs`. All four tests pass on the merged tree."
-    effect: "ML-3 +1.875, CF-4 +1.500, PRF-2 +1.250; index 87.125 -> 91.750. DET-1 stays partial for the documented Flatpak/Snap/XDG limitation. DSC-1 (author) and WS-2 (Workshop open) remain partial and are not WAR-79 ship blockers; WAR-104 ruling B resolves them via WAR-106/WAR-107, and both block the WAR-99 `v1.0.0` tag."
+    effect: "ML-3 +1.875, CF-4 +1.500, PRF-2 +1.250; index 87.125 -> 91.750. DET-1 stays partial for the documented Flatpak/Snap/XDG limitation. DSC-1 (author) and WS-2 (Workshop open) remained partial at this pass and are not WAR-79 ship blockers; WAR-106 closes WS-2 and WAR-107 re-scores DSC-1 against the corrected contract. Both blocked the WAR-99 `v1.0.0` tag until closed."
+  - id: discovery-author-missing
+    claim: "DSC-1 (header including author) was done."
+    verified: "The pack author is hardcoded None in crates/wh3mm-core/src/pack.rs:165 and crates/wh3mm-core/src/mod_index.rs:254; the cited test asserts header.author == None. No code path assigns a parsed author."
+    effect: "Discovery 4.0 -> 3.5; contributes -1.250 to the index. WAR-104 ruling B cuts the author requirement, so WAR-107 re-scores DSC-1 against the corrected PRODUCT_SCOPE criterion (name, type, timestamp, dependencies)."
   - id: dsc-1-author-requirement-cut
     claim: "DSC-1 required the pack author."
     verified: "WAR-104 ruling B: the PFH5 header and the Steam ACF carry no author, and v1.0 forbids custom Steam auth. WAR-107 removed the author column, sort, search dimension, toggle, preference, and IPC fields; PRODUCT_SCOPE capability 2 now requires name, type, timestamp, and dependencies."
-    effect: "Discovery 3.5 -> 4.0; DSC-1 is done against the corrected contract and contributes +1.250 to the index. This reverses the author-driven -1.250 recorded in the WAR-3 snapshot correction."
+    effect: "Discovery 3.5 -> 4.0; DSC-1 is done against the corrected contract and contributes +1.250 to the index, reversing the author-driven -1.250 recorded above."
   - id: workshop-open-untested
     claim: "WS-2 (open a Workshop item through Steam) was done."
-    verified: "The cited test asserts only the Subscribe and Update URL strings. WorkshopAction::Open is never called by a test and spawn_steam_url (workshop.rs:294) has no test; the UI test clicks Unsubscribe only."
-    effect: "Workshop 3.5 -> 3.0; contributes -1.000 to the index. WS-2 is partial until Open is tested or manually verified on Windows."
+    verified: "The WAR-104 ruling confirmed the behaviour existed without a test. WAR-106 covers WorkshopAction::Open through the Steam launch seam and covers the UI Open page dispatch."
+    effect: "Workshop 3.0 -> 3.5; contributes +1.000 to the index. WS-2 is done (WAR-106)."
   - id: set-4-reset-defaults
     claim: "Reset-to-defaults was Partial."
     verified: "Missing: no reset command, screen, or test exists."
@@ -403,18 +421,12 @@ capabilities:
             test: parses_installed_update_pending_and_subscribed_states
       - id: WS-2
         title: Open a Workshop item page through the Steam client
-        status: partial
+        status: done
         evidence:
           - path: crates/wh3mm-core/src/workshop.rs
-            test: workshop_actions_use_the_steam_client_url
-          - path: crates/wh3mm-core/src/workshop.rs
-            contains: "WorkshopAction::Open"
-          - path: crates/wh3mm-core/src/workshop.rs
-            contains: "fn spawn_steam_url"
-        need: >-
-          A test that WorkshopAction::Open spawns Steam with the item URL, or a
-          recorded manual Windows open. The cited test covers Subscribe and Update
-          URL strings only; Open and spawn_steam_url have no test.
+            test: open_reaches_the_steam_launch_boundary_with_the_community_page_url
+          - path: frontend/src/components/workshop/WorkshopScreen.test.tsx
+            test: dispatches open for the selected workshop item
       - id: WS-3
         title: Subscribe, unsubscribe, and update through the Steam client without custom auth
         status: partial

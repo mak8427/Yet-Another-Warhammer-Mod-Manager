@@ -133,17 +133,22 @@ number (from the About/app-info surface) and every result.
 7. **Launch.** With the game installed, launch through the app. The game starts
    with the saved load order; if the game is not installed, the button is
    disabled or gives a clear message.
-8. **Corrupt `used_mods.txt` recovery.** Close the app. In the detected WH3 game
+8. **Workshop open.** With at least one Workshop mod subscribed in Steam, open
+   the Workshop screen, choose **Open page** on that item, and confirm the Steam
+   client opens the item's Workshop page. Confirm the app itself never asks for
+   Steam credentials. This is the manual fallback for the automated WS-2 test;
+   record the result even when the automated test passes.
+9. **Corrupt `used_mods.txt` recovery.** Close the app. In the detected WH3 game
    directory, replace `used_mods.txt` (next to `used_mods.txt.bak`) with
    garbage. Start the app: it must report the corrupt file and offer the backup,
    not crash or silently overwrite the user's data. Choose **Restore backup** in
    the app to recover `used_mods.txt.bak`, then confirm the previous order
    returns. Do not restore by copying files while the app is running.
-9. **Uninstall.** Uninstall from Windows Settings. The Start-menu entry and
-   program files are removed. User configuration under `%APPDATA%` may remain;
-   note whether the user data is preserved (expected) and that no game files
-   were touched.
-10. **Unsigned-installer warning.** On a fresh machine, confirm the SmartScreen
+10. **Uninstall.** Uninstall from Windows Settings. The Start-menu entry and
+    program files are removed. User configuration under `%APPDATA%` may remain;
+    note whether the user data is preserved (expected) and that no game files
+    were touched.
+11. **Unsigned-installer warning.** On a fresh machine, confirm the SmartScreen
     warning is the documented "Unknown publisher" flow and that the SHA-256 of
     the downloaded file matches the release notes.
 
@@ -171,11 +176,11 @@ release task.
 - [ ] `node scripts/parity-report.mjs` reports **0 missing checks** at the release
       head. The allowed limitations are WS-3, LA-1, ML-4, SET-2, and DET-1's
       Linux roots. DSC-1 is done against the corrected PRODUCT_SCOPE after
-      WAR-107; WS-2 (Workshop open) remains partial until WAR-106 merges.
+      WAR-107, and WS-2 is done after WAR-106.
 - [ ] The generated `docs/PARITY.md` and `docs/STATUS.md` are committed at that
       head; `docs/STATUS.md` names the five limitations with their manual checks.
       Never hand-edit `docs/PARITY.md`.
-- [ ] WAR-106 (WS-2 Workshop Open test) is merged and QA-approved; it blocks the `v1.0.0` tag.
+- [x] WAR-106 (WS-2 Workshop Open test) is merged and QA-approved (`f2e8b0f`).
 - [ ] WAR-107 (DSC-1 author surface cut and `PRODUCT_SCOPE` correction) is merged and QA-approved; it blocks the `v1.0.0` tag.
 - [ ] Version matches in `tauri.conf.json`, `Cargo.toml`, and both `package.json` files.
 - [ ] `CHANGELOG.md` reflects the merged scope.
@@ -186,8 +191,9 @@ release task.
 - [ ] Publish the draft only after every item above is checked.
 
 At the release head `0e051204` the parity generator reports 0 missing checks
-(91.750%; SET-4, ML-3, CF-4, and PRF-2 are done after WAR-10). WAR-107
-regenerates the report at 93.000% with DSC-1 done against the corrected
-PRODUCT_SCOPE; WS-2 stays partial until WAR-106 merges. Regenerate the report
-again after WAR-106. The pre-tag gate stays **0 missing**; do not tag while any
-check is missing, and never hand-edit `docs/PARITY.md`.
+(91.750%; SET-4, ML-3, CF-4, and PRF-2 are done after WAR-10). After WAR-106
+(`f2e8b0f`) and WAR-107 merge, the combined report is **94.000% with 35 done /
+5 partial / 0 missing**, with DSC-1 done against the corrected PRODUCT_SCOPE
+criteria and WS-2 done with automated evidence. Regenerate the report at the
+release head. The pre-tag gate stays **0 missing**; do not tag while any check
+is missing, and never hand-edit `docs/PARITY.md`.
