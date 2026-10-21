@@ -3872,7 +3872,7 @@ dependencies = [
 
 [[package]]
 name = "wh3mm-app"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "serde",
  "tauri",
@@ -3882,7 +3882,7 @@ dependencies = [
 
 [[package]]
 name = "wh3mm-core"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -3894,7 +3894,7 @@ dependencies = [
 
 [[package]]
 name = "wh3mm-perf"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "serde",
  "serde_json",

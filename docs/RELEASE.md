@@ -1,0 +1,140 @@
+# Release guide
+
+This guide covers the Windows installer, the tag workflow, the manual QA pass,
+and the rollback path. It assumes a clean machine and no prior knowledge of the
+repository. The product contract is `docs/PRODUCT_SCOPE.md`; the test strategy
+is `docs/adr/004-testing-strategy.md`.
+
+## Versioning
+
+- The app uses semantic versioning: `MAJOR.MINOR.PATCH`.
+- **One version, two files.** `crates/wh3mm-app/tauri.conf.json` and the Cargo
+  workspace (`[workspace.package].version` in `Cargo.toml`) must both say the
+  same `X.Y.Z`. The frontend packages mirror it as well.
+- The installer version and the `app_info` IPC response come from those files,
+  so a mismatch is a release blocker.
+- The release tag is `vX.Y.Z` and must match the configured version. The tag
+  workflow refuses to build on a mismatch.
+- v1.0.0 is the first release. The tag is created only after M4 (WAR-10) is
+  merged and the WAR-12 release audit is signed off.
+
+## Build locally on Windows
+
+Prerequisites:
+
+| Tool | Version | Notes |
+|---|---|---|
+| Windows | 10 or 11, x64 | WebView2 runtime must be present |
+| Rust | 1.90+ (stable) | `rustup default stable`; MSVC build tools |
+| Node.js | 24.15+ | `node --version` |
+| pnpm | 12.14 | `corepack enable` then `corepack prepare pnpm@12.14.0 --activate` |
+| Tauri CLI | 2.12.4 | fetched by `npx`, nothing global to install |
+| NSIS / WiX | bundled | Tauri downloads the packaging tools during the first bundle |
+
+Commands, from the repository root:
+
+```powershell
+pnpm install --frozen-lockfile
+pnpm typecheck
+pnpm lint
+pnpm test
+cargo test --workspace --locked
+cd crates/wh3mm-app
+npx --yes @tauri-apps/cli@2.12.4 build --ci --bundles nsis,msi
+```
+
+Outputs (paths are relative to the repository root because the crates share one
+Cargo target directory):
+
+- NSIS: `target/release/bundle/nsis/WH3 Mod Manager_1.0.0_x64-setup.exe`
+- MSI: `target/release/bundle/msi/WH3 Mod Manager_1.0.0_x64_en-US.msi`
+- Unpacked executable: `target/release/wh3mm.exe`
+
+The installer is **not code-signed**. Windows SmartScreen will show an
+"Unknown publisher" warning. Tell testers to choose **More info → Run anyway**
+and never to bypass a warning for a file whose SHA-256 does not match the
+checksum published with the release.
+
+## Tag workflow (CI)
+
+`.github/workflows/release.yml` runs on a `v*` tag:
+
+1. Checks the tag against `tauri.conf.json` and fails on a mismatch.
+2. Runs `cargo test --workspace --locked` and installs the frontend.
+3. Builds NSIS and MSI on `windows-latest`.
+4. Uploads the installers as the `wh3mm-windows-<version>` run artifact.
+5. Creates a **draft** GitHub release with the installers attached.
+
+It never publishes a release automatically. A human reviews the draft, edits the
+notes, and publishes it. Linux PR gates in `.github/workflows/ci.yml` are
+unchanged and stay required.
+
+To exercise the build without creating a tag or a release, run the workflow
+manually (`workflow_dispatch`) with the version input; that path uploads the
+artifact only.
+
+## Manual Windows QA script
+
+Run this on a machine that has never had the app installed. Record the build
+number (from the About/app-info surface) and every result.
+
+1. **Install.** Run the NSIS installer as a normal user. Confirm it completes
+   without an administrator prompt, creates a Start-menu entry, and launches
+   from the Start menu. Repeat with the MSI if both are shipped.
+2. **First run.** The window opens at 1280x840, the title is `WH3 Mod Manager`,
+   and no unhandled error dialog appears. Copy the version shown by the app; it
+   must read `1.0.0`.
+3. **Detect paths.** On a machine with Total War: WARHAMMER III installed, the
+   app finds the game and reports the data directory. On a machine without the
+   game, it shows the no-game state with a manual path chooser; choosing a valid
+   game directory recovers without a restart.
+4. **50+ mods.** Copy at least 50 Steam Workshop mods into the game's `data`
+   directory. Trigger a scan. The list finishes, shows every mod, and scrolling
+   500 rows stays responsive.
+5. **Reorder.** Drag a mod to a new position (or use the keyboard reorder), then
+   save the load order. Reopen the app and confirm the order persisted.
+6. **Profile switch.** Create a profile, disable a mod, save, switch to the
+   default profile, then switch back. The mod state and order match the profile.
+7. **Launch.** With the game installed, launch through the app. The game starts
+   with the saved load order; if the game is not installed, the button is
+   disabled or gives a clear message.
+8. **Corrupt `used_mods.txt` recovery.** Close the app. Replace
+   `%APPDATA%\The Creative Assembly\Warhammer3\scripts\used_mods.txt` with
+   garbage. Start the app: it must report the corrupt file and offer the backup,
+   not crash or silently overwrite the user's data. Restore from the `.bak` and
+   confirm the previous order returns.
+9. **Uninstall.** Uninstall from Windows Settings. The Start-menu entry and
+   program files are removed. User configuration under `%APPDATA%` may remain;
+   note whether the user data is preserved (expected) and that no game files
+   were touched.
+10. **Unsigned-installer warning.** On a fresh machine, confirm the SmartScreen
+    warning is the documented "Unknown publisher" flow and that the SHA-256 of
+    the downloaded file matches the release notes.
+
+A release candidate passes only if every step passes on a clean Windows 10 or 11
+machine and the evidence (screenshots or notes per step) is attached to the
+release task.
+
+## Rollback
+
+- **Bad installer, no installs yet:** delete the draft release and the tag, fix
+  the build, and cut a new patch tag. Never move a published tag.
+- **Bad release already published:** mark the GitHub release as "pre-release",
+  publish a fixed `vX.Y.Z+1`, and add a note to the release page. Do not delete
+  the tag; users may already have downloaded it.
+- **User-side rollback:** uninstall the broken build, install the previous
+  `vX.Y.(Z-1)` installer, and restore the profile/config backup. The app writes
+  an atomic `used_mods.txt` with a `.bak`, so a downgrade recovers the previous
+  load order.
+- **Data safety:** the app never modifies game archives. If launch misbehaves,
+  restore `used_mods.txt` from its `.bak` before investigating further.
+
+## Pre-release checklist
+
+- [ ] M4 merged; `main` is green.
+- [ ] WAR-12 audit signed off.
+- [ ] Version matches in `tauri.conf.json`, `Cargo.toml`, and both `package.json` files.
+- [ ] `CHANGELOG.md` reflects the merged scope.
+- [ ] Tag workflow produced NSIS and MSI artifacts and a draft release.
+- [ ] Manual QA script passed on clean Windows 10 and 11 machines.
+- [ ] Installer SHA-256 published in the release notes.
