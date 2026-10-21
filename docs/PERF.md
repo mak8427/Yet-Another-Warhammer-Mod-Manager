@@ -450,8 +450,15 @@ host: the default run passes at `1.52 ms` / `6.82 ms`, while `--budget-500 1.0` 
 
 Wall-clock budgets are host-specific and are **not** a required check on shared CI runners. The
 opt-in `scan-budget` job in `.github/workflows/perf-new-app.yml` runs only on a self-hosted runner
-labelled `perf-budget` after a manual dispatch with `scan_budget: true`; the supported local command
-is the one above. Shared-runner Criterion runs remain informational, as for the rest of WAR-7.
+labelled `perf-budget` after a manual dispatch with `scan_budget: true`.
+
+**Prerequisite: no `perf-budget` runner is registered.** As of 2026-10-21 the repository has no
+runner carrying the labels `self-hosted`, `linux`, `x64`, `perf-budget`
+(`gh api repos/mak8427/Warhammer_mod_manager/actions/runners --jq .total_count` returns `0`).
+A manual dispatch with `scan_budget: true` therefore stays queued until such a runner is
+registered; it does not fail fast or report an error. Until one exists, the supported gate is the
+local command above, run on the budget host. Shared-runner Criterion runs remain informational, as
+for the rest of WAR-7.
 
 ## Known limits
 
