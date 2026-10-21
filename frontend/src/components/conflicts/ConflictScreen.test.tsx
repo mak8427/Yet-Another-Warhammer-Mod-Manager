@@ -20,10 +20,12 @@ describe('ConflictScreen', () => {
     const fileTable = screen.getAllByRole('table')[0]
     expect(within(fileTable).getByText('db/units_tables/units')).toBeInTheDocument()
     expect(within(fileTable).getByText('beta.pack')).toBeInTheDocument()
-    expect(within(fileTable).getByText('alpha.pack')).toBeInTheDocument()
     expect(screen.getByText(/missing\.pack/)).toBeInTheDocument()
     expect(screen.getAllByText('beta.pack').length).toBeGreaterThan(0)
-    expect(screen.getByText('Shared paths').parentElement).toHaveTextContent('1')
+    expect(screen.getByText(/1 shared paths/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expand losers' }))
+    expect(within(fileTable).getByText('Loses: alpha.pack')).toBeInTheDocument()
   })
 
   it('shows a structured error and refreshes on demand', () => {
@@ -45,7 +47,7 @@ describe('ConflictScreen', () => {
     )
 
     expect(screen.getByRole('alert')).toHaveTextContent('A pack index could not be read')
-    fireEvent.click(screen.getByRole('button', { name: 'Refresh' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Rescan' })[0])
     expect(onRefresh).toHaveBeenCalled()
   })
 })
