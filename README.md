@@ -5,6 +5,8 @@ backend and a TypeScript frontend.
 
 - Product scope and v1.0 acceptance criteria: [docs/PRODUCT_SCOPE.md](docs/PRODUCT_SCOPE.md)
 - Architecture decisions: [docs/adr/](docs/adr/)
+- QA plan and release gate: [docs/QA_PLAN.md](docs/QA_PLAN.md)
+- Bug report template: [docs/BUG_REPORT_TEMPLATE.md](docs/BUG_REPORT_TEMPLATE.md)
 - Legacy reference (Electron, not copied): https://github.com/Shazbot/WH3-Mod-Manager
 
 ## Status
@@ -21,6 +23,8 @@ crates/wh3mm-core/   pure domain logic (no Tauri/WebView; testable on Linux)
 crates/wh3mm-app/    Tauri 2 command layer and `wh3mm` binary (Windows-gated)
 frontend/            React + TypeScript + Vite UI
 docs/adr/            architecture decisions
+fixtures/            synthetic QA fixtures (see fixtures/README.md)
+scripts/qa/          deterministic fixture generator
 ```
 
 The frontend never touches the filesystem. All game, Steam, pack, and state
@@ -86,8 +90,11 @@ cargo fetch --locked
 # Build every workspace member
 cargo build --workspace --locked
 
-# Run the core, IPC contract, and command tests
+# Run the core, IPC contract, fixture-contract, and command tests
 cargo test --workspace --locked
+
+# Verify the committed synthetic fixtures against their manifest
+node scripts/qa/generate-fixtures.mjs --verify
 
 # The same lint gates CI enforces
 cargo fmt --all --check

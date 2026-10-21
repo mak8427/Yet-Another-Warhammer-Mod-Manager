@@ -1,0 +1,20 @@
+"AppState"
+{
+	"appid"		"1142710"
+	"Universe"		"1"
+	"name"		"Total War: WARHAMMER III"
+	"StateFlags"		"4"
+	"installdir"		"Warhammer3"
+	"LastUpdated"		"1759000000"
+	"SizeOnDisk"		"73400320000"
+	"buildid"		"18000000"
+	"LastPlayed"		"1760000000"
+	"UserConfig"
+	{
+		"language"		"english"
+	}
+	"MountedDepots"
+	{
+		"1142711"		"1234567890123456789"
+	}
+}

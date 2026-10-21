@@ -269,6 +269,25 @@
   --scrollbar-thumb: var(--iron-650);
   --scrollbar-thumb-hover: var(--iron-600);
   --scrollbar-track: var(--iron-900);
+
+  /* ---------------------------------------------------------------------
+   * Deprecated compatibility aliases for pre-token components (WAR-5).
+   * M4 migrates component styles to the semantic tokens; remove this block
+   * when the last legacy reference is gone.
+   * ------------------------------------------------------------------ */
+  --ink: var(--color-bg-app);
+  --ink-raised: var(--color-bg-list-header);
+  --ink-panel: var(--color-bg-surface);
+  --ink-panel-alt: var(--color-bg-surface-raised);
+  --parchment: var(--color-text-primary);
+  --parchment-dim: var(--color-text-secondary);
+  --gold: var(--color-text-accent);
+  --gold-bright: var(--brass-300);
+  --gold-dim: var(--color-text-muted);
+  --brass-line: var(--color-border-default);
+  --blood: var(--color-state-danger);
+  --blood-bright: var(--color-state-danger);
+  --green: var(--color-state-success);
 }
 
 :root[data-density='compact'] {
