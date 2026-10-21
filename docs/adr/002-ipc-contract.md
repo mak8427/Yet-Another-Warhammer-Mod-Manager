@@ -118,15 +118,6 @@ The load-order write is preflighted before any state changes, and the typed
   `confirmUnmanagedLoss: true`; `unmanagedDirectives` lists what would be
   dropped.
 
-`loadOrderOutcome` names why the write did or did not happen:
-`written`, `no_game_path`, or `blocked`. A blocked write means a game path
-exists but the safety planner refused it, for example because the existing
-`used_mods.txt` is corrupt; the file is left untouched and
-`loadOrderBlockedReason` carries the planner's explanation. The UI must show
-that reason instead of claiming no game path. A reset that clears a manual
-override also refreshes the session location from auto-detection, so a
-following `detect_game` reports `source: "auto"` when discovery succeeds.
-
 ### Implemented command surface (M1-M2)
 
 Payloads are fixed here so UI work and core work can proceed in parallel.

@@ -108,7 +108,7 @@ These apply to every screen and every milestone.
   Evidence: `theme.css` `:focus-visible` rules use 2px `--color-border-focus` with 2px offset (rows inset 2px); `tokens.test.ts` asserts the 3:1 focus/control ratio.
 - `[x]` G-04 Every action in the keyboard map (`docs/UI_DIRECTION.md` §7) is
   reachable and works with the keyboard alone at 1024×720.
-  Evidence: `App.test.tsx` — Ctrl+1..5, `focuses search from another screen with Ctrl+F`, F6 at ≥1280, F6 below 1280 with a closed overlay inspector; `ModList.test.tsx` — Ctrl+A, Escape, Alt+Arrow, ctrl-click. The full manual trace is X-03.
+  Evidence: `App.test.tsx` — Ctrl+1..5, `focuses search from another screen with Ctrl+F`, `cycles F6 through the visible regions at 1280px and wider`, `skips the closed overlay inspector and hidden toolbar content below 1280px`; `ModList.test.tsx` — Ctrl+A, Escape, Alt+Arrow, ctrl-click. The full pointer-free release trace is X-03, owned by M5.
 - `[x]` G-05 State is never conveyed by colour alone. Enabled/disabled,
   selected, conflict, missing dependency, loading, empty, and error each have a
   shape/icon or text channel in addition to colour. A grayscale screenshot
@@ -191,13 +191,13 @@ These apply to every screen and every milestone.
   Evidence: `TitleBar.tsx` renders the 28px sigil, app name, profile selector, game status, and settings button; `shell__mods__1920x1080__comfortable.png`.
 - `[x]` S01-03 Rail order is Mods, Profiles, Conflicts, Workshop, Settings; no
   viewer/editor/other-game entries; `Ctrl+1`…`Ctrl+5` select them.
-  Evidence: `SectionRail.tsx` order is Mods, Profiles, Conflicts, Workshop, Settings; `App.test.tsx` — `switches sections with Ctrl+1..5 and focuses search with Ctrl+F`.
+  Evidence: `SectionRail.tsx` order is Mods, Profiles, Conflicts, Workshop, Settings; `App.test.tsx` — `switches sections with Ctrl+1..5 and focuses search with Ctrl+F` and `focuses search from another screen with Ctrl+F`.
 - `[x]` S01-04 Active rail item has a 2px brass left rule and is also marked
   `aria-current="page"`; focus ring is visible on every item.
   Evidence: `SectionRail.tsx` sets `aria-current="page"`; `.rail-item-active` has the 2px brass left rule; `theme.css` focus-visible ring; keyboard tests in `App.test.tsx`.
 - `[x]` S01-05 `F6` cycles rail → toolbar → list → inspector; `Shift+F6`
   reverses; focus never escapes to a hidden element.
-  Evidence: `App.test.tsx` — `cycles F6 through the visible regions at 1280px and wider` and `skips the closed overlay inspector in the F6 cycle below 1280px`.
+  Evidence: `App.test.tsx` — `cycles F6 through the visible regions at 1280px and wider` and `skips the closed overlay inspector and hidden toolbar content below 1280px`; production-build CDP trace in `docs/M4_EVIDENCE.md`.
 - `[x]` S01-06 Status bar is one line, shows readiness and counts, and reports
   `Unsaved changes` when the load order is dirty.
   Evidence: `StatusBar.tsx`; `App.test.tsx` boot asserts `Ready · 2 mods · 1 enabled`; `dirty` flips on enable/order mutations and renders `Unsaved changes`.
@@ -525,22 +525,25 @@ These apply to every screen and every milestone.
 | `pnpm build` | `pnpm build` | pass |
 | `tokens.test.ts` | included in `pnpm test` | pass |
 | 20k virtualization measurement | `ModList.test.tsx` bounds 20,000 mods to ≤30 mounted rows; browser capture measured 44–50 mounted rows for 23–29 visible rows | pass |
-| Keyboard-only automation | `App.test.tsx` — Ctrl+1..5, Ctrl+F from any screen, F6 both sides of 1280; `ModList.test.tsx` — Ctrl+A, Escape, Alt+Arrow; full 1024×720 trace is X-03 | pass (automation) / X-03 open |
+| Keyboard-only automation | `App.test.tsx` — Ctrl+1..5, Ctrl+F from any screen, F6 both sides of 1280; `ModList.test.tsx` — Ctrl+A, Escape, Alt+Arrow; production-build CDP trace in `docs/M4_EVIDENCE.md` | pass (automation); X-03 is the M5 release trace |
 | Workshop virtualization | `WorkshopScreen.test.tsx` — 500 subscriptions mount ≤30 rows | pass |
 | Screenshot set | `docs/screenshots/WAR-10/` — 29 PNGs at 1920×1080 and 1366×768, plus compact/roomy and selection states; see `docs/M4_EVIDENCE.md` | pass |
 
 ## Open items
 
-These are the only unchecked items. Each has an explicit owner; all other 115
-items have evidence above.
+These are the only unchecked items. Each has an explicit owner and milestone;
+all other 115 items have evidence above. None of them blocks M4: M4 owns the
+visual system and the automated keyboard map, while these are Windows-QA,
+native-dialog, and config-recovery work scheduled for the M5 hardening/release
+gate.
 
-| Item | Owner | Why it is open |
-|---|---|---|
-| T-02 | Baltasar Gelt (QA) | Needs the Windows reference machine at 200% text scale. |
-| S07-03 | Katerina Zarina (tech lead) | Native folder picker is not wired; the current action focuses the validated path field. |
-| S08-02 | Katerina Zarina (tech lead) | Same missing native folder picker on the not-found state. |
-| S08-04 | Katerina Zarina (tech lead) | The corrupt-config Restore/Reset dialog needs a new IPC command and an ADR; core currently auto-restores `.bak` and blocks writes when both copies are unreadable. |
-| X-03 | Baltasar Gelt (QA) | Full pointer-free 1024×720 trace; automation for the individual actions is in place. |
+| Item | Owner | Milestone | Why it is open and why it is not an M4 blocker |
+|---|---|---|---|
+| T-02 | Baltasar Gelt (QA) | M5 — Hardening + release | Needs the Windows reference machine at 200% text scale. M4 acceptance runs the keyboard map at 1024×720 on Linux; Windows text scaling is a release-hardening check. |
+| S07-03 | Katerina Zarina (tech lead) | M5 — Hardening + release | Native folder picker is not wired; the current action focuses the validated path field. This is a desktop-shell/release gap, not an M4 visual or keyboard defect. |
+| S08-02 | Katerina Zarina (tech lead) | M5 — Hardening + release | Same missing native folder picker on the not-found state. Tracked with S07-03 in M5. |
+| S08-04 | Katerina Zarina (tech lead) | M5 — Hardening + release | The corrupt-config Restore/Reset dialog needs a new IPC command and an ADR; core currently auto-restores `.bak` and blocks writes when both copies are unreadable. Config recovery is a release-safety item, not an M4 screen-polish item. |
+| X-03 | Baltasar Gelt (QA) | M5 — Hardening + release | Full pointer-free 1024×720 trace. The individual actions are automated and green; the end-to-end pointer-free run is part of the M5 e2e/release checklist. |
 
 ## Sign-off
 

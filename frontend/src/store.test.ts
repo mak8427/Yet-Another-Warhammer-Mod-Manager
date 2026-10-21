@@ -193,10 +193,12 @@ describe('AppStore', () => {
   it('reports the real load-order reason when a reset is blocked', async () => {
     const blocked = {
       ...RESET_REPORT,
-      loadOrderWritten: false,
-      loadOrderOutcome: 'blocked' as const,
-      loadOrderBlockedReason:
-        'used_mods.txt is corrupt; restore the backup before writing again',
+      loadOrder: {
+        status: 'failed' as const,
+        message: 'used_mods.txt is corrupt; restore the backup before writing again',
+        unmanagedDirectives: [],
+        requiresUnmanagedConfirmation: false,
+      },
     }
     const client = makeClient({ resetToDefaults: vi.fn(async () => blocked) })
     const store = new AppStore(client)
@@ -205,7 +207,7 @@ describe('AppStore', () => {
     await store.resetToDefaults()
 
     const notice = store.getState().notice
-    expect(notice?.kind).toBe('warning')
+    expect(notice?.kind).toBe('error')
     expect(notice?.message).toContain('used_mods.txt is corrupt')
     expect(notice?.message).not.toContain('no game path')
   })
@@ -242,9 +244,13 @@ describe('AppStore', () => {
       store.getState().snapshot?.mods.map((mod) => mod.id)
 
     store.setSort('name')
-    expect(order()).toEqual(['mod-m', 'mod-a', 'mod-z'])
+    const sortedByName = order()
+    expect(sortedByName).toEqual(['mod-m', 'mod-a', 'mod-z'])
+
+    // Re-sorting after another mode must reproduce the identical order.
+    store.setSort('author')
     store.setSort('name')
-    expect(order()).toEqual(['mod-m', 'mod-a', 'mod-z'])
+    expect(order()).toEqual(sortedByName)
     expect(sourceOrder()).toEqual(['mod-z', 'mod-a', 'mod-m'])
 
     store.setSort('author')
