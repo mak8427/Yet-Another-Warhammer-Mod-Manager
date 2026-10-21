@@ -243,6 +243,7 @@ async function generate(out, count, seed) {
     alwaysEnabledModNames: [],
     hiddenModNames: [],
     ignoredMissingReqModNames: [],
+    isDualModListLayoutEnabled: true,
     categories: [],
     categoryColors: {},
     packDataOverwrites: {},

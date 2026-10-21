@@ -299,14 +299,29 @@ async function measureLoadOrderPersist(cdp, configPath) {
   if (!before) return { ok: false, error: "config.json is not readable before the load-order change" };
 
   const placement = await cdp.evaluate(`(() => {
-    const pane = document.getElementById("enabledModsPaneScroll");
-    if (!pane) return { ok: false, error: "enabled mod pane not found" };
+    const pane = document.getElementById("enabledModsPaneScroll") || document.getElementById("mod-rows-scroll");
+    if (!pane) {
+      return {
+        ok: false,
+        error: "mod list pane not found",
+        debug: {
+          panes: ["enabledModsPaneScroll", "disabledModsPaneScroll", "mod-rows-scroll"].filter((id) => document.getElementById(id)),
+          dualLists: !!document.getElementById("dualModLists"),
+        },
+      };
+    }
     const icons = [...pane.querySelectorAll('[id^="load-order-icon-"]')];
-    if (icons.length === 0) return { ok: false, error: "no load-order control in the enabled pane" };
+    if (icons.length === 0) {
+      return {
+        ok: false,
+        error: "no load-order control in the mod list pane",
+        debug: { pane: pane.id, rows: pane.querySelectorAll("[id^='mod-enabled-']").length },
+      };
+    }
     icons[0].click();
-    return { ok: true, controlId: icons[0].id, controls: icons.length };
+    return { ok: true, controlId: icons[0].id, controls: icons.length, pane: pane.id };
   })()`);
-  if (!placement?.ok) return { ok: false, error: placement?.error ?? "could not enter placement mode" };
+  if (!placement?.ok) return { ok: false, error: placement?.error ?? "could not enter placement mode", debug: placement?.debug };
 
   const targetPosition = 5;
   const placeholders = await waitForRenderer(
@@ -361,13 +376,21 @@ async function measurePresetSwitch(cdp, configPath, presetName) {
   const opened = await cdp.evaluate(`(() => {
     const section = document.getElementById("presetSection");
     if (!section) return { ok: false, error: "preset section not found" };
-    const input = section.querySelector("input");
-    if (!input) return { ok: false, error: "preset select input not found" };
-    input.focus();
-    const rect = input.getBoundingClientRect();
-    return { ok: true, x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    const container = document.getElementById("createOrSelectPreset") || section.firstElementChild;
+    if (!container) return { ok: false, error: "preset select container not found" };
+    const input = container.querySelector("input");
+    if (input) input.focus();
+    const rect = container.getBoundingClientRect();
+    return {
+      ok: rect.width > 0 && rect.height > 0,
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+      debug: { id: container.id || null, width: rect.width, height: rect.height, inputs: container.querySelectorAll("input").length },
+    };
   })()`);
-  if (!opened?.ok) return { ok: false, error: opened?.error ?? "could not open the preset select" };
+  if (!opened?.ok) {
+    return { ok: false, error: opened?.error ?? "preset select has no clickable area", debug: opened?.debug };
+  }
   await clickAtPoint(cdp, opened.x, opened.y);
 
   const options = await waitForRenderer(
@@ -378,7 +401,7 @@ async function measurePresetSwitch(cdp, configPath, presetName) {
   );
   if (!Array.isArray(options) || !options.includes(presetName)) {
     await cdp.evaluate(`(() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })))()`);
-    return { ok: false, error: `preset option "${presetName}" not found`, options };
+    return { ok: false, error: `preset option "${presetName}" not found`, options, debug: opened.debug };
   }
 
   const target = await cdp.evaluate(`(() => {
@@ -530,6 +553,9 @@ async function runOnce({ index, appPath, fixture, runDirectory }) {
             result.presetSwitch = { ok: false, error: String(error.message ?? error) };
           }
         }
+        const finalTitle = await cdp.evaluate(`document.title`);
+        result.domReady = { ...(result.domReady ?? {}), titleAfterSettle: finalTitle };
+        result.appVersion = finalTitle?.match(/\bv?(\d+\.\d+\.\d+)\b/)?.[1] ?? result.appVersion;
         cdp.close();
       } catch (error) {
         result.cdpError = String(error.message ?? error);
