@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/wh3mm-core", "crates/wh3mm-app"]
+members = ["crates/wh3mm-core", "crates/wh3mm-app", "crates/wh3mm-perf"]
 
 [workspace.package]
 version = "0.1.0"

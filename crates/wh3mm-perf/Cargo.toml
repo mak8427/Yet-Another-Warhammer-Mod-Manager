@@ -1,0 +1,13 @@
+[package]
+name = "wh3mm-perf"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Headless measurement harness for the M2 performance gate (not shipped)"
+publish = false
+
+[dependencies]
+wh3mm-core = { path = "../wh3mm-core" }
+serde.workspace = true
+serde_json.workspace = true
