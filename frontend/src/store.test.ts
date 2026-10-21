@@ -173,6 +173,48 @@ describe('AppStore', () => {
     expect(store.getState().notice?.kind).toBe('success')
   })
 
+  it('sorts deterministically with an id tie-break in every non-drag mode', async () => {
+    const mods = [
+      makeMod({
+        id: 'mod-z',
+        name: 'z.pack',
+        humanName: 'Same',
+        author: 'A',
+        updatedAt: '2026-10-20T12:00:00Z',
+      }),
+      makeMod({
+        id: 'mod-a',
+        name: 'a.pack',
+        humanName: 'Same',
+        author: 'A',
+        updatedAt: '2026-10-20T12:00:00Z',
+      }),
+      makeMod({
+        id: 'mod-m',
+        name: 'm.pack',
+        humanName: 'Alpha',
+        author: 'B',
+        updatedAt: '2026-10-21T12:00:00Z',
+      }),
+    ]
+    const store = new AppStore(makeClient({ listMods: vi.fn(async () => makeSnapshot(mods)) }))
+    await store.init()
+    const order = () => visibleMods(store.getState()).map((mod) => mod.id)
+
+    store.setSort('name')
+    expect(order()).toEqual(['mod-m', 'mod-a', 'mod-z'])
+    expect(order()).toEqual(['mod-m', 'mod-a', 'mod-z'])
+
+    store.setSort('author')
+    expect(order()).toEqual(['mod-a', 'mod-z', 'mod-m'])
+
+    store.setSort('updated')
+    expect(order()).toEqual(['mod-m', 'mod-a', 'mod-z'])
+
+    store.setSort('load-order')
+    expect(order()).toEqual(['mod-z', 'mod-a', 'mod-m'])
+  })
+
   it('filters by search, author, and tags', async () => {
     const tagged = { ...MOD_B, author: 'Gelt', tags: ['tag-visual'] }
     // Seed state through the public init flow.

@@ -131,20 +131,27 @@ export function visibleMods(state: AppState): ModSummary[] {
   })
   if (state.sort === 'load-order') return filtered
   const sorted = filtered.slice()
+  const byId = (left: ModSummary, right: ModSummary) => left.id.localeCompare(right.id)
   if (state.sort === 'name') {
-    sorted.sort((a, b) => a.humanName.localeCompare(b.humanName, undefined, { sensitivity: 'base' }))
+    sorted.sort(
+      (a, b) =>
+        a.humanName.localeCompare(b.humanName, undefined, { sensitivity: 'base' }) || byId(a, b),
+    )
   } else if (state.sort === 'author') {
     sorted.sort((a, b) => {
       const left = a.author ?? ''
       const right = b.author ?? ''
-      return left.localeCompare(right, undefined, { sensitivity: 'base' }) ||
-        a.humanName.localeCompare(b.humanName, undefined, { sensitivity: 'base' })
+      return (
+        left.localeCompare(right, undefined, { sensitivity: 'base' }) ||
+        a.humanName.localeCompare(b.humanName, undefined, { sensitivity: 'base' }) ||
+        byId(a, b)
+      )
     })
   } else {
     sorted.sort((a, b) => {
       const left = a.updatedAt ? Date.parse(a.updatedAt) : Number.NEGATIVE_INFINITY
       const right = b.updatedAt ? Date.parse(b.updatedAt) : Number.NEGATIVE_INFINITY
-      return right - left
+      return right - left || byId(a, b)
     })
   }
   return sorted
