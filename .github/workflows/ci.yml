@@ -31,6 +31,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Reference fetch script tests
+        run: bash scripts/tests/fetch-reference.test.sh
+
       - uses: pnpm/action-setup@v4
         with:
           run_install: false

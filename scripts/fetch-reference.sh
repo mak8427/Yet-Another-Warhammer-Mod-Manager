@@ -16,15 +16,15 @@ repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
 if [ -e "$REFERENCE_DIR" ]; then
-  if git -C "$REFERENCE_DIR" rev-parse --git-dir >/dev/null 2>&1; then
-    current="$(git -C "$REFERENCE_DIR" rev-parse HEAD 2>/dev/null || true)"
-    if [ "$current" = "$PINNED_COMMIT" ]; then
-      printf 'reference checkout already at %s\n' "$PINNED_COMMIT"
-      exit 0
-    fi
-    die "$REFERENCE_DIR is at ${current:-an unknown revision}, not $PINNED_COMMIT; remove it and re-run this script"
+  if [ ! -e "$REFERENCE_DIR/.git" ]; then
+    die "$REFERENCE_DIR exists but is not a git checkout; remove it and re-run this script"
   fi
-  die "$REFERENCE_DIR exists but is not a git checkout; remove it and re-run this script"
+  current="$(git -C "$REFERENCE_DIR" rev-parse HEAD 2>/dev/null || true)"
+  if [ "$current" = "$PINNED_COMMIT" ]; then
+    printf 'reference checkout already at %s\n' "$PINNED_COMMIT"
+    exit 0
+  fi
+  die "$REFERENCE_DIR is at ${current:-an unknown revision}, not $PINNED_COMMIT; remove it and re-run this script"
 fi
 
 parent="$(dirname -- "$REFERENCE_DIR")"
