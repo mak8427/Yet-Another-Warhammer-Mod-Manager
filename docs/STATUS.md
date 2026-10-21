@@ -147,14 +147,17 @@ These are accepted for v1.0; the full manual scripts are in `docs/RELEASE.md`.
 | DET-1 Linux roots | Flatpak/Snap/XDG discovery is best-effort; Windows registry and native root are fixture-tested on WAR-10. | Detect on Linux Flatpak/Snap or use the manual path; confirm Windows detection without a manual path. |
 
 The capability-parity index in `docs/PARITY.md` is generated from
-`docs/PARITY.yaml`; only WS-3, LA-1, ML-4, and SET-2 may remain `partial` there.
+`docs/PARITY.yaml`; only WS-3, LA-1, ML-4, SET-2, and DET-1's Linux roots may
+remain `partial` there.
 At the release head `0e051204`, `node scripts/parity-report.mjs` reports
 91.750% with 33 done / 7 partial / **0 missing**. SET-4, ML-3, CF-4, and PRF-2
 moved to done with the WAR-10 code and tests cited in `docs/PARITY.yaml`; DET-1
-stays partial for the documented Flatpak/Snap/XDG Linux roots. The four allowed
-v1.0 limitations are WS-3, LA-1, ML-4, and SET-2. DSC-1 (author parsing) and
-WS-2 (open Workshop page) also remain partial; both are named in
-`docs/PRODUCT_SCOPE.md`, so their v1.0 status is escalated to Torgrim in WAR-104.
+stays partial for the documented Flatpak/Snap/XDG Linux roots. The five allowed
+v1.0 limitations are WS-3, LA-1, ML-4, SET-2, and DET-1's Linux roots. DSC-1
+(author parsing) and WS-2 (open Workshop page) also remain partial. WAR-104 chose
+Option B: WS-2 gets the missing Open test (WAR-106) and DSC-1's author surface is
+cut with `docs/PRODUCT_SCOPE.md` corrected (WAR-107). Both block the WAR-99
+`v1.0.0` tag.
 The parity percentage itself is a monitoring metric, not the ship gate (WAR-79).
 A `v1.0.0` tag and draft release are created only after the `release.yml`
 artifact dispatch on `main` is green and the release gates are on the branch;
