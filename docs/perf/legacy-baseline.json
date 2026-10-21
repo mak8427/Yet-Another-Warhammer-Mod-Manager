@@ -1,0 +1,1192 @@
+{
+  "schema": "wh3mm.perf.legacy-baseline.v1",
+  "environment": {
+    "capturedAt": "2026-10-21T09:34:53.265Z",
+    "os": "win32 x64",
+    "osRelease": "Microsoft Windows [Version 10.0.26100.33650]",
+    "node": "v22.23.3",
+    "cpu": "AMD64 Family 25 Model 1 Stepping 1, AuthenticAMD",
+    "cpuCores": 2,
+    "totalMemoryGiB": 8,
+    "freeMemoryGiB": 5.2,
+    "runnerName": "GitHub Actions 1000002466",
+    "runnerOs": "win25-vs2026",
+    "runnerImage": "20261018.275.1",
+    "appPath": "D:\\a\\_temp\\legacy\\app\\wh3mm.exe",
+    "appSha256": "3f8aa1b5d096b9f7c5bf387f4bf9fde3f47012d7e93d274d393a0514ca8c99da",
+    "fixturePath": "D:\\a\\Warhammer_mod_manager\\Warhammer_mod_manager\\perf-fixture\\wh3-500",
+    "fixtureSha256": "1de7de625da9ee53d1101a764d07d5ccbb61975932816c8b43574b648d0ab73a",
+    "fixturePacks": 500,
+    "runs": 12,
+    "presetSwitchTarget": "Perf Half",
+    "presets": [
+      {
+        "name": "Perf Half",
+        "entries": 246
+      },
+      {
+        "name": "Perf All",
+        "entries": 492
+      }
+    ],
+    "gameStub": {
+      "sourcePath": "D:\\a\\_temp\\Warhammer3.exe",
+      "installedAs": "D:\\a\\Warhammer_mod_manager\\Warhammer_mod_manager\\perf-fixture\\wh3-500\\Warhammer3.exe",
+      "sha256": "e1efcd6e3b5fe9220492cf362c9ba0782fb519be8973849b897d521c19e964ae",
+      "proxy": true
+    }
+  },
+  "metrics": {
+    "coldStartMs": {
+      "n": 12,
+      "medianMs": 1322,
+      "meanMs": 1429,
+      "p25Ms": 1289,
+      "p75Ms": 1502,
+      "iqrMs": 213,
+      "minMs": 1268,
+      "maxMs": 2019,
+      "stdevMs": 218,
+      "cvPercent": 15.2,
+      "samplesMs": [
+        1460,
+        1635,
+        1330,
+        2019,
+        1292,
+        1268,
+        1311,
+        1628,
+        1341,
+        1313,
+        1272,
+        1279
+      ]
+    },
+    "modListPopulatedMs": {
+      "n": 12,
+      "medianMs": 6862,
+      "meanMs": 7191,
+      "p25Ms": 6830,
+      "p75Ms": 7464,
+      "iqrMs": 635,
+      "minMs": 6815,
+      "maxMs": 8357,
+      "stdevMs": 532,
+      "cvPercent": 7.4,
+      "samplesMs": [
+        7408,
+        8106,
+        6942,
+        8357,
+        6834,
+        6826,
+        6831,
+        7633,
+        6817,
+        6856,
+        6815,
+        6867
+      ]
+    },
+    "headerScanMs": {
+      "n": 12,
+      "medianMs": 990,
+      "meanMs": 983,
+      "p25Ms": 947,
+      "p75Ms": 1011,
+      "iqrMs": 64,
+      "minMs": 645,
+      "maxMs": 1294,
+      "stdevMs": 137,
+      "cvPercent": 13.9,
+      "samplesMs": [
+        645,
+        1294,
+        1060,
+        943,
+        1025,
+        984,
+        995,
+        932,
+        997,
+        1006,
+        948,
+        967
+      ]
+    },
+    "loadOrderPersistMs": {
+      "n": 12,
+      "medianMs": 279,
+      "meanMs": 281,
+      "p25Ms": 275,
+      "p75Ms": 288,
+      "iqrMs": 13,
+      "minMs": 272,
+      "maxMs": 293,
+      "stdevMs": 7,
+      "cvPercent": 2.6,
+      "samplesMs": [
+        293,
+        275,
+        288,
+        288,
+        285,
+        272,
+        290,
+        281,
+        274,
+        276,
+        275,
+        272
+      ]
+    },
+    "presetSwitchMs": {
+      "n": 12,
+      "medianMs": 298,
+      "meanMs": 299,
+      "p25Ms": 294,
+      "p75Ms": 308,
+      "iqrMs": 14,
+      "minMs": 287,
+      "maxMs": 312,
+      "stdevMs": 8,
+      "cvPercent": 2.8,
+      "samplesMs": [
+        311,
+        312,
+        294,
+        297,
+        294,
+        287,
+        307,
+        309,
+        300,
+        288,
+        298,
+        293
+      ]
+    },
+    "gameLaunchHandoffMs": {
+      "n": 11,
+      "medianMs": 6163,
+      "meanMs": 6165,
+      "p25Ms": 6014,
+      "p75Ms": 6285,
+      "iqrMs": 271,
+      "minMs": 5860,
+      "maxMs": 6515,
+      "stdevMs": 205,
+      "cvPercent": 3.3,
+      "samplesMs": [
+        6318,
+        6462,
+        6187,
+        5889,
+        6058,
+        6163,
+        5970,
+        6136,
+        6515,
+        5860,
+        6252
+      ]
+    },
+    "modCount": [
+      492,
+      492,
+      492,
+      492,
+      492,
+      492,
+      492,
+      492,
+      492,
+      492,
+      492,
+      492
+    ]
+  },
+  "interactionSummary": {
+    "loadOrderPersist": {
+      "attempted": 12,
+      "measured": 12,
+      "verified": 12,
+      "errors": []
+    },
+    "presetSwitch": {
+      "attempted": 12,
+      "target": "Perf Half",
+      "measured": 12,
+      "verified": 12,
+      "errors": []
+    },
+    "gameLaunch": {
+      "attempted": 12,
+      "measured": 11,
+      "verified": 11,
+      "proxy": true,
+      "method": "stub-process-start",
+      "errors": [
+        "the stub game process did not start within 30000ms"
+      ]
+    }
+  },
+  "runs": [
+    {
+      "run": 1,
+      "environment": {
+        "capturedAt": "2026-10-21T09:34:53.526Z",
+        "os": "win32 x64",
+        "osRelease": "Microsoft Windows [Version 10.0.26100.33650]",
+        "node": "v22.23.3",
+        "cpu": "AMD64 Family 25 Model 1 Stepping 1, AuthenticAMD",
+        "cpuCores": 2,
+        "totalMemoryGiB": 8,
+        "freeMemoryGiB": 5,
+        "runnerName": "GitHub Actions 1000002466",
+        "runnerOs": "win25-vs2026",
+        "runnerImage": "20261018.275.1"
+      },
+      "coldStartMs": 1460,
+      "domReadyMs": 1335,
+      "finishedLoadMs": 1343,
+      "modsEnumeratedMs": 7408,
+      "modListPopulatedMs": 7408,
+      "headerScanMs": 645.1534000000001,
+      "modCount": 492,
+      "cdpConnected": true,
+      "appVersion": null,
+      "loadOrderPersist": {
+        "ok": true,
+        "ms": 293,
+        "targetPosition": 5,
+        "controlId": "load-order-icon-mod_ñandú_0000.pack",
+        "verified": true,
+        "enabledBefore": 492,
+        "enabledAfter": 492,
+        "modsBefore": 492,
+        "modsAfter": 492
+      },
+      "presetSwitch": {
+        "ok": true,
+        "ms": 311,
+        "preset": "Perf Half",
+        "selection": null,
+        "enabledBefore": 492,
+        "enabledAfter": 246,
+        "modsBefore": 492,
+        "modsAfter": 492,
+        "currentPresetName": "",
+        "verified": true
+      },
+      "gameLaunch": {
+        "ok": false,
+        "proxy": true,
+        "error": "the stub game process did not start within 30000ms",
+        "marker": "D:\\a\\Warhammer_mod_manager\\Warhammer_mod_manager\\docs\\perf\\.legacy-baseline-1792575293260\\launch-marker-1.txt",
+        "debug": {
+          "ok": true,
+          "disabled": false,
+          "rect": {
+            "x": 882.65625,
+            "y": 620,
+            "width": 144,
+            "height": 56
+          },
+          "viewport": {
+            "width": 1024,
+            "height": 720
+          }
+        }
+      },
+      "error": null,
+      "domReady": {
+        "root": true,
+        "rows": 19,
+        "title": "WH3 Mod Manager"
+      },
+      "cdpError": "CDP connection closed",
+      "logPath": "docs/perf/legacy-baseline-run-39577999775/run-1.log"
+    },
+    {
+      "run": 2,
+      "environment": {
+        "capturedAt": "2026-10-21T09:35:44.361Z",
+        "os": "win32 x64",
+        "osRelease": "Microsoft Windows [Version 10.0.26100.33650]",
+        "node": "v22.23.3",
+        "cpu": "AMD64 Family 25 Model 1 Stepping 1, AuthenticAMD",
+        "cpuCores": 2,
+        "totalMemoryGiB": 8,
+        "freeMemoryGiB": 5.9,
+        "runnerName": "GitHub Actions 1000002466",
+        "runnerOs": "win25-vs2026",
+        "runnerImage": "20261018.275.1"
+      },
+      "coldStartMs": 1635,
+      "domReadyMs": 1429,
+      "finishedLoadMs": 1430,
+      "modsEnumeratedMs": 8106,
+      "modListPopulatedMs": 8106,
+      "headerScanMs": 1294.1834,
+      "modCount": 492,
+      "cdpConnected": true,
+      "appVersion": null,
+      "loadOrderPersist": {
+        "ok": true,
+        "ms": 275,
+        "targetPosition": 5,
+        "controlId": "load-order-icon-mod_ñandú_0000.pack",
+        "verified": true,
+        "enabledBefore": 492,
+        "enabledAfter": 492,
+        "modsBefore": 492,
+        "modsAfter": 492
+      },
+      "presetSwitch": {
+        "ok": true,
+        "ms": 312,
+        "preset": "Perf Half",
+        "selection": null,
+        "enabledBefore": 492,
+        "enabledAfter": 246,
+        "modsBefore": 492,
+        "modsAfter": 492,
+        "currentPresetName": "",
+        "verified": true
+      },
+      "gameLaunch": {
+        "ok": true,
+        "ms": 6318,
+        "marker": "D:\\a\\Warhammer_mod_manager\\Warhammer_mod_manager\\docs\\perf\\.legacy-baseline-1792575293260\\launch-marker-2.txt",
+        "argv": "used_mods.txt;",
+        "method": "stub-process-start",
+        "click": "dom-element-click",
+        "proxy": true,
+        "debug": {
+          "ok": true,
+          "disabled": false,
+          "rect": {
+            "x": 882.65625,
+            "y": 620,
+            "width": 144,
+            "height": 56
+          },
+          "viewport": {
+            "width": 1024,
+            "height": 720
+          }
+        }
+      },
+      "error": null,
+      "domReady": {
+        "root": true,
+        "rows": 19,
+        "title": "WH3 Mod Manager",
+        "titleAfterSettle": "WH3 Mod Manager"
+      },
+      "logPath": "docs/perf/legacy-baseline-run-39577999775/run-2.log"
+    },
+    {
+      "run": 3,
+      "environment": {
+        "capturedAt": "2026-10-21T09:36:04.223Z",
+        "os": "win32 x64",
+        "osRelease": "Microsoft Windows [Version 10.0.26100.33650]",
+        "node": "v22.23.3",
+        "cpu": "AMD64 Family 25 Model 1 Stepping 1, AuthenticAMD",
+        "cpuCores": 2,
+        "totalMemoryGiB": 8,
+        "freeMemoryGiB": 5.9,
+        "runnerName": "GitHub Actions 1000002466",
+        "runnerOs": "win25-vs2026",
+        "runnerImage": "20261018.275.1"
+      },
+      "coldStartMs": 1330,
+      "domReadyMs": 1205,
+      "finishedLoadMs": 1212,
+      "modsEnumeratedMs": 6942,
+      "modListPopulatedMs": 6942,
+      "headerScanMs": 1059.5451999999996,
+      "modCount": 492,
+      "cdpConnected": true,
+      "appVersion": null,
+      "loadOrderPersist": {
+        "ok": true,
+        "ms": 288,
+        "targetPosition": 5,
+        "controlId": "load-order-icon-mod_ñandú_0000.pack",
+        "verified": true,
+        "enabledBefore": 492,
+        "enabledAfter": 492,
+        "modsBefore": 492,
+        "modsAfter": 492
+      },
+      "presetSwitch": {
+        "ok": true,
+        "ms": 294,
+        "preset": "Perf Half",
+        "selection": null,
+        "enabledBefore": 492,
+        "enabledAfter": 246,
+        "modsBefore": 492,
+        "modsAfter": 492,
+        "currentPresetName": "",
+        "verified": true
+      },
+      "gameLaunch": {
+        "ok": true,
+        "ms": 6462,
+        "marker": "D:\\a\\Warhammer_mod_manager\\Warhammer_mod_manager\\docs\\perf\\.legacy-baseline-1792575293260\\launch-marker-3.txt",
+        "argv": "used_mods.txt;",
+        "method": "stub-process-start",
+        "click": "dom-element-click",
+        "proxy": true,
+        "debug": {
+          "ok": true,
+          "disabled": false,
+          "rect": {
+            "x": 882.65625,
+            "y": 620,
+            "width": 144,
+            "height": 56
+          },
+          "viewport": {
+            "width": 1024,
+            "height": 720
+          }
+        }
+      },
+      "error": null,
+      "domReady": {
+        "root": true,
+        "rows": 19,
+        "title": "WH3 Mod Manager",
+        "titleAfterSettle": "WH3 Mod Manager"
+      },
+      "logPath": "docs/perf/legacy-baseline-run-39577999775/run-3.log"
+    },
+    {
+      "run": 4,
+      "environment": {
+        "capturedAt": "2026-10-21T09:36:23.018Z",
+        "os": "win32 x64",
+        "osRelease": "Microsoft Windows [Version 10.0.26100.33650]",
+        "node": "v22.23.3",
+        "cpu": "AMD64 Family 25 Model 1 Stepping 1, AuthenticAMD",
+        "cpuCores": 2,
+        "totalMemoryGiB": 8,
+        "freeMemoryGiB": 5.8,
+        "runnerName": "GitHub Actions 1000002466",
+        "runnerOs": "win25-vs2026",
+        "runnerImage": "20261018.275.1"
+      },
+      "coldStartMs": 2019,
+      "domReadyMs": 1897,
+      "finishedLoadMs": 1903,
+      "modsEnumeratedMs": 8357,
+      "modListPopulatedMs": 8357,
+      "headerScanMs": 943.0107000000007,
+      "modCount": 492,
+      "cdpConnected": true,
+      "appVersion": null,
+      "loadOrderPersist": {
+        "ok": true,
+        "ms": 288,
+        "targetPosition": 5,
+        "controlId": "load-order-icon-mod_ñandú_0000.pack",
+        "verified": true,
+        "enabledBefore": 492,
+        "enabledAfter": 492,
+        "modsBefore": 492,
+        "modsAfter": 492
+      },
+      "presetSwitch": {
+        "ok": true,
+        "ms": 297,
+        "preset": "Perf Half",
+        "selection": null,
+        "enabledBefore": 492,
+        "enabledAfter": 246,
+        "modsBefore": 492,
+        "modsAfter": 492,
+        "currentPresetName": "",
+        "verified": true
+      },
+      "gameLaunch": {
+        "ok": true,
+        "ms": 6187,
+        "marker": "D:\\a\\Warhammer_mod_manager\\Warhammer_mod_manager\\docs\\perf\\.legacy-baseline-1792575293260\\launch-marker-4.txt",
+        "argv": "used_mods.txt;",
+        "method": "stub-process-start",
+        "click": "dom-element-click",
+        "proxy": true,
+        "debug": {
+          "ok": true,
+          "disabled": false,
+          "rect": {
+            "x": 882.65625,
+            "y": 620,
+            "width": 144,
+            "height": 56
+          },
+          "viewport": {
+            "width": 1024,
+            "height": 720
+          }
+        }
+      },
+      "error": null,
+      "domReady": {
+        "root": true,
+        "rows": 19,
+        "title": "WH3 Mod Manager",
+        "titleAfterSettle": "WH3 Mod Manager"
+      },
+      "logPath": "docs/perf/legacy-baseline-run-39577999775/run-4.log"
+    },
+    {
+      "run": 5,
+      "environment": {
+        "capturedAt": "2026-10-21T09:36:42.158Z",
+        "os": "win32 x64",
+        "osRelease": "Microsoft Windows [Version 10.0.26100.33650]",
+        "node": "v22.23.3",
+        "cpu": "AMD64 Family 25 Model 1 Stepping 1, AuthenticAMD",
+        "cpuCores": 2,
+        "totalMemoryGiB": 8,
+        "freeMemoryGiB": 5.8,
+        "runnerName": "GitHub Actions 1000002466",
+        "runnerOs": "win25-vs2026",
+        "runnerImage": "20261018.275.1"
+      },
+      "coldStartMs": 1292,
+      "domReadyMs": 1169,
+      "finishedLoadMs": 1175,
+      "modsEnumeratedMs": 6834,
+      "modListPopulatedMs": 6834,
+      "headerScanMs": 1024.9968,
+      "modCount": 492,
+      "cdpConnected": true,
+      "appVersion": null,
+      "loadOrderPersist": {
+        "ok": true,
+        "ms": 285,
+        "targetPosition": 5,
+        "controlId": "load-order-icon-mod_ñandú_0000.pack",
+        "verified": true,
+        "enabledBefore": 492,
+        "enabledAfter": 492,
+        "modsBefore": 492,
+        "modsAfter": 492
+      },
+      "presetSwitch": {
+        "ok": true,
+        "ms": 294,
+        "preset": "Perf Half",
+        "selection": null,
+        "enabledBefore": 492,
+        "enabledAfter": 246,
+        "modsBefore": 492,
+        "modsAfter": 492,
+        "currentPresetName": "",
+        "verified": true
+      },
+      "gameLaunch": {
+        "ok": true,
+        "ms": 5889,
+        "marker": "D:\\a\\Warhammer_mod_manager\\Warhammer_mod_manager\\docs\\perf\\.legacy-baseline-1792575293260\\launch-marker-5.txt",
+        "argv": "used_mods.txt;",
+        "method": "stub-process-start",
+        "click": "dom-element-click",
+        "proxy": true,
+        "debug": {
+          "ok": true,
+          "disabled": false,
+          "rect": {
+            "x": 882.65625,
+            "y": 620,
+            "width": 144,
+            "height": 56
+          },
+          "viewport": {
+            "width": 1024,
+            "height": 720
+          }
+        }
+      },
+      "error": null,
+      "domReady": {
+        "root": true,
+        "rows": 19,
+        "title": "WH3 Mod Manager",
+        "titleAfterSettle": "WH3 Mod Manager"
+      },
+      "logPath": "docs/perf/legacy-baseline-run-39577999775/run-5.log"
+    },
+    {
+      "run": 6,
+      "environment": {
+        "capturedAt": "2026-10-21T09:36:59.687Z",
+        "os": "win32 x64",
+        "osRelease": "Microsoft Windows [Version 10.0.26100.33650]",
+        "node": "v22.23.3",
+        "cpu": "AMD64 Family 25 Model 1 Stepping 1, AuthenticAMD",
+        "cpuCores": 2,
+        "totalMemoryGiB": 8,
+        "freeMemoryGiB": 5.8,
+        "runnerName": "GitHub Actions 1000002466",
+        "runnerOs": "win25-vs2026",
+        "runnerImage": "20261018.275.1"
+      },
+      "coldStartMs": 1268,
+      "domReadyMs": 1146,
+      "finishedLoadMs": 1151,
+      "modsEnumeratedMs": 6825,
+      "modListPopulatedMs": 6826,
+      "headerScanMs": 984.3684999999996,
+      "modCount": 492,
+      "cdpConnected": true,
+      "appVersion": null,
+      "loadOrderPersist": {
+        "ok": true,
+        "ms": 272,
+        "targetPosition": 5,
+        "controlId": "load-order-icon-mod_ñandú_0000.pack",
+        "verified": true,
+        "enabledBefore": 492,
+        "enabledAfter": 492,
+        "modsBefore": 492,
+        "modsAfter": 492
+      },
+      "presetSwitch": {
+        "ok": true,
+        "ms": 287,
+        "preset": "Perf Half",
+        "selection": null,
+        "enabledBefore": 492,
+        "enabledAfter": 246,
+        "modsBefore": 492,
+        "modsAfter": 492,
+        "currentPresetName": "",
+        "verified": true
+      },
+      "gameLaunch": {
+        "ok": true,
+        "ms": 6058,
+        "marker": "D:\\a\\Warhammer_mod_manager\\Warhammer_mod_manager\\docs\\perf\\.legacy-baseline-1792575293260\\launch-marker-6.txt",
+        "argv": "used_mods.txt;",
+        "method": "stub-process-start",
+        "click": "dom-element-click",
+        "proxy": true,
+        "debug": {
+          "ok": true,
+          "disabled": false,
+          "rect": {
+            "x": 882.65625,
+            "y": 620,
+            "width": 144,
+            "height": 56
+          },
+          "viewport": {
+            "width": 1024,
+            "height": 720
+          }
+        }
+      },
+      "error": null,
+      "domReady": {
+        "root": true,
+        "rows": 19,
+        "title": "WH3 Mod Manager",
+        "titleAfterSettle": "WH3 Mod Manager"
+      },
+      "logPath": "docs/perf/legacy-baseline-run-39577999775/run-6.log"
+    },
+    {
+      "run": 7,
+      "environment": {
+        "capturedAt": "2026-10-21T09:37:17.176Z",
+        "os": "win32 x64",
+        "osRelease": "Microsoft Windows [Version 10.0.26100.33650]",
+        "node": "v22.23.3",
+        "cpu": "AMD64 Family 25 Model 1 Stepping 1, AuthenticAMD",
+        "cpuCores": 2,
+        "totalMemoryGiB": 8,
+        "freeMemoryGiB": 5.8,
+        "runnerName": "GitHub Actions 1000002466",
+        "runnerOs": "win25-vs2026",
+        "runnerImage": "20261018.275.1"
+      },
+      "coldStartMs": 1311,
+      "domReadyMs": 1192,
+      "finishedLoadMs": 1196,
+      "modsEnumeratedMs": 6831,
+      "modListPopulatedMs": 6831,
+      "headerScanMs": 994.9921000000004,
+      "modCount": 492,
+      "cdpConnected": true,
+      "appVersion": null,
+      "loadOrderPersist": {
+        "ok": true,
+        "ms": 290,
+        "targetPosition": 5,
+        "controlId": "load-order-icon-mod_ñandú_0000.pack",
+        "verified": true,
+        "enabledBefore": 492,
+        "enabledAfter": 492,
+        "modsBefore": 492,
+        "modsAfter": 492
+      },
+      "presetSwitch": {
+        "ok": true,
+        "ms": 307,
+        "preset": "Perf Half",
+        "selection": null,
+        "enabledBefore": 492,
+        "enabledAfter": 246,
+        "modsBefore": 492,
+        "modsAfter": 492,
+        "currentPresetName": "",
+        "verified": true
+      },
+      "gameLaunch": {
+        "ok": true,
+        "ms": 6163,
+        "marker": "D:\\a\\Warhammer_mod_manager\\Warhammer_mod_manager\\docs\\perf\\.legacy-baseline-1792575293260\\launch-marker-7.txt",
+        "argv": "used_mods.txt;",
+        "method": "stub-process-start",
+        "click": "dom-element-click",
+        "proxy": true,
+        "debug": {
+          "ok": true,
+          "disabled": false,
+          "rect": {
+            "x": 882.65625,
+            "y": 620,
+            "width": 144,
+            "height": 56
+          },
+          "viewport": {
+            "width": 1024,
+            "height": 720
+          }
+        }
+      },
+      "error": null,
+      "domReady": {
+        "root": true,
+        "rows": 19,
+        "title": "WH3 Mod Manager",
+        "titleAfterSettle": "WH3 Mod Manager"
+      },
+      "logPath": "docs/perf/legacy-baseline-run-39577999775/run-7.log"
+    },
+    {
+      "run": 8,
+      "environment": {
+        "capturedAt": "2026-10-21T09:37:35.079Z",
+        "os": "win32 x64",
+        "osRelease": "Microsoft Windows [Version 10.0.26100.33650]",
+        "node": "v22.23.3",
+        "cpu": "AMD64 Family 25 Model 1 Stepping 1, AuthenticAMD",
+        "cpuCores": 2,
+        "totalMemoryGiB": 8,
+        "freeMemoryGiB": 5.8,
+        "runnerName": "GitHub Actions 1000002466",
+        "runnerOs": "win25-vs2026",
+        "runnerImage": "20261018.275.1"
+      },
+      "coldStartMs": 1628,
+      "domReadyMs": 1507,
+      "finishedLoadMs": 1513,
+      "modsEnumeratedMs": 7632,
+      "modListPopulatedMs": 7633,
+      "headerScanMs": 932.1203999999998,
+      "modCount": 492,
+      "cdpConnected": true,
+      "appVersion": null,
+      "loadOrderPersist": {
+        "ok": true,
+        "ms": 281,
+        "targetPosition": 5,
+        "controlId": "load-order-icon-mod_ñandú_0000.pack",
+        "verified": true,
+        "enabledBefore": 492,
+        "enabledAfter": 492,
+        "modsBefore": 492,
+        "modsAfter": 492
+      },
+      "presetSwitch": {
+        "ok": true,
+        "ms": 309,
+        "preset": "Perf Half",
+        "selection": null,
+        "enabledBefore": 492,
+        "enabledAfter": 246,
+        "modsBefore": 492,
+        "modsAfter": 492,
+        "currentPresetName": "",
+        "verified": true
+      },
+      "gameLaunch": {
+        "ok": true,
+        "ms": 5970,
+        "marker": "D:\\a\\Warhammer_mod_manager\\Warhammer_mod_manager\\docs\\perf\\.legacy-baseline-1792575293260\\launch-marker-8.txt",
+        "argv": "used_mods.txt;",
+        "method": "stub-process-start",
+        "click": "dom-element-click",
+        "proxy": true,
+        "debug": {
+          "ok": true,
+          "disabled": false,
+          "rect": {
+            "x": 882.65625,
+            "y": 620,
+            "width": 144,
+            "height": 56
+          },
+          "viewport": {
+            "width": 1024,
+            "height": 720
+          }
+        }
+      },
+      "error": null,
+      "domReady": {
+        "root": true,
+        "rows": 19,
+        "title": "WH3 Mod Manager",
+        "titleAfterSettle": "WH3 Mod Manager"
+      },
+      "logPath": "docs/perf/legacy-baseline-run-39577999775/run-8.log"
+    },
+    {
+      "run": 9,
+      "environment": {
+        "capturedAt": "2026-10-21T09:37:53.440Z",
+        "os": "win32 x64",
+        "osRelease": "Microsoft Windows [Version 10.0.26100.33650]",
+        "node": "v22.23.3",
+        "cpu": "AMD64 Family 25 Model 1 Stepping 1, AuthenticAMD",
+        "cpuCores": 2,
+        "totalMemoryGiB": 8,
+        "freeMemoryGiB": 5.8,
+        "runnerName": "GitHub Actions 1000002466",
+        "runnerOs": "win25-vs2026",
+        "runnerImage": "20261018.275.1"
+      },
+      "coldStartMs": 1341,
+      "domReadyMs": 1286,
+      "finishedLoadMs": 1287,
+      "modsEnumeratedMs": 6817,
+      "modListPopulatedMs": 6817,
+      "headerScanMs": 997.4450999999999,
+      "modCount": 492,
+      "cdpConnected": true,
+      "appVersion": null,
+      "loadOrderPersist": {
+        "ok": true,
+        "ms": 274,
+        "targetPosition": 5,
+        "controlId": "load-order-icon-mod_ñandú_0000.pack",
+        "verified": true,
+        "enabledBefore": 492,
+        "enabledAfter": 492,
+        "modsBefore": 492,
+        "modsAfter": 492
+      },
+      "presetSwitch": {
+        "ok": true,
+        "ms": 300,
+        "preset": "Perf Half",
+        "selection": null,
+        "enabledBefore": 492,
+        "enabledAfter": 246,
+        "modsBefore": 492,
+        "modsAfter": 492,
+        "currentPresetName": "",
+        "verified": true
+      },
+      "gameLaunch": {
+        "ok": true,
+        "ms": 6136,
+        "marker": "D:\\a\\Warhammer_mod_manager\\Warhammer_mod_manager\\docs\\perf\\.legacy-baseline-1792575293260\\launch-marker-9.txt",
+        "argv": "used_mods.txt;",
+        "method": "stub-process-start",
+        "click": "dom-element-click",
+        "proxy": true,
+        "debug": {
+          "ok": true,
+          "disabled": false,
+          "rect": {
+            "x": 882.65625,
+            "y": 620,
+            "width": 144,
+            "height": 56
+          },
+          "viewport": {
+            "width": 1024,
+            "height": 720
+          }
+        }
+      },
+      "error": null,
+      "domReady": {
+        "root": true,
+        "rows": 19,
+        "title": "WH3 Mod Manager",
+        "titleAfterSettle": "WH3 Mod Manager"
+      },
+      "logPath": "docs/perf/legacy-baseline-run-39577999775/run-9.log"
+    },
+    {
+      "run": 10,
+      "environment": {
+        "capturedAt": "2026-10-21T09:38:11.157Z",
+        "os": "win32 x64",
+        "osRelease": "Microsoft Windows [Version 10.0.26100.33650]",
+        "node": "v22.23.3",
+        "cpu": "AMD64 Family 25 Model 1 Stepping 1, AuthenticAMD",
+        "cpuCores": 2,
+        "totalMemoryGiB": 8,
+        "freeMemoryGiB": 5.8,
+        "runnerName": "GitHub Actions 1000002466",
+        "runnerOs": "win25-vs2026",
+        "runnerImage": "20261018.275.1"
+      },
+      "coldStartMs": 1313,
+      "domReadyMs": 1189,
+      "finishedLoadMs": 1195,
+      "modsEnumeratedMs": 6856,
+      "modListPopulatedMs": 6856,
+      "headerScanMs": 1006.1756999999998,
+      "modCount": 492,
+      "cdpConnected": true,
+      "appVersion": null,
+      "loadOrderPersist": {
+        "ok": true,
+        "ms": 276,
+        "targetPosition": 5,
+        "controlId": "load-order-icon-mod_ñandú_0000.pack",
+        "verified": true,
+        "enabledBefore": 492,
+        "enabledAfter": 492,
+        "modsBefore": 492,
+        "modsAfter": 492
+      },
+      "presetSwitch": {
+        "ok": true,
+        "ms": 288,
+        "preset": "Perf Half",
+        "selection": null,
+        "enabledBefore": 492,
+        "enabledAfter": 246,
+        "modsBefore": 492,
+        "modsAfter": 492,
+        "currentPresetName": "",
+        "verified": true
+      },
+      "gameLaunch": {
+        "ok": true,
+        "ms": 6515,
+        "marker": "D:\\a\\Warhammer_mod_manager\\Warhammer_mod_manager\\docs\\perf\\.legacy-baseline-1792575293260\\launch-marker-10.txt",
+        "argv": "used_mods.txt;",
+        "method": "stub-process-start",
+        "click": "dom-element-click",
+        "proxy": true,
+        "debug": {
+          "ok": true,
+          "disabled": false,
+          "rect": {
+            "x": 882.65625,
+            "y": 620,
+            "width": 144,
+            "height": 56
+          },
+          "viewport": {
+            "width": 1024,
+            "height": 720
+          }
+        }
+      },
+      "error": null,
+      "domReady": {
+        "root": true,
+        "rows": 19,
+        "title": "WH3 Mod Manager",
+        "titleAfterSettle": "WH3 Mod Manager"
+      },
+      "logPath": "docs/perf/legacy-baseline-run-39577999775/run-10.log"
+    },
+    {
+      "run": 11,
+      "environment": {
+        "capturedAt": "2026-10-21T09:38:29.529Z",
+        "os": "win32 x64",
+        "osRelease": "Microsoft Windows [Version 10.0.26100.33650]",
+        "node": "v22.23.3",
+        "cpu": "AMD64 Family 25 Model 1 Stepping 1, AuthenticAMD",
+        "cpuCores": 2,
+        "totalMemoryGiB": 8,
+        "freeMemoryGiB": 5.8,
+        "runnerName": "GitHub Actions 1000002466",
+        "runnerOs": "win25-vs2026",
+        "runnerImage": "20261018.275.1"
+      },
+      "coldStartMs": 1272,
+      "domReadyMs": 1152,
+      "finishedLoadMs": 1156,
+      "modsEnumeratedMs": 6814,
+      "modListPopulatedMs": 6815,
+      "headerScanMs": 947.8654999999999,
+      "modCount": 492,
+      "cdpConnected": true,
+      "appVersion": null,
+      "loadOrderPersist": {
+        "ok": true,
+        "ms": 275,
+        "targetPosition": 5,
+        "controlId": "load-order-icon-mod_ñandú_0000.pack",
+        "verified": true,
+        "enabledBefore": 492,
+        "enabledAfter": 492,
+        "modsBefore": 492,
+        "modsAfter": 492
+      },
+      "presetSwitch": {
+        "ok": true,
+        "ms": 298,
+        "preset": "Perf Half",
+        "selection": null,
+        "enabledBefore": 492,
+        "enabledAfter": 246,
+        "modsBefore": 492,
+        "modsAfter": 492,
+        "currentPresetName": "",
+        "verified": true
+      },
+      "gameLaunch": {
+        "ok": true,
+        "ms": 5860,
+        "marker": "D:\\a\\Warhammer_mod_manager\\Warhammer_mod_manager\\docs\\perf\\.legacy-baseline-1792575293260\\launch-marker-11.txt",
+        "argv": "used_mods.txt;",
+        "method": "stub-process-start",
+        "click": "dom-element-click",
+        "proxy": true,
+        "debug": {
+          "ok": true,
+          "disabled": false,
+          "rect": {
+            "x": 882.65625,
+            "y": 620,
+            "width": 144,
+            "height": 56
+          },
+          "viewport": {
+            "width": 1024,
+            "height": 720
+          }
+        }
+      },
+      "error": null,
+      "domReady": {
+        "root": true,
+        "rows": 19,
+        "title": "WH3 Mod Manager",
+        "titleAfterSettle": "WH3 Mod Manager"
+      },
+      "logPath": "docs/perf/legacy-baseline-run-39577999775/run-11.log"
+    },
+    {
+      "run": 12,
+      "environment": {
+        "capturedAt": "2026-10-21T09:38:46.797Z",
+        "os": "win32 x64",
+        "osRelease": "Microsoft Windows [Version 10.0.26100.33650]",
+        "node": "v22.23.3",
+        "cpu": "AMD64 Family 25 Model 1 Stepping 1, AuthenticAMD",
+        "cpuCores": 2,
+        "totalMemoryGiB": 8,
+        "freeMemoryGiB": 5.8,
+        "runnerName": "GitHub Actions 1000002466",
+        "runnerOs": "win25-vs2026",
+        "runnerImage": "20261018.275.1"
+      },
+      "coldStartMs": 1279,
+      "domReadyMs": 1156,
+      "finishedLoadMs": 1162,
+      "modsEnumeratedMs": 6866,
+      "modListPopulatedMs": 6867,
+      "headerScanMs": 966.6259,
+      "modCount": 492,
+      "cdpConnected": true,
+      "appVersion": null,
+      "loadOrderPersist": {
+        "ok": true,
+        "ms": 272,
+        "targetPosition": 5,
+        "controlId": "load-order-icon-mod_ñandú_0000.pack",
+        "verified": true,
+        "enabledBefore": 492,
+        "enabledAfter": 492,
+        "modsBefore": 492,
+        "modsAfter": 492
+      },
+      "presetSwitch": {
+        "ok": true,
+        "ms": 293,
+        "preset": "Perf Half",
+        "selection": null,
+        "enabledBefore": 492,
+        "enabledAfter": 246,
+        "modsBefore": 492,
+        "modsAfter": 492,
+        "currentPresetName": "",
+        "verified": true
+      },
+      "gameLaunch": {
+        "ok": true,
+        "ms": 6252,
+        "marker": "D:\\a\\Warhammer_mod_manager\\Warhammer_mod_manager\\docs\\perf\\.legacy-baseline-1792575293260\\launch-marker-12.txt",
+        "argv": "used_mods.txt;",
+        "method": "stub-process-start",
+        "click": "dom-element-click",
+        "proxy": true,
+        "debug": {
+          "ok": true,
+          "disabled": false,
+          "rect": {
+            "x": 882.65625,
+            "y": 620,
+            "width": 144,
+            "height": 56
+          },
+          "viewport": {
+            "width": 1024,
+            "height": 720
+          }
+        }
+      },
+      "error": null,
+      "domReady": {
+        "root": true,
+        "rows": 19,
+        "title": "WH3 Mod Manager",
+        "titleAfterSettle": "WH3 Mod Manager"
+      },
+      "logPath": "docs/perf/legacy-baseline-run-39577999775/run-12.log"
+    }
+  ],
+  "rawLogDirectory": "docs/perf/legacy-baseline-run-39577999775",
+  "notes": [
+    "coldStartMs is main's own [startup] React-mounted timer, measured from process launch.",
+    "modListPopulatedMs is process launch to the after-subscription-filter log, when main sends modsPopulated.",
+    "headerScanMs is the time to parse every mod's PFH5 header, marked by the pack-headers-cache.bin write.",
+    "The legacy app waits up to 5000ms for Steam subscription ids; without Steam this fixed wait is included.",
+    "loadOrderPersistMs is CDP click (drop a row at position 5) to the legacy app's own config.json write; v2.29.0 has no Apply button and persists through the debounced saveConfig.",
+    "presetSwitchMs is the Enter keypress on the filtered preset option to the config.json write that persists the new enabled set.",
+    "gameLaunchHandoffMs is a PROXY: DOM click on #playGame to the marker write of a compiled stub Warhammer3.exe. It covers the startGame IPC, used_mods.txt write, launch-plan resolution, process creation and stub startup. It excludes Steam, the game engine, and a real TW:WH3 launch; CI has no game install."
+  ]
+}

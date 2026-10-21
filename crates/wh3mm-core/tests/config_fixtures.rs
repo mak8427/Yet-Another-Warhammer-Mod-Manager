@@ -64,21 +64,23 @@ fn future_schema_is_refused_and_never_overwritten() {
     );
 }
 
-// Quarantined: WAR-47 (owner: Karl Franz). A future schema is currently
-// overwritten by a stale v1 backup, which violates ADR-003. Un-ignore when the
-// fix lands; the issue records the repro and acceptance criteria.
 #[test]
-#[ignore = "WAR-47: future schema is overwritten by a stale v1 backup (S2)"]
 fn future_schema_with_a_stale_backup_must_still_not_overwrite() {
     // ADR-003: "A higher number is not loaded and is never overwritten".
     // A valid v1 backup must not be used to downgrade a v2 file in place.
     let dir = TempDir::new("qa-config-future-bak");
     let original = fixture_bytes("config_future_version.json");
     let path = stage(&dir, "config_future_version.json");
-    fs::write(backup_path(&path), fixture_bytes("config_valid.json")).expect("valid backup");
+    let backup_bytes = fixture_bytes("config_valid.json");
+    fs::write(backup_path(&path), &backup_bytes).expect("valid backup");
 
     let loaded = load_or_create(&path).expect("a future schema must not crash startup");
     assert_eq!(fs::read(&path).expect("future config"), original);
+    assert_eq!(
+        fs::read(backup_path(&path)).expect("backup"),
+        backup_bytes,
+        "a stale v1 backup must be left byte-identical too"
+    );
     assert_eq!(loaded.status, ConfigStatus::Corrupt);
     assert!(loaded.write_blocked);
 }
