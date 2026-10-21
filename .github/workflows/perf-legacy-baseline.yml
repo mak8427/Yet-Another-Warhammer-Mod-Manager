@@ -9,7 +9,6 @@ on:
   pull_request:
     paths:
       - "scripts/perf/**"
-      - "docs/perf/**"
       - ".github/workflows/perf-legacy-baseline.yml"
   workflow_dispatch:
     inputs:
@@ -20,7 +19,7 @@ on:
       runs:
         description: Measured runs per metric
         required: true
-        default: "5"
+        default: "12"
 
 permissions:
   contents: read
@@ -65,7 +64,7 @@ jobs:
       - name: Measure the legacy release build
         shell: pwsh
         env:
-          WH3MM_RUNS: ${{ inputs.runs || '5' }}
+          WH3MM_RUNS: ${{ inputs.runs || '12' }}
           WH3MM_APP: ${{ env.WH3MM_APP }}
         run: |
           $ErrorActionPreference = "Stop"
@@ -87,9 +86,11 @@ jobs:
               "### Legacy baseline (${{ inputs.legacy_tag || 'v2.29.0' }})",
               "Machine: $($report.environment.osRelease) / $($report.environment.cpu) / $($report.environment.cpuCores) cores / $($report.environment.totalMemoryGiB) GiB",
               "Fixture: $($report.environment.fixturePacks) packs, sha256 $($report.environment.fixtureSha256)",
-              "Cold start median: $($report.metrics.coldStartMs.medianMs) ms (cv $($report.metrics.coldStartMs.cvPercent)%)",
-              "Mod list populated median: $($report.metrics.modListPopulatedMs.medianMs) ms (cv $($report.metrics.modListPopulatedMs.cvPercent)%)",
-              "Header scan median: $($report.metrics.headerScanMs.medianMs) ms (cv $($report.metrics.headerScanMs.cvPercent)%)"
+              "Cold start median: $($report.metrics.coldStartMs.medianMs) ms (IQR $($report.metrics.coldStartMs.iqrMs) ms, n $($report.metrics.coldStartMs.n))",
+              "Mod list populated median: $($report.metrics.modListPopulatedMs.medianMs) ms (IQR $($report.metrics.modListPopulatedMs.iqrMs) ms, n $($report.metrics.modListPopulatedMs.n))",
+              "Header scan median: $($report.metrics.headerScanMs.medianMs) ms (IQR $($report.metrics.headerScanMs.iqrMs) ms, n $($report.metrics.headerScanMs.n))",
+              "Load-order persist median: $($report.metrics.loadOrderPersistMs.medianMs) ms (IQR $($report.metrics.loadOrderPersistMs.iqrMs) ms, n $($report.metrics.loadOrderPersistMs.n))",
+              "Preset switch median: $($report.metrics.presetSwitchMs.medianMs) ms (IQR $($report.metrics.presetSwitchMs.iqrMs) ms, n $($report.metrics.presetSwitchMs.n))"
             )
             $lines | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
           }

@@ -9,7 +9,7 @@
 #
 # Environment:
 #   WH3MM_APP       path to the extracted release wh3mm.exe (stage 2)
-#   WH3MM_RUNS      number of measured runs (default 5)
+#   WH3MM_RUNS      number of measured runs (default 12)
 #   WH3MM_FIXTURE   fixture directory (default: $REPO/perf-fixture/wh3-500)
 #   WH3MM_OUT       JSON output (default: $REPO/docs/perf/legacy-baseline.json)
 set -euo pipefail
@@ -17,7 +17,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 fixture="${WH3MM_FIXTURE:-$repo_root/perf-fixture/wh3-500}"
 out="${WH3MM_OUT:-$repo_root/docs/perf/legacy-baseline.json}"
-runs="${WH3MM_RUNS:-5}"
+runs="${WH3MM_RUNS:-12}"
 mode="${1:-all}"
 
 echo "== fixture =="
@@ -41,7 +41,7 @@ The official legacy release is win32-x64 only:
   unzip /tmp/wh3mm-release/wh3mm-win32-x64-2.29.0.zip -d /tmp/wh3mm-release/app
   WH3MM_APP=/tmp/wh3mm-release/app/wh3mm.exe bash scripts/perf/legacy-baseline.sh
 
-On a Windows host the same command runs all five measured passes and writes docs/perf/legacy-baseline.json.
+On a Windows host the same command runs all twelve measured passes and writes docs/perf/legacy-baseline.json.
 On Linux/macOS this stage cannot run: the release has no Linux/macOS artefact and the app needs a
 Windows desktop session. See docs/PERF.md ("Legacy baseline / Feasibility").
 EOF

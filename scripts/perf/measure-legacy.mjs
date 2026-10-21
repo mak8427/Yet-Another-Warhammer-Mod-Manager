@@ -22,6 +22,7 @@
 import { spawn, execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { copyFile, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import * as nodeOs from "node:os";
 import * as nodePath from "node:path";
 
 const args = process.argv.slice(2);
@@ -36,8 +37,12 @@ const FIXTURE = nodePath.resolve(readArg("fixture", "perf-fixture/wh3-500"));
 const RUNS = Number(readArg("runs", 5));
 const OUT = nodePath.resolve(readArg("out", "docs/perf/legacy-baseline.json"));
 const BOOT_TIMEOUT_MS = Number(readArg("timeout", 180_000));
+const INTERACTION_TIMEOUT_MS = Number(readArg("interaction-timeout", 10_000));
+const SETTLE_MS = Number(readArg("settle", 1_500));
 const CDP_PORT = Number(readArg("cdp-port", 9227));
 const SKIP_CDP = hasFlag("no-cdp");
+const SKIP_INTERACTIONS = hasFlag("no-interactions");
+const PRESET_SWITCH_NAME = readArg("switch-preset", "Perf Half");
 
 if (!APP) {
   console.error("missing --app <path to wh3mm.exe>");
@@ -63,15 +68,32 @@ function median(values) {
   return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 }
 
+/** Linear-interpolation quantile, the same definition R's type 7 uses. */
+function quantile(values, fraction) {
+  const sorted = [...values].sort((a, b) => a - b);
+  if (sorted.length === 0) return null;
+  if (sorted.length === 1) return sorted[0];
+  const position = (sorted.length - 1) * fraction;
+  const lower = Math.floor(position);
+  const upper = Math.ceil(position);
+  if (lower === upper) return sorted[lower];
+  return sorted[lower] + (sorted[upper] - sorted[lower]) * (position - lower);
+}
+
 function summarize(values) {
   if (values.length === 0) return null;
   const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
   const variance = values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length;
   const stdev = Math.sqrt(variance);
+  const p25 = quantile(values, 0.25);
+  const p75 = quantile(values, 0.75);
   return {
     n: values.length,
     medianMs: Math.round(median(values)),
     meanMs: Math.round(mean),
+    p25Ms: Math.round(p25),
+    p75Ms: Math.round(p75),
+    iqrMs: Math.round(p75 - p25),
     minMs: Math.round(Math.min(...values)),
     maxMs: Math.round(Math.max(...values)),
     stdevMs: Math.round(stdev),
@@ -179,11 +201,224 @@ async function prepareUserData(fixture, runDirectory) {
   return userData;
 }
 
+function captureEnvironment() {
+  return {
+    capturedAt: new Date().toISOString(),
+    os: `${process.platform} ${process.arch}`,
+    osRelease: process.platform === "win32" ? execFileSync("cmd", ["/c", "ver"], { encoding: "utf8" }).trim() : null,
+    node: process.version,
+    cpu: process.platform === "win32" ? process.env.PROCESSOR_IDENTIFIER ?? null : nodeOs.cpus()[0]?.model ?? null,
+    cpuCores: nodeOs.cpus().length,
+    totalMemoryGiB: Number((nodeOs.totalmem() / 1024 ** 3).toFixed(1)),
+    freeMemoryGiB: Number((nodeOs.freemem() / 1024 ** 3).toFixed(1)),
+    runnerName: process.env.RUNNER_NAME ?? null,
+    runnerOs: process.env.ImageOS ?? process.env.RUNNER_OS ?? null,
+    runnerImage: process.env.ImageVersion ?? process.env.RUNNER_IMAGE ?? null,
+  };
+}
+
+/**
+ * Reads the persisted config and the derived counters the report needs. Returns null while the file
+ * is being replaced, so callers can retry.
+ */
+async function readConfigState(configPath) {
+  try {
+    const [info, text] = await Promise.all([stat(configPath), readFile(configPath, "utf8")]);
+    const json = JSON.parse(text);
+    const gameConfig = json.games?.[json.currentGame ?? "wh3"];
+    const preset = gameConfig?.currentPreset;
+    const enabledNames = (preset?.mods ?? []).filter((mod) => mod.isEnabled !== false).map((mod) => mod.name);
+    return {
+      mtimeMs: info.mtimeMs,
+      size: info.size,
+      text,
+      currentPresetName: preset?.name ?? null,
+      enabledCount: enabledNames.length,
+      enabledNames,
+      modCount: preset?.mods?.length ?? 0,
+      loadOrders: (preset?.mods ?? []).map((mod) => mod.loadOrder ?? null),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function waitForConfigQuiet(configPath, quietMs = 400, timeoutMs = 5_000) {
+  const deadline = Date.now() + timeoutMs;
+  let previous = await readConfigState(configPath);
+  let stableSince = Date.now();
+  while (Date.now() < deadline) {
+    await sleep(50);
+    const current = await readConfigState(configPath);
+    if (!current) continue;
+    if (!previous || current.text !== previous.text) {
+      previous = current;
+      stableSince = Date.now();
+      continue;
+    }
+    if (Date.now() - stableSince >= quietMs) return current;
+  }
+  return previous;
+}
+
+async function waitForConfigChange(configPath, previousText, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const current = await readConfigState(configPath);
+    if (current && current.text !== previousText) return current;
+    await sleep(10);
+  }
+  return null;
+}
+
+async function waitForRenderer(cdp, expression, predicate, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  let last;
+  while (Date.now() < deadline) {
+    last = await cdp.evaluate(expression);
+    if (predicate(last)) return last;
+    await sleep(25);
+  }
+  return last;
+}
+
+/** Sends a trusted mouse click through CDP, so framework event handlers see a normal user click. */
+async function clickAtPoint(cdp, x, y) {
+  await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y, button: "none", clickCount: 0 });
+  await cdp.send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: 1 });
+  await cdp.send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1 });
+}
+
+/**
+ * Load-order apply/persist: enter placement mode on the first enabled row, drop it at position 5,
+ * then time the path from the click to the legacy app's own config.json write. v2.29.0 has no Apply
+ * button; the debounced saveConfig write is the persist that follows a load-order change.
+ */
+async function measureLoadOrderPersist(cdp, configPath) {
+  const before = await waitForConfigQuiet(configPath);
+  if (!before) return { ok: false, error: "config.json is not readable before the load-order change" };
+
+  const placement = await cdp.evaluate(`(() => {
+    const pane = document.getElementById("enabledModsPaneScroll");
+    if (!pane) return { ok: false, error: "enabled mod pane not found" };
+    const icons = [...pane.querySelectorAll('[id^="load-order-icon-"]')];
+    if (icons.length === 0) return { ok: false, error: "no load-order control in the enabled pane" };
+    icons[0].click();
+    return { ok: true, controlId: icons[0].id, controls: icons.length };
+  })()`);
+  if (!placement?.ok) return { ok: false, error: placement?.error ?? "could not enter placement mode" };
+
+  const targetPosition = 5;
+  const placeholders = await waitForRenderer(
+    cdp,
+    `(() => [...document.querySelectorAll('[id^="enabled-mod-placeholder-"]')].map((element) => element.id))()`,
+    (ids) => Array.isArray(ids) && ids.includes(`enabled-mod-placeholder-${targetPosition}`),
+    3_000,
+  );
+  if (!Array.isArray(placeholders) || !placeholders.includes(`enabled-mod-placeholder-${targetPosition}`)) {
+    await cdp.evaluate(`(() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })))()`);
+    return { ok: false, error: "load-order placeholders did not render", placeholders };
+  }
+
+  const started = Date.now();
+  const dropped = await cdp.evaluate(`(() => {
+    const placeholder = document.getElementById("enabled-mod-placeholder-${targetPosition}");
+    if (!placeholder) return { ok: false };
+    placeholder.click();
+    return { ok: true };
+  })()`);
+  if (!dropped?.ok) return { ok: false, error: "load-order placeholder click failed" };
+
+  const after = await waitForConfigChange(configPath, before.text, INTERACTION_TIMEOUT_MS);
+  if (!after) {
+    await cdp.evaluate(`(() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })))()`);
+    return { ok: false, error: `config.json did not change within ${INTERACTION_TIMEOUT_MS}ms` };
+  }
+
+  const changedOrder = after.loadOrders.some((value, index) => value !== before.loadOrders[index]);
+  return {
+    ok: true,
+    ms: Date.now() - started,
+    targetPosition,
+    controlId: placement.controlId,
+    verified: changedOrder || after.text !== before.text,
+    enabledBefore: before.enabledCount,
+    enabledAfter: after.enabledCount,
+    modsBefore: before.modCount,
+    modsAfter: after.modCount,
+  };
+}
+
+/**
+ * Preset switch: pick the named preset in the sidebar select, then time from the option click to the
+ * config.json write that persists the new enabled set. The menu is opened before the clock starts, so
+ * the number is the switch itself, not the dropdown animation.
+ */
+async function measurePresetSwitch(cdp, configPath, presetName) {
+  const before = await waitForConfigQuiet(configPath);
+  if (!before) return { ok: false, error: "config.json is not readable before the preset switch" };
+
+  const opened = await cdp.evaluate(`(() => {
+    const section = document.getElementById("presetSection");
+    if (!section) return { ok: false, error: "preset section not found" };
+    const input = section.querySelector("input");
+    if (!input) return { ok: false, error: "preset select input not found" };
+    input.focus();
+    const rect = input.getBoundingClientRect();
+    return { ok: true, x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  })()`);
+  if (!opened?.ok) return { ok: false, error: opened?.error ?? "could not open the preset select" };
+  await clickAtPoint(cdp, opened.x, opened.y);
+
+  const options = await waitForRenderer(
+    cdp,
+    `(() => [...document.querySelectorAll('[role="option"]')].map((option) => option.textContent.trim()))()`,
+    (labels) => Array.isArray(labels) && labels.length > 0,
+    2_000,
+  );
+  if (!Array.isArray(options) || !options.includes(presetName)) {
+    await cdp.evaluate(`(() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })))()`);
+    return { ok: false, error: `preset option "${presetName}" not found`, options };
+  }
+
+  const target = await cdp.evaluate(`(() => {
+    const option = [...document.querySelectorAll('[role="option"]')].find(
+      (element) => element.textContent.trim() === ${JSON.stringify(presetName)},
+    );
+    if (!option) return { ok: false };
+    const rect = option.getBoundingClientRect();
+    return { ok: true, x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  })()`);
+  if (!target?.ok) return { ok: false, error: "preset option has no position" };
+
+  const started = Date.now();
+  await clickAtPoint(cdp, target.x, target.y);
+
+  const after = await waitForConfigChange(configPath, before.text, INTERACTION_TIMEOUT_MS);
+  if (!after) {
+    return { ok: false, error: `config.json did not change within ${INTERACTION_TIMEOUT_MS}ms` };
+  }
+
+  return {
+    ok: true,
+    ms: Date.now() - started,
+    preset: presetName,
+    enabledBefore: before.enabledCount,
+    enabledAfter: after.enabledCount,
+    modsBefore: before.modCount,
+    modsAfter: after.modCount,
+    currentPresetName: after.currentPresetName,
+    verified: after.enabledCount !== before.enabledCount || after.text !== before.text,
+  };
+}
+
 async function runOnce({ index, appPath, fixture, runDirectory }) {
   const userData = await prepareUserData(fixture, runDirectory);
   const cachePath = nodePath.join(userData, "pack-headers-cache.bin");
+  const configPath = nodePath.join(userData, "config.json");
   const logPath = nodePath.join(runDirectory, `run-${index + 1}.log`);
   const port = CDP_PORT + index;
+  const environment = captureEnvironment();
   const startedAt = process.hrtime.bigint();
   const ms = () => Number(process.hrtime.bigint() - startedAt) / 1e6;
 
@@ -221,6 +456,7 @@ async function runOnce({ index, appPath, fixture, runDirectory }) {
 
   const result = {
     run: index + 1,
+    environment,
     coldStartMs: null,
     domReadyMs: null,
     finishedLoadMs: null,
@@ -230,6 +466,8 @@ async function runOnce({ index, appPath, fixture, runDirectory }) {
     modCount: null,
     cdpConnected: false,
     appVersion: null,
+    loadOrderPersist: null,
+    presetSwitch: null,
     error: null,
   };
 
@@ -271,12 +509,27 @@ async function runOnce({ index, appPath, fixture, runDirectory }) {
       try {
         const cdp = await connectCDP(port, 15_000).then((client) => client.open());
         const dom = await cdp.evaluate(`(() => ({
-          root: !!document.getElementById("mod-rows-scroll"),
-          rows: document.querySelectorAll("#mod-rows-scroll [class*='row']").length,
+          root: !!document.getElementById("mod-rows-scroll") || !!document.getElementById("enabledModsPaneScroll"),
+          rows: document.querySelectorAll("[id^='mod-enabled-']").length,
           title: document.title,
         }))()`);
         result.cdpConnected = true;
         result.domReady = dom;
+        result.appVersion = dom?.title?.match(/\bv?(\d+\.\d+\.\d+)\b/)?.[1] ?? null;
+
+        if (!SKIP_INTERACTIONS) {
+          await sleep(SETTLE_MS);
+          try {
+            result.loadOrderPersist = await measureLoadOrderPersist(cdp, configPath);
+          } catch (error) {
+            result.loadOrderPersist = { ok: false, error: String(error.message ?? error) };
+          }
+          try {
+            result.presetSwitch = await measurePresetSwitch(cdp, configPath, PRESET_SWITCH_NAME);
+          } catch (error) {
+            result.presetSwitch = { ok: false, error: String(error.message ?? error) };
+          }
+        }
         cdp.close();
       } catch (error) {
         result.cdpError = String(error.message ?? error);
@@ -307,21 +560,19 @@ async function main() {
 
   const fixtureManifestPath = nodePath.join(FIXTURE, "fixture-manifest.json");
   const fixtureManifest = JSON.parse(await readFile(fixtureManifestPath, "utf8"));
+  const fixtureConfig = JSON.parse(await readFile(nodePath.join(FIXTURE, "userdata", "config.json"), "utf8"));
+  const fixturePresets = fixtureConfig.games?.wh3?.presets ?? [];
 
   const environment = {
-    capturedAt: new Date().toISOString(),
-    os: `${process.platform} ${process.arch}`,
-    osRelease: process.platform === "win32" ? execFileSync("cmd", ["/c", "ver"], { encoding: "utf8" }).trim() : null,
-    node: process.version,
-    cpu: process.platform === "win32" ? process.env.PROCESSOR_IDENTIFIER ?? null : null,
-    cpuCores: (await import("node:os")).cpus().length,
-    totalMemoryGiB: Number(((await import("node:os")).totalmem() / 1024 ** 3).toFixed(1)),
+    ...captureEnvironment(),
     appPath: APP,
     appSha256: await sha256File(APP),
     fixturePath: FIXTURE,
     fixtureSha256: fixtureManifest.sha256,
     fixturePacks: fixtureManifest.packFiles,
     runs: RUNS,
+    presetSwitchTarget: PRESET_SWITCH_NAME,
+    presets: fixturePresets.map((preset) => ({ name: preset.name, entries: preset.mods.length })),
   };
 
   const runs = [];
@@ -329,24 +580,51 @@ async function main() {
     const result = await runOnce({ index, appPath: APP, fixture: FIXTURE, runDirectory: workDirectory });
     console.log(
       `run ${index + 1}/${RUNS}: coldStart=${result.coldStartMs} modsPopulated=${result.modListPopulatedMs} ` +
-        `headerScan=${result.headerScanMs} mods=${result.modCount}${result.error ? ` error=${result.error}` : ""}`,
+        `headerScan=${result.headerScanMs} loadOrderPersist=${result.loadOrderPersist?.ms ?? "n/a"} ` +
+        `presetSwitch=${result.presetSwitch?.ms ?? "n/a"} mods=${result.modCount}` +
+        `${result.error ? ` error=${result.error}` : ""}`,
     );
     runs.push(result);
     if (result.error) break;
   }
 
   const successful = runs.filter((run) => !run.error);
+  const loadOrderSamples = successful
+    .map((run) => (run.loadOrderPersist?.ok ? run.loadOrderPersist.ms : null))
+    .filter((value) => value !== null);
+  const presetSamples = successful
+    .map((run) => (run.presetSwitch?.ok ? run.presetSwitch.ms : null))
+    .filter((value) => value !== null);
   const metrics = {
     coldStartMs: summarize(successful.map((run) => run.coldStartMs).filter(Number.isFinite)),
     modListPopulatedMs: summarize(successful.map((run) => run.modListPopulatedMs).filter(Number.isFinite)),
     headerScanMs: summarize(successful.map((run) => run.headerScanMs).filter((value) => value !== null)),
+    loadOrderPersistMs: summarize(loadOrderSamples),
+    presetSwitchMs: summarize(presetSamples),
     modCount: successful.map((run) => run.modCount),
+  };
+
+  const interactionSummary = {
+    loadOrderPersist: {
+      attempted: successful.length,
+      measured: loadOrderSamples.length,
+      verified: successful.filter((run) => run.loadOrderPersist?.verified).length,
+      errors: successful.filter((run) => run.loadOrderPersist && !run.loadOrderPersist.ok).map((run) => run.loadOrderPersist.error),
+    },
+    presetSwitch: {
+      attempted: successful.length,
+      target: PRESET_SWITCH_NAME,
+      measured: presetSamples.length,
+      verified: successful.filter((run) => run.presetSwitch?.verified).length,
+      errors: successful.filter((run) => run.presetSwitch && !run.presetSwitch.ok).map((run) => run.presetSwitch.error),
+    },
   };
 
   const report = {
     schema: "wh3mm.perf.legacy-baseline.v1",
     environment,
     metrics,
+    interactionSummary,
     runs,
     rawLogDirectory: workDirectory,
     notes: [
@@ -354,7 +632,9 @@ async function main() {
       "modListPopulatedMs is process launch to the after-subscription-filter log, when main sends modsPopulated.",
       "headerScanMs is the time to parse every mod's PFH5 header, marked by the pack-headers-cache.bin write.",
       "The legacy app waits up to 5000ms for Steam subscription ids; without Steam this fixed wait is included.",
-      "apply/persist, preset switch and game launch are not measured by this runner; see docs/PERF.md.",
+      "loadOrderPersistMs is CDP click (drop a row at position 5) to the legacy app's own config.json write; v2.29.0 has no Apply button and persists through the debounced saveConfig.",
+      "presetSwitchMs is CDP click on the named preset option to the config.json write that persists the new enabled set.",
+      "Game launch handoff is not measured here: it needs a real game install. The CEO decision of 2026-10-21 keeps it optional and non-blocking for M2/M5; see docs/PERF.md.",
     ],
   };
   await writeFile(OUT, `${JSON.stringify(report, null, 2)}\n`, "utf8");

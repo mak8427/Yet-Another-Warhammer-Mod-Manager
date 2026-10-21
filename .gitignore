@@ -13,3 +13,6 @@ coverage/
 # Perf fixtures are generated, never committed (500 binary packs)
 perf-fixture/
 docs/perf/.legacy-baseline-*/
+# ...but the legacy baseline raw stdout logs are committed evidence, despite the global *.log rule.
+!docs/perf/legacy-baseline-run-*/
+!docs/perf/legacy-baseline-run-*/*.log
