@@ -61,3 +61,36 @@ impl AppError {
         self
     }
 }
+
+impl AppError {
+    /// Wraps a filesystem failure with a user-facing context line.
+    pub fn io(context: impl AsRef<str>, error: &std::io::Error) -> Self {
+        Self::new(ErrorCode::Io, context.as_ref()).with_details(error.to_string())
+    }
+
+    /// Wraps a filesystem failure with the path that failed.
+    pub fn io_path(
+        context: impl AsRef<str>,
+        path: &std::path::Path,
+        error: &std::io::Error,
+    ) -> Self {
+        Self::new(ErrorCode::Io, context.as_ref())
+            .with_details(format!("{}: {error}", path.display()))
+    }
+
+    pub fn validation(message: impl Into<String>) -> Self {
+        Self::new(ErrorCode::Validation, message)
+    }
+
+    pub fn not_found(message: impl Into<String>) -> Self {
+        Self::new(ErrorCode::NotFound, message)
+    }
+
+    pub fn corrupt(message: impl Into<String>) -> Self {
+        Self::new(ErrorCode::ConfigCorrupt, message)
+    }
+
+    pub fn internal(message: impl Into<String>) -> Self {
+        Self::new(ErrorCode::Internal, message)
+    }
+}
