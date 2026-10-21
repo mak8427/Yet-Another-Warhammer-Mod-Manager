@@ -257,6 +257,56 @@ fn profiles_create_switch_duplicate_and_delete() {
 }
 
 #[test]
+fn applying_a_profile_restores_the_saved_order_exactly() {
+    let dir = TempDir::new("session-profile-order");
+    let game = game_fixture(&dir, &["a.pack", "b.pack", "c.pack"]);
+    let mut session = Session::initialize(options(&dir, Some(&game))).unwrap();
+    let snapshot = session.snapshot();
+    let id = |name: &str| {
+        snapshot
+            .mods
+            .iter()
+            .find(|module| module.name == name)
+            .unwrap()
+            .id
+            .clone()
+    };
+    let a = id("a.pack");
+    let b = id("b.pack");
+    let c = id("c.pack");
+
+    session
+        .set_mods_enabled(&[a.clone(), b.clone(), c.clone()], true)
+        .unwrap();
+    session
+        .set_load_order(&[c.clone(), a.clone(), b.clone()])
+        .unwrap();
+    let profile = session
+        .save_profile(None, "Ordered", vec![c.clone(), a.clone(), b.clone()])
+        .unwrap();
+
+    session
+        .set_load_order(&[b.clone(), c.clone(), a.clone()])
+        .unwrap();
+    session.set_mods_enabled(std::slice::from_ref(&a), false).unwrap();
+
+    let applied = session.apply_profile(&profile.id).unwrap();
+    assert_eq!(applied.active_profile_id, profile.id);
+    assert_eq!(applied.enabled_count, 3);
+    let enabled: Vec<&str> = applied
+        .mods
+        .iter()
+        .filter(|module| module.is_enabled)
+        .map(|module| module.name.as_str())
+        .collect();
+    assert_eq!(enabled, vec!["c.pack", "a.pack", "b.pack"]);
+    assert_eq!(
+        session.config.active_profile().enabled_mod_ids,
+        vec![c, a, b]
+    );
+}
+
+#[test]
 fn no_game_session_returns_typed_error_and_recovers_when_a_path_is_set() {
     let dir = TempDir::new("session-no-game");
     let mut session = Session::initialize(options(&dir, None)).unwrap();
