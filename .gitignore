@@ -20,6 +20,6 @@ docs/perf/.new-app-*/
 !docs/perf/legacy-baseline-run-*/*.log
 # ...and so are the new-app measurement logs.
 !docs/perf/new-app-run-*/
-!docs/perf/new-app-run-*/*.log
+!docs/perf/new-app-run-*/**/*.log
 !docs/perf/new-app-smoke-linux/
 !docs/perf/new-app-smoke-linux/**/*.log

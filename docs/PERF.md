@@ -233,34 +233,53 @@ JSON, and the raw logs.
 
 ## New app vs legacy (M2 gate)
 
-**Status: OPEN — no Windows measurement has run, so no verdict is claimed.**
+**Status: MEASURED on `windows-latest` — every metric clears the bar on the measured scope.**
 
-The branch `perf/new-app-comparison` (from `main` `c1a9cdd`) contains the measurement harness, the
-workflow and one reproduction command. The Windows run is blocked, not skipped:
+Captured by [Actions run 39587134072](https://github.com/mak8427/Warhammer_mod_manager/actions/runs/39587134072)
+on PR #19 for branch `perf/new-app-comparison`, rebased onto `main` `30e8a44`.
 
-- This run has no managed GitHub identity. `git push -u origin perf/new-app-comparison` fails with
-  `fatal: could not read Username for 'https://github.com': terminal prompts disabled`, and
-  `gh auth status` reports `You are not logged into any GitHub hosts`.
-- The exact command and error are recorded on WAR-46. The branch cannot be pushed, the PR cannot be
-  opened, and `.github/workflows/perf-new-app.yml` cannot be dispatched until a run with GitHub
-  identity picks the branch up.
-- A Linux measurement exists and is committed (see Harness smoke), but the host classes differ.
-  The comparison tool marks those rows `not comparable (host mismatch)` instead of inventing a
-  ratio. A Linux ratio against a Windows legacy median is not evidence for this gate.
+| Field | Value |
+| --- | --- |
+| Host | GitHub-hosted `windows-latest`, `Microsoft Windows [Version 10.0.26100.33650]`, 2 cores, 8 GiB RAM (runner image `20261018.275.1`, runner `GitHub Actions 1000002508`) |
+| Fixture | 500 packs, seed `20261020`, sha256 `1de7de625da9ee53d1101a764d07d5ccbb61975932816c8b43574b648d0ab73a` — identical to the legacy baseline |
+| Runs | 12 cold samples per metric, new process and fresh config per sample |
+| Harness | `wh3mm-perf` release binary, sha256 `2a9219e4c4f3b57bf51d409bc3abe3d407823e1dc0be9bcb5987f057975e35ee` |
+| Report | `docs/perf/new-app.json` |
+| Raw evidence | `docs/perf/new-app-run-39587134072/run-1..12/{run-<n>.json,run-<n>.log}` |
 
-The table is filled by the Windows run. Until then every new-app cell is `pending`.
+Same host class and the same fixture as the approved legacy baseline, so the ratios are valid.
 
 | Metric | Legacy n | Legacy median | Legacy for comparison | New n | New median | New IQR | Ratio | Verdict |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Cold start to interactive mod list | 12 | 1322 ms | 1322 ms | pending | pending | pending | pending | **pending** |
-| 500-mod list populated | 12 | 6862 ms | 1862 ms (Steam wait removed) | pending | pending | pending | pending | **pending** |
-| PFH5 header scan (500 packs) | 12 | 990 ms | 990 ms | pending | pending | pending | pending | **pending** |
-| Load-order apply/persist | 12 | 279 ms | 279 ms | pending | pending | pending | pending | **pending** |
-| Profile/preset switch | 12 | 298 ms | 298 ms | pending | pending | pending | pending | **pending** |
-| Game-launch handoff (**proxy**) | 11 | 6163 ms | 6163 ms | pending | pending | pending | pending | **pending** |
+| Cold start to interactive mod list | 12 | 1322 ms | 1322 ms | 12 | **60.885 ms** | 3.492 ms | **21.71x** | **pass** |
+| 500-mod list populated | 12 | 6862 ms | 1862 ms (Steam wait removed) | 12 | **61.511 ms** | 3.365 ms | **30.27x** | **pass** |
+| PFH5 header scan (500 packs) | 12 | 990 ms | 990 ms | 12 | **43 ms** | 2 ms | **23.02x** | **pass** |
+| Load-order apply/persist | 12 | 279 ms | 279 ms | 12 | **12.75 ms** | 1.245 ms | **21.88x** | **pass** |
+| Profile/preset switch | 12 | 298 ms | 298 ms | 12 | **10.78 ms** | 0.693 ms | **27.64x** | **pass** |
+| Game-launch handoff (**proxy**) | 11 | 6163 ms | 6163 ms | 12 | **28.145 ms** | 1.972 ms | **218.97x** | **pass** |
 
 Bar: **≥2x faster** on cold start and 500-mod list; every other metric strictly faster, or the gap
 explained with evidence. A miss is reported as `miss`, with the measured hotspot, not massaged.
+
+### What the ratios do and do not prove
+
+Two limits stay attached to these verdicts and must be read with the table.
+
+1. **Cold start and mod-list are a core-path floor, not end-to-end frame timing.** Both start at
+   process spawn; they end when `Session::initialize` returns and when the first `ModListSnapshot`
+   is serialised for IPC. WebView creation, first paint and DOM render are excluded. At
+   60.885 ms and 61.511 ms, the ≥2x bar still has about
+   **600.115 ms** of unmeasured UI budget on cold start (1322 / 2 − 60.885) and about
+   **869.489 ms** on the mod list (1862 / 2 − 61.511). That budget is not measured here: the
+   Tauri shell's start-to-paint metric must confirm it when the shell path is instrumented. The
+   measured verdict is for the core pipeline, stated as such.
+2. **The launch row is a proxy on both sides, and the two proxies differ.** The legacy proxy
+   includes CDP click dispatch and the legacy Play path; the new-app proxy starts the stub directly.
+   The 218.97x ratio is not a claim about launching TW:WH3. It only shows the last pre-launch write
+   plus a process spawn is not a bottleneck.
+3. **The interaction rows measure the core command.** Legacy rows include CDP drag/key dispatch,
+   the new rows do not. Those ratios cover the backend path only; UI interaction latency is not
+   claimed here.
 
 ### What the new-app harness measures
 
@@ -384,7 +403,12 @@ harness stub.
 
 ## Optimisation candidates
 
-None ranked. The mandate is "no optimisation without a measurement", and there is no same-host
-new-app number yet. The first Windows comparison produces the list in the required shape: path,
-current number, budget, cause, proposed change, expected win. Any candidate is a focused child task
-or a change to the author's branch with its benchmark in the same PR.
+The M2 gate does not require an optimisation: all six metrics passed on the shared Windows runner.
+The narrowest margin is the header scan at 23.02x against a "strictly faster" requirement; the
+widest headroom relative to its bar is the mod list at 30.27x.
+
+No hotspot is promoted here because the gate has no miss and this branch ran no profiler. If a later
+milestone wants more headroom, start from the measured split rather than guess: cold start and
+mod-list share the same 492-pack scan (43 ms of the ~61 ms), so the first probe is PFH5 header
+parsing plus data-folder enumeration, not the config or IPC snapshot path. That probe needs its own
+profile and a regression benchmark in the same PR, per the working agreement.
