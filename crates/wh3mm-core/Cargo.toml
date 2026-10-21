@@ -10,3 +10,8 @@ description = "Pure domain logic for the WH3 Mod Manager (no Tauri or WebView de
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+time = { version = "0.3.55", default-features = false, features = ["std"] }
+uuid = { version = "1.28.0", features = ["v4"] }
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.56.0"
