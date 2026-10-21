@@ -93,22 +93,58 @@ jobs:
           if-no-files-found: warn
 
   rust-benches:
-    name: Rust Criterion benches
+    name: Rust Criterion benches (Linux)
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Run Criterion benches when they exist
+      - name: Generate and verify the benchmark workloads
         run: |
-          shopt -s nullglob
-          benches=(crates/*/benches/*.rs)
-          if [ "${#benches[@]}" -eq 0 ]; then
-            echo "No Criterion benches yet; they attach with WAR-5 (pack header, mod index, conflicts, used_mods)." >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          cargo bench --workspace --locked
+          node scripts/perf/generate-suite.mjs
+          node scripts/perf/generate-suite.mjs --verify perf-fixture
+
+      - name: Run the core benchmarks
+        run: cargo bench -p wh3mm-core --bench hot_paths --locked
+
+  new-app-windows:
+    name: New app core baseline (Windows)
+    # Same-host data for the eventual legacy A/B. The legacy half downloads and launches the old
+    # Electron release; this half measures the new Rust core on the same runner class.
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Generate and verify the benchmark workloads
+        shell: pwsh
+        run: |
+          node scripts/perf/generate-suite.mjs
+          node scripts/perf/generate-suite.mjs --verify perf-fixture
+
+      - name: Run the core benchmarks
+        run: cargo bench -p wh3mm-core --bench hot_paths --locked
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: criterion-windows
+          path: target/criterion
+          retention-days: 7
+          if-no-files-found: warn
