@@ -1,0 +1,140 @@
+name: Perf new app vs legacy
+
+# Measures the rebuilt manager on the same 500-pack fixture and host class as the approved
+# legacy baseline (docs/PERF.md, perf/legacy-baseline @ 348c4a8). Windows-only so the host
+# class matches; the harness itself is headless and does not need a desktop session.
+on:
+  # workflow_dispatch only works once this file is on the default branch; the pull_request
+  # trigger lets the job run on the branch that introduces it.
+  pull_request:
+    paths:
+      - "crates/wh3mm-perf/**"
+      - "crates/wh3mm-core/**"
+      - "scripts/perf/**"
+      - "docs/perf/legacy-baseline.json"
+      - ".github/workflows/perf-new-app.yml"
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: Measured cold runs per metric
+        required: true
+        default: "12"
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Generate and verify the 500-mod fixture
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          node scripts/perf/generate-fixture.mjs --out perf-fixture/wh3-500 --count 500
+          if ($LASTEXITCODE -ne 0) { throw "fixture generation failed" }
+          node scripts/perf/generate-fixture.mjs --verify perf-fixture/wh3-500
+          if ($LASTEXITCODE -ne 0) { throw "fixture verification failed" }
+          $manifest = Get-Content perf-fixture/wh3-500/fixture-manifest.json -Raw | ConvertFrom-Json
+          if ($manifest.sha256 -ne "1de7de625da9ee53d1101a764d07d5ccbb61975932816c8b43574b648d0ab73a") {
+            throw "fixture digest $($manifest.sha256) does not match the approved baseline digest"
+          }
+          Write-Output "fixture: $($manifest.packFiles) packs, sha256 $($manifest.sha256)"
+
+      - name: Build the process-start stub
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          # Same stub contract as the legacy workflow: write the marker named in
+          # WH3MM_STUB_MARKER, then exit. It stands in for Warhammer3.exe.
+          $csc = Join-Path $env:WINDIR "Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+          if (-not (Test-Path $csc)) { throw "csc.exe not found at $csc" }
+          $src = Join-Path $env:RUNNER_TEMP "Wh3mmGameStub.cs"
+          $source = @(
+            'using System;',
+            'using System.IO;',
+            'using System.Threading;',
+            '',
+            'internal static class Wh3mmGameStub',
+            '{',
+            '    private static int Main(string[] args)',
+            '    {',
+            '        var marker = Environment.GetEnvironmentVariable("WH3MM_STUB_MARKER");',
+            '        if (!string.IsNullOrEmpty(marker)) File.WriteAllText(marker, string.Join(Environment.NewLine, args));',
+            '        Thread.Sleep(1500);',
+            '        return 0;',
+            '    }',
+            '}'
+          )
+          $source | Set-Content -Path $src -Encoding UTF8
+          $out = Join-Path $env:RUNNER_TEMP "Warhammer3.exe"
+          & $csc /nologo /target:exe /out:$out $src
+          if ($LASTEXITCODE -ne 0) { throw "csc failed with exit code $LASTEXITCODE" }
+          if (-not (Test-Path $out)) { throw "stub was not produced" }
+          "WH3MM_GAME_STUB=$out" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Output "process-start stub: $out"
+
+      - name: Build the measurement harness (release)
+        run: cargo build --release -p wh3mm-perf --locked
+
+      - name: Measure the new app
+        shell: pwsh
+        env:
+          WH3MM_RUNS: ${{ inputs.runs || '12' }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          node scripts/perf/measure-new-app.mjs `
+            --bin target/release/wh3mm-perf.exe `
+            --fixture perf-fixture/wh3-500 `
+            --runs $env:WH3MM_RUNS `
+            --stub "$env:WH3MM_GAME_STUB" `
+            --out docs/perf/new-app.json `
+            --raw-log-dir docs/perf/.new-app-${{ github.run_id }}
+          if ($LASTEXITCODE -ne 0) { throw "new-app measurement failed" }
+
+      - name: Attach the numbers to the run
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path docs/perf/new-app.json) {
+            $report = Get-Content docs/perf/new-app.json -Raw | ConvertFrom-Json
+            $lines = @(
+              "### New app vs legacy (M2 gate)",
+              "Machine: $($report.environment.osRelease) / $($report.environment.cpu) / $($report.environment.cpuCores) cores / $($report.environment.totalMemoryGiB) GiB",
+              "Fixture: $($report.environment.fixturePacks) packs, sha256 $($report.environment.fixtureSha256)",
+              "Cold start: $($report.metrics.coldStartMs.medianMs) ms (IQR $($report.metrics.coldStartMs.iqrMs), n $($report.metrics.coldStartMs.n))",
+              "Mod list populated: $($report.metrics.modListPopulatedMs.medianMs) ms (IQR $($report.metrics.modListPopulatedMs.iqrMs), n $($report.metrics.modListPopulatedMs.n))",
+              "Header scan: $($report.metrics.headerScanMs.medianMs) ms (IQR $($report.metrics.headerScanMs.iqrMs), n $($report.metrics.headerScanMs.n))",
+              "Load-order persist: $($report.metrics.loadOrderPersistMs.medianMs) ms (IQR $($report.metrics.loadOrderPersistMs.iqrMs), n $($report.metrics.loadOrderPersistMs.n))",
+              "Preset switch: $($report.metrics.presetSwitchMs.medianMs) ms (IQR $($report.metrics.presetSwitchMs.iqrMs), n $($report.metrics.presetSwitchMs.n))",
+              "Launch handoff (proxy): $($report.metrics.gameLaunchHandoffMs.medianMs) ms (IQR $($report.metrics.gameLaunchHandoffMs.iqrMs), n $($report.metrics.gameLaunchHandoffMs.n))"
+            )
+            if ($report.comparison) {
+              foreach ($row in $report.comparison.rows) {
+                $lines += "$($row.label): legacy $($row.legacyAdjustedMs) ms, new $($row.newMedianMs) ms, ratio $($row.ratio)x, $($row.bar), $($row.verdict)"
+              }
+            }
+            $lines | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+
+      - name: Upload per-run JSON and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: new-app-vs-legacy-${{ github.run_id }}
+          path: |
+            docs/perf/new-app.json
+            docs/perf/.new-app-${{ github.run_id }}/run-*/*.log
+            docs/perf/.new-app-${{ github.run_id }}/run-*/*.json
+          if-no-files-found: warn
+          include-hidden-files: true
+          retention-days: 90
