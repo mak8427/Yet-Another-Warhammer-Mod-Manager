@@ -60,6 +60,16 @@ if (process.platform !== "win32" && !hasFlag("allow-non-win32")) {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+function withTimeout(promise, ms, message) {
+  let timer;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(message)), ms);
+    }),
+  ]).finally(() => clearTimeout(timer));
+}
+
 async function sha256File(path) {
   return createHash("sha256").update(await readFile(path)).digest("hex");
 }
@@ -126,6 +136,7 @@ class CdpClient {
     this.url = url;
     this.nextId = 1;
     this.pending = new Map();
+    this.listeners = new Map();
   }
 
   async open() {
@@ -136,11 +147,19 @@ class CdpClient {
     });
     this.socket.addEventListener("message", (event) => {
       const message = JSON.parse(event.data);
+      if (!message.id) {
+        for (const listener of this.listeners.get(message.method) ?? []) listener(message.params);
+        return;
+      }
       const pending = this.pending.get(message.id);
       if (!pending) return;
       this.pending.delete(message.id);
       if (message.error) pending.reject(new Error(JSON.stringify(message.error)));
       else pending.resolve(message.result);
+    });
+    this.socket.addEventListener("close", () => {
+      for (const pending of this.pending.values()) pending.reject(new Error("CDP connection closed"));
+      this.pending.clear();
     });
     return this;
   }
@@ -153,13 +172,24 @@ class CdpClient {
     });
   }
 
+  on(method, listener) {
+    const listeners = this.listeners.get(method) ?? [];
+    listeners.push(listener);
+    this.listeners.set(method, listeners);
+  }
+
   async evaluate(expression, { awaitPromise = false, timeout = 30_000 } = {}) {
-    const result = await this.send("Runtime.evaluate", {
-      expression,
-      awaitPromise,
-      returnByValue: true,
-      timeout,
-    });
+    const limit = Math.max(timeout, 5_000);
+    const result = await withTimeout(
+      this.send("Runtime.evaluate", {
+        expression,
+        awaitPromise,
+        returnByValue: true,
+        timeout,
+      }),
+      limit,
+      `renderer evaluation timed out after ${limit}ms`,
+    );
     if (result.exceptionDetails) {
       throw new Error(result.exceptionDetails.text ?? "renderer evaluation failed");
     }
@@ -631,6 +661,11 @@ async function runOnce({ index, appPath, fixture, runDirectory }) {
     if (!SKIP_CDP && result.modListPopulatedMs !== null && !exitInfo) {
       try {
         const cdp = await connectCDP(port, 15_000).then((client) => client.open());
+        cdp.on("Runtime.consoleAPICalled", (params) => {
+          const text = (params.args ?? []).map((arg) => arg.value ?? arg.description ?? "").join(" ");
+          lines.push({ atMs: Math.round(ms()), line: `[renderer:${params.type}] ${text}` });
+        });
+        await cdp.send("Runtime.enable");
         const dom = await cdp.evaluate(`(() => ({
           root: !!document.getElementById("mod-rows-scroll") || !!document.getElementById("enabledModsPaneScroll"),
           rows: document.querySelectorAll("[id^='mod-enabled-']").length,
@@ -676,6 +711,7 @@ async function runOnce({ index, appPath, fixture, runDirectory }) {
           : `no "after subscription filter" log within ${BOOT_TIMEOUT_MS}ms`;
     }
   } finally {
+    if (exitInfo) result.appExit = exitInfo;
     killTree(child);
     await sleep(400);
     await writeFile(logPath, lines.map((entry) => `${entry.atMs.toString().padStart(8)} | ${entry.line}`).join("\n"));

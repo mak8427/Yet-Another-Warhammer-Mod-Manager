@@ -244,6 +244,7 @@ async function generate(out, count, seed) {
     hiddenModNames: [],
     ignoredMissingReqModNames: [],
     isDualModListLayoutEnabled: true,
+    isClosedOnPlay: false,
     categories: [],
     categoryColors: {},
     packDataOverwrites: {},
