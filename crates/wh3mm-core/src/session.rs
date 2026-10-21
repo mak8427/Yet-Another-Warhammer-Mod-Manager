@@ -12,7 +12,7 @@ use crate::config::{self, AppConfig, ConfigStatus};
 use crate::error::{AppError, ErrorCode};
 use crate::ipc::{
     GameLocation as IpcGameLocation, LoadOrderReadReport, LoadOrderWriteReport, ModListSnapshot,
-    ModSummary, Profile, ProfilesState, Tag, UiPreferences,
+    ModSummary, Profile, ProfilesState, ResetDefaultsReport, Tag, UiPreferences,
 };
 use crate::load_order::{self, LoadOrderFile, PlannedName, WritePlan};
 use crate::mod_index::{self, DiscoveredMod, IndexReport};
@@ -562,6 +562,33 @@ impl Session {
             Ok(())
         })?;
         Ok(self.ui_preferences())
+    }
+
+    /// Resets UI preferences and the active profile's enabled set, clears the
+    /// manual game path override, and writes an empty load order when a game is
+    /// available. Profiles, tags, mod tags, and launch options are kept.
+    pub fn reset_to_defaults(&mut self, confirm: bool) -> Result<ResetDefaultsReport, AppError> {
+        if !confirm {
+            return Err(AppError::validation(
+                "Resetting settings and the load order requires confirmation",
+            ));
+        }
+        self.commit_config(|config| {
+            config.reset_to_defaults();
+            Ok(())
+        })?;
+        self.enabled_ids.clear();
+
+        let mut load_order_written = false;
+        if self.location.is_some() {
+            let plan = self.plan_write(true, true)?;
+            if plan.can_write {
+                load_order::write_plan(&plan)?;
+                self.refresh_load_order_after_write()?;
+                load_order_written = true;
+            }
+        }
+        Ok(ResetDefaultsReport { load_order_written })
     }
 
     pub fn read_load_order(&mut self) -> Result<LoadOrderReadReport, AppError> {

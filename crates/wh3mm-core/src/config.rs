@@ -233,6 +233,18 @@ impl AppConfig {
         Ok(())
     }
 
+    /// Returns the document to the documented defaults while keeping profiles,
+    /// tags, mod tags, and launch options. Only the active profile's enabled set
+    /// is cleared; other profiles keep their saved sets.
+    pub fn reset_to_defaults(&mut self) {
+        self.ui = UiPreferences::default();
+        self.paths = PathsConfig::default();
+        let now = now_iso8601();
+        let active = self.active_profile_mut();
+        active.enabled_mod_ids.clear();
+        active.updated_at = now;
+    }
+
     /// Repairs safe invariants and rejects the ones that would lose data.
     fn validate_and_normalize(mut self) -> Result<(Self, Vec<String>), AppError> {
         if self.schema_version != SCHEMA_VERSION {

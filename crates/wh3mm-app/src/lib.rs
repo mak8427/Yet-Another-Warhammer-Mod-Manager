@@ -36,6 +36,7 @@ pub fn run() -> tauri::Result<()> {
             commands::set_mod_tags,
             commands::get_ui_preferences,
             commands::update_ui_preferences,
+            commands::reset_to_defaults,
             commands::read_load_order,
             commands::preview_load_order,
             commands::write_load_order,

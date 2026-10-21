@@ -99,6 +99,13 @@ export interface AppInfo {
 `frontend/src/App.tsx` invokes it on mount and renders the result, proving the
 round trip. This is also the stale-build check: the UI shows both versions.
 
+`reset_to_defaults` requires `confirm: true`. It resets `UiPreferences` to
+defaults, clears the manual game-path override, clears the active profile's
+enabled set, and writes an empty `used_mods.txt` through the atomic writer when
+a game path is available (`loadOrderWritten: true`). Profiles, tags, mod tags,
+and launch options are kept. With no game path the config reset still succeeds
+and `loadOrderWritten` is `false`.
+
 ### Implemented command surface (M1-M2)
 
 Payloads are fixed here so UI work and core work can proceed in parallel.
@@ -125,6 +132,7 @@ payload extensions and the load-order safety rules.
 | M2 | `set_mod_tags` | `{ modId: string, tagIds: string[] }` | `ModListSnapshot` |
 | M2 | `get_ui_preferences` | none | `UiPreferences` |
 | M2 | `update_ui_preferences` | `{ preferences: UiPreferences }` | `UiPreferences` |
+| M4 | `reset_to_defaults` | `{ confirm: boolean }` | `ResetDefaultsReport` |
 | M2 | `read_load_order` | none | `LoadOrderReadReport` |
 | M2 | `preview_load_order` | none | `LoadOrderWriteReport` |
 | M2 | `write_load_order` | `{ allowEmpty: boolean, confirmUnmanagedLoss: boolean }` | `LoadOrderWriteReport` |
@@ -216,6 +224,10 @@ type UiPreferences = {
   showAuthors: boolean
   showThumbnails: boolean
   lastScrollTop: number
+}
+
+type ResetDefaultsReport = {
+  loadOrderWritten: boolean
 }
 
 type ProfilesState = {

@@ -128,6 +128,15 @@ pub struct ModListSnapshot {
 }
 
 /// Ordered enabled set; the index is the load order.
+/// Result of a confirmed reset to documented defaults.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResetDefaultsReport {
+    /// True when an empty `used_mods.txt` was written through the atomic path.
+    /// False when no game path was available; the config reset still succeeds.
+    pub load_order_written: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Profile {

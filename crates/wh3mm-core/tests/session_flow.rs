@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use wh3mm_core::config::{self, AppConfig, CONFIG_FILE};
 use wh3mm_core::error::ErrorCode;
-use wh3mm_core::ipc::Density;
+use wh3mm_core::ipc::{Density, UiPreferences};
 use wh3mm_core::load_order;
 use wh3mm_core::pack::synthetic_pack_bytes;
 use wh3mm_core::session::{Session, SessionOptions};
@@ -257,6 +257,96 @@ fn profiles_create_switch_duplicate_and_delete() {
 }
 
 #[test]
+fn reset_to_defaults_keeps_profiles_and_tags_and_writes_an_empty_order() {
+    let dir = TempDir::new("session-reset");
+    let game = game_fixture(&dir, &["a.pack", "b.pack"]);
+    let mut session = Session::initialize(options(&dir, Some(&game))).unwrap();
+    let snapshot = session.snapshot();
+    let id = |name: &str| {
+        snapshot
+            .mods
+            .iter()
+            .find(|module| module.name == name)
+            .unwrap()
+            .id
+            .clone()
+    };
+    let a = id("a.pack");
+    let b = id("b.pack");
+
+    session
+        .set_mods_enabled(&[a.clone(), b.clone()], true)
+        .unwrap();
+    session
+        .save_profile(None, "Campaign", vec![b.clone(), a.clone()])
+        .unwrap();
+    let tags = session.create_tag("Overhaul", "#C9A227").unwrap();
+    session.set_mod_tags(&a, vec![tags[0].id.clone()]).unwrap();
+    session
+        .update_ui_preferences(UiPreferences {
+            density: Density::Compact,
+            show_authors: false,
+            show_thumbnails: false,
+            last_scroll_top: 400,
+        })
+        .unwrap();
+    let written = session.write_load_order(false, false).unwrap();
+    assert_eq!(written.written, 2);
+
+    let report = session.reset_to_defaults(true).unwrap();
+
+    assert!(report.load_order_written);
+    let snapshot = session.snapshot();
+    assert_eq!(snapshot.enabled_count, 0);
+    assert_eq!(session.config.ui, UiPreferences::default());
+    assert!(session.config.paths.game_path_override.is_none());
+    assert_eq!(session.config.profiles.len(), 2);
+    let campaign = session
+        .config
+        .profiles
+        .iter()
+        .find(|profile| profile.name == "Campaign")
+        .unwrap();
+    assert_eq!(campaign.enabled_mod_ids, vec![b, a]);
+    assert_eq!(session.config.tags, tags);
+    assert_eq!(
+        session.config.mod_tags.values().next().map(Vec::len),
+        Some(1)
+    );
+    assert!(config::backup_path(&dir.path().join(CONFIG_FILE)).is_file());
+    assert!(game.join("used_mods.txt.bak").is_file());
+    let order = fs::read_to_string(game.join("used_mods.txt")).unwrap();
+    assert!(
+        order.trim().is_empty(),
+        "expected an empty order, got {order:?}"
+    );
+    let error = session.reset_to_defaults(false).unwrap_err();
+    assert_eq!(error.code, ErrorCode::Validation);
+}
+
+#[test]
+fn reset_to_defaults_without_a_game_still_persists_the_config() {
+    let dir = TempDir::new("session-reset-no-game");
+    let mut session = Session::initialize(options(&dir, None)).unwrap();
+    session
+        .update_ui_preferences(UiPreferences {
+            density: Density::Roomy,
+            show_authors: false,
+            show_thumbnails: false,
+            last_scroll_top: 900,
+        })
+        .unwrap();
+
+    let report = session.reset_to_defaults(true).unwrap();
+
+    assert!(!report.load_order_written);
+    assert_eq!(session.config.ui, UiPreferences::default());
+    assert!(session.config.paths.game_path_override.is_none());
+    let reloaded = config::load_or_create(&dir.path().join(CONFIG_FILE)).unwrap();
+    assert_eq!(reloaded.config.ui, UiPreferences::default());
+}
+
+#[test]
 fn applying_a_profile_restores_the_saved_order_exactly() {
     let dir = TempDir::new("session-profile-order");
     let game = game_fixture(&dir, &["a.pack", "b.pack", "c.pack"]);
@@ -288,7 +378,9 @@ fn applying_a_profile_restores_the_saved_order_exactly() {
     session
         .set_load_order(&[b.clone(), c.clone(), a.clone()])
         .unwrap();
-    session.set_mods_enabled(std::slice::from_ref(&a), false).unwrap();
+    session
+        .set_mods_enabled(std::slice::from_ref(&a), false)
+        .unwrap();
 
     let applied = session.apply_profile(&profile.id).unwrap();
     assert_eq!(applied.active_profile_id, profile.id);
