@@ -308,7 +308,6 @@ fn reset_to_defaults_keeps_profiles_and_tags_and_writes_an_empty_order() {
     session
         .update_ui_preferences(UiPreferences {
             density: Density::Compact,
-            show_authors: false,
             show_thumbnails: false,
             last_scroll_top: 400,
         })
@@ -354,7 +353,6 @@ fn reset_to_defaults_without_a_game_still_persists_the_config() {
     session
         .update_ui_preferences(UiPreferences {
             density: Density::Roomy,
-            show_authors: false,
             show_thumbnails: false,
             last_scroll_top: 900,
         })
@@ -411,7 +409,6 @@ fn reset_to_defaults_reports_a_corrupt_used_mods_file_without_claiming_success()
     let mut session = Session::initialize(steam_options(&dir, &steam_root)).unwrap();
     let preferences = UiPreferences {
         density: Density::Compact,
-        show_authors: false,
         show_thumbnails: false,
         last_scroll_top: 300,
     };
@@ -448,7 +445,6 @@ fn reset_to_defaults_refuses_a_mixed_corrupt_and_unmanaged_file_without_asking()
     let mut session = Session::initialize(steam_options(&dir, &steam_root)).unwrap();
     let preferences = UiPreferences {
         density: Density::Compact,
-        show_authors: false,
         show_thumbnails: false,
         last_scroll_top: 300,
     };
@@ -517,7 +513,6 @@ fn reset_to_defaults_asks_before_dropping_unmanaged_directives() {
     let mut session = Session::initialize(steam_options(&dir, &steam_root)).unwrap();
     let preferences = UiPreferences {
         density: Density::Compact,
-        show_authors: false,
         show_thumbnails: false,
         last_scroll_top: 300,
     };
@@ -739,7 +734,6 @@ fn ui_preferences_round_trip() {
     let mut session = Session::initialize(options(&dir, Some(&game))).unwrap();
     let mut preferences = session.ui_preferences();
     preferences.density = Density::Compact;
-    preferences.show_authors = false;
     preferences.last_scroll_top = 1234;
     session.update_ui_preferences(preferences.clone()).unwrap();
 

@@ -611,7 +611,6 @@ mod tests {
             .unwrap();
         loaded.config.update_ui(UiPreferences {
             density: crate::ipc::Density::Compact,
-            show_authors: false,
             show_thumbnails: false,
             last_scroll_top: 420,
         });

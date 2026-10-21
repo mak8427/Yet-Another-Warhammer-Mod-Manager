@@ -37,7 +37,6 @@ export const GAME: GameLocation = {
 
 export const UI: UiPreferences = {
   density: 'comfortable',
-  showAuthors: true,
   showThumbnails: true,
   lastScrollTop: 0,
 }
@@ -59,7 +58,6 @@ export const EMPTY_LOAD_ORDER: LoadOrderReadReport = {
 export function makeMod(overrides: Partial<ModSummary> & { id: string; name: string }): ModSummary {
   return {
     humanName: overrides.name.replace(/\.pack$/i, ''),
-    author: null,
     isWorkshop: false,
     workshopId: null,
     isEnabled: false,

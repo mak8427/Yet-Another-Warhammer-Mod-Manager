@@ -111,19 +111,6 @@ export function SettingsScreen() {
           </div>
           <label className="setting-row setting-row-check">
             <span className="setting-label">
-              <span>Show authors</span>
-              <p>The author column at 1440px and wider; the meta line otherwise.</p>
-            </span>
-            <span className="setting-control">
-              <input
-                type="checkbox"
-                checked={state.ui.showAuthors}
-                onChange={(event) => store.setShowAuthors(event.target.checked)}
-              />
-            </span>
-          </label>
-          <label className="setting-row setting-row-check">
-            <span className="setting-label">
               <span>Show thumbnails</span>
               <p>Read pack thumbnails where one exists; otherwise show initials.</p>
             </span>
@@ -230,7 +217,7 @@ export function SettingsScreen() {
           }
         >
           <p>
-            Reset density, author and thumbnail visibility, and the scroll position to defaults.
+            Reset density, thumbnail visibility, and the scroll position to defaults.
             Clear the game-path override so detection returns to automatic. Clear the active
             profile&apos;s enabled set and write an empty <code>used_mods.txt</code> when a game is
             available. Profiles, tags, mod tags, and launch options are kept. One config backup and

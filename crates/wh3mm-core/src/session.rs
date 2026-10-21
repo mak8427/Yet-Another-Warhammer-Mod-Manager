@@ -339,7 +339,6 @@ impl Session {
                     id: module.id.clone(),
                     name: module.name.clone(),
                     human_name: module.human_name.clone(),
-                    author: module.author.clone(),
                     is_workshop: module.is_workshop,
                     workshop_id: module.workshop_id.clone(),
                     is_enabled,

@@ -24,7 +24,7 @@ import {
 
 export type AppStatus = 'loading' | 'ready' | 'no-game' | 'error'
 export type View = 'mods' | 'profiles' | 'conflicts' | 'workshop' | 'settings'
-export type SortMode = 'load-order' | 'name' | 'author' | 'updated'
+export type SortMode = 'load-order' | 'name' | 'updated'
 export type SelectMode = 'single' | 'toggle' | 'range'
 export type MoveTarget = 'up' | 'down' | 'top' | 'bottom'
 
@@ -71,7 +71,6 @@ export interface AppState {
 
 export const DEFAULT_UI: UiPreferences = {
   density: 'comfortable',
-  showAuthors: true,
   showThumbnails: true,
   lastScrollTop: 0,
 }
@@ -126,7 +125,6 @@ export function visibleMods(state: AppState): ModSummary[] {
     return (
       mod.name.toLowerCase().includes(query) ||
       mod.humanName.toLowerCase().includes(query) ||
-      (mod.author ?? '').toLowerCase().includes(query) ||
       (mod.workshopId ?? '').includes(query)
     )
   })
@@ -138,16 +136,6 @@ export function visibleMods(state: AppState): ModSummary[] {
       (a, b) =>
         a.humanName.localeCompare(b.humanName, undefined, { sensitivity: 'base' }) || byId(a, b),
     )
-  } else if (state.sort === 'author') {
-    sorted.sort((a, b) => {
-      const left = a.author ?? ''
-      const right = b.author ?? ''
-      return (
-        left.localeCompare(right, undefined, { sensitivity: 'base' }) ||
-        a.humanName.localeCompare(b.humanName, undefined, { sensitivity: 'base' }) ||
-        byId(a, b)
-      )
-    })
   } else {
     sorted.sort((a, b) => {
       const left = a.updatedAt ? Date.parse(a.updatedAt) : Number.NEGATIVE_INFINITY
@@ -781,11 +769,6 @@ export class AppStore {
 
   setDensity(density: Density): void {
     this.set({ ui: { ...this.state.ui, density } })
-    void this.persistUi()
-  }
-
-  setShowAuthors(showAuthors: boolean): void {
-    this.set({ ui: { ...this.state.ui, showAuthors } })
     void this.persistUi()
   }
 

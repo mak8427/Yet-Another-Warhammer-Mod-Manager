@@ -7,7 +7,6 @@ import type { SortMode } from '../../store'
 interface ModToolbarProps {
   tags: Tag[]
   density: Density
-  showAuthors: boolean
   showThumbnails: boolean
   query: string
   activeTagIds: string[]
@@ -18,7 +17,6 @@ interface ModToolbarProps {
   onTag: (tagId: string) => void
   onClearFilters: () => void
   onDensity: (density: Density) => void
-  onShowAuthors: (value: boolean) => void
   onShowThumbnails: (value: boolean) => void
   onSort: (sort: SortMode) => void
   onWriteLoadOrder: () => void
@@ -27,14 +25,12 @@ interface ModToolbarProps {
 const SORT_LABEL: Record<SortMode, string> = {
   'load-order': 'Load order',
   name: 'Name A–Z',
-  author: 'Author A–Z',
   updated: 'Updated newest',
 }
 
 export function ModToolbar({
   tags,
   density,
-  showAuthors,
   showThumbnails,
   query,
   activeTagIds,
@@ -45,7 +41,6 @@ export function ModToolbar({
   onTag,
   onClearFilters,
   onDensity,
-  onShowAuthors,
   onShowThumbnails,
   onSort,
   onWriteLoadOrder,
@@ -81,7 +76,7 @@ export function ModToolbar({
           id="mod-search"
           type="search"
           className="search-input"
-          placeholder="Search names, packs, authors"
+          placeholder="Search names and packs"
           aria-label="Search mods"
           value={query}
           onChange={(event) => onQuery(event.target.value)}
@@ -196,18 +191,6 @@ export function ModToolbar({
         <ToolbarMenu label="Columns" icon="▦">
           {(close) => (
             <div className="menu-list">
-              <button
-                type="button"
-                role="menuitemcheckbox"
-                aria-checked={showAuthors}
-                className="menu-item"
-                onClick={() => onShowAuthors(!showAuthors)}
-              >
-                <span>Show authors</span>
-                <span className="menu-check" aria-hidden="true">
-                  {showAuthors ? '✓' : ''}
-                </span>
-              </button>
               <button
                 type="button"
                 role="menuitemcheckbox"

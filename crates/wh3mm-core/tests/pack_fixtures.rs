@@ -37,6 +37,10 @@ fn parses_every_valid_fixture_through_the_product_parser() {
     assert_eq!(minimal.file_count, 1);
     assert!(minimal.dependencies.is_empty());
     assert_eq!(minimal.pack_name, "valid_minimal");
+    assert!(
+        minimal.timestamp.is_some(),
+        "the file timestamp is part of the product header contract"
+    );
 
     let multi = read_pack_header(&pack_path("valid_multi.pack")).expect("valid_multi");
     assert_eq!(multi.file_count, 3);

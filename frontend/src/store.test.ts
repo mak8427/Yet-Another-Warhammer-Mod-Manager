@@ -218,21 +218,18 @@ describe('AppStore', () => {
         id: 'mod-z',
         name: 'z.pack',
         humanName: 'Same',
-        author: 'A',
         updatedAt: '2026-10-20T12:00:00Z',
       }),
       makeMod({
         id: 'mod-a',
         name: 'a.pack',
         humanName: 'Same',
-        author: 'A',
         updatedAt: '2026-10-20T12:00:00Z',
       }),
       makeMod({
         id: 'mod-m',
         name: 'm.pack',
         humanName: 'Alpha',
-        author: 'B',
         updatedAt: '2026-10-21T12:00:00Z',
       }),
     ]
@@ -248,13 +245,10 @@ describe('AppStore', () => {
     expect(sortedByName).toEqual(['mod-m', 'mod-a', 'mod-z'])
 
     // Re-sorting after another mode must reproduce the identical order.
-    store.setSort('author')
+    store.setSort('updated')
     store.setSort('name')
     expect(order()).toEqual(sortedByName)
     expect(sourceOrder()).toEqual(['mod-z', 'mod-a', 'mod-m'])
-
-    store.setSort('author')
-    expect(order()).toEqual(['mod-a', 'mod-z', 'mod-m'])
 
     store.setSort('updated')
     expect(order()).toEqual(['mod-m', 'mod-a', 'mod-z'])
@@ -263,16 +257,18 @@ describe('AppStore', () => {
     expect(order()).toEqual(['mod-z', 'mod-a', 'mod-m'])
   })
 
-  it('filters by search, author, and tags', async () => {
-    const tagged = { ...MOD_B, author: 'Gelt', tags: ['tag-visual'] }
+  it('filters by search and tags without an author dimension', async () => {
+    const tagged = { ...MOD_B, tags: ['tag-visual'] }
     // Seed state through the public init flow.
     const client = makeClient({
       listMods: vi.fn(async () => makeSnapshot([MOD_A, tagged, MOD_C])),
     })
     const seeded = new AppStore(client)
     await seeded.init()
-    seeded.setQuery('gelt')
+    seeded.setQuery('beta')
     expect(visibleMods(seeded.getState()).map((mod) => mod.id)).toEqual(['mod-b'])
+    seeded.setQuery('gelt')
+    expect(visibleMods(seeded.getState())).toHaveLength(0)
     seeded.setQuery('')
     seeded.toggleTagFilter('tag-visual')
     expect(visibleMods(seeded.getState()).map((mod) => mod.id)).toEqual(['mod-b'])

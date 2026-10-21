@@ -170,10 +170,6 @@ export function ModInspector({
               <dd title={mod.name}>{mod.name}</dd>
             </div>
             <div>
-              <dt>Author</dt>
-              <dd>{mod.author ?? '—'}</dd>
-            </div>
-            <div>
               <dt>Size</dt>
               <dd className="mono">{formatBytes(mod.sizeBytes)}</dd>
             </div>

@@ -50,7 +50,6 @@ pub struct ModSummary {
     pub name: String,
     /// Display name. The Workshop title in M3; the pack stem before that.
     pub human_name: String,
-    pub author: Option<String>,
     pub is_workshop: bool,
     pub workshop_id: Option<String>,
     pub is_enabled: bool,
@@ -215,7 +214,6 @@ impl<'de> Deserialize<'de> for Density {
 #[serde(rename_all = "camelCase", default)]
 pub struct UiPreferences {
     pub density: Density,
-    pub show_authors: bool,
     pub show_thumbnails: bool,
     pub last_scroll_top: u64,
 }
@@ -224,7 +222,6 @@ impl Default for UiPreferences {
     fn default() -> Self {
         Self {
             density: Density::Comfortable,
-            show_authors: true,
             show_thumbnails: true,
             last_scroll_top: 0,
         }
