@@ -1,0 +1,113 @@
+name: Release
+
+# Builds the Windows installers and creates a *draft* GitHub release.
+# The final v1.0.0 tag waits for M4 (WAR-10) and the WAR-12 audit; this
+# workflow only proves the release machinery on a v* tag.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (must match tauri.conf.json)'
+        required: true
+        type: string
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  windows-installer:
+    name: Windows installer (NSIS)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Resolve release version
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            version="$INPUT_VERSION"
+          else
+            version="${REF_NAME#v}"
+          fi
+          configured=$(node -p "require('./crates/wh3mm-app/tauri.conf.json').version")
+          if [ "$version" != "$configured" ]; then
+            echo "::error::version $version does not match tauri.conf.json $configured"
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      # generate_context! needs frontendDist on disk before the Windows crate
+      # compiles, so build the frontend before the Rust tests.
+      - name: Frontend gates
+        shell: bash
+        run: |
+          pnpm typecheck
+          pnpm lint
+          pnpm test
+          pnpm build
+
+      - name: Rust tests
+        run: cargo test --workspace --locked
+
+      - name: Build installers
+        working-directory: crates/wh3mm-app
+        run: npx --yes @tauri-apps/cli@2.12.4 build --ci --bundles nsis
+
+      - name: Write installer checksums
+        shell: bash
+        run: |
+          cd target/release/bundle
+          sha256sum nsis/*.exe > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wh3mm-windows-${{ env.VERSION }}
+          path: |
+            target/release/bundle/nsis/*.exe
+            target/release/bundle/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Create draft GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --draft \
+            --title "WH3 Mod Manager $VERSION" \
+            --notes-file CHANGELOG.md \
+            target/release/bundle/nsis/*.exe \
+            target/release/bundle/SHA256SUMS.txt

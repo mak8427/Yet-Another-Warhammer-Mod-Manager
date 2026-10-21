@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/wh3mm-core", "crates/wh3mm-app", "crates/wh3mm-perf"]
 
 [workspace.package]
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 rust-version = "1.90"
 license = "MIT"
