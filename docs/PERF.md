@@ -84,8 +84,10 @@ Scope of deliverable 3, as decided:
    ```
 
    or run the `Perf legacy baseline` workflow (`.github/workflows/perf-legacy-baseline.yml`). Both
-   write `docs/perf/legacy-baseline.json` and keep one raw stdout log per run under
-   `docs/perf/.legacy-baseline-<timestamp>/run-<n>.log`.
+   write `docs/perf/legacy-baseline.json` and keep one raw stdout log per run under the run's
+   temporary directory, `docs/perf/.legacy-baseline-<timestamp>/run-<n>.log`. The committed
+   evidence copies are renamed to `docs/perf/legacy-baseline-run-<actions-run-id>/run-<n>.log`, so
+   the path in the report (`rawLogDirectory` / `runs[].logPath`) always resolves in the branch.
 
    Each run starts with a fresh `--user-data-dir`, removes `pack-headers-cache.bin`, and passes
    `-nogpu`. One fixed cost is included and labelled: the app waits up to 5,000 ms for Steam
