@@ -47,7 +47,7 @@ A release candidate passes only when **all** of the following are true:
    the release.
 4. The performance gate in §7 is `PASS`.
 5. The Windows manual script in `docs/MANUAL_QA_WINDOWS.md` is completed and
-   signed, and the NSIS/MSI artefact exists on the release.
+   signed, and the NSIS installer artefact exists on the release.
 6. No cut feature is reachable in navigation, menus, or the IPC surface.
 
 **Budgets.** Rust `cargo test` and frontend `pnpm test` each finish in ≤ 120 s
