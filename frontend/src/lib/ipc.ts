@@ -42,10 +42,38 @@ export interface AppInfo {
   arch: string
 }
 
-export type CommandName = 'app_info'
+/** Wire shape of `wh3mm_core::ipc::LoadOrderWriteRequest`. */
+export interface LoadOrderWriteRequest {
+  allowEmpty: boolean
+  confirmUnmanagedLoss: boolean
+}
+
+/** Wire shape of `wh3mm_core::ipc::LoadOrderWriteReport`. */
+export interface LoadOrderWriteReport {
+  path: string
+  /** Backup associated with the operation; null when no backup applies. */
+  backupPath: string | null
+  written: number
+  skipped: string[]
+  unmanagedDirectives: string[]
+}
+
+export type CommandName = 'app_info' | 'preview_load_order' | 'write_load_order'
 
 export async function appInfo(): Promise<AppInfo> {
   return invokeCommand<AppInfo>('app_info')
+}
+
+/** Previews the load-order write; performs no filesystem write. */
+export async function previewLoadOrder(): Promise<LoadOrderWriteReport> {
+  return invokeCommand<LoadOrderWriteReport>('preview_load_order')
+}
+
+/** Writes the load order after the caller has confirmed the preview warnings. */
+export async function writeLoadOrder(
+  request: LoadOrderWriteRequest,
+): Promise<LoadOrderWriteReport> {
+  return invokeCommand<LoadOrderWriteReport>('write_load_order', { ...request })
 }
 
 /** Normalized rejection thrown by every command wrapper. */
@@ -114,7 +142,9 @@ export async function invokeCommand<T>(
   }
 }
 
-/** Typed facade used by components; one method per registered Rust command. */
+/** Typed facade used by components; one method per command in ADR-002. */
 export const ipc = {
   appInfo,
+  previewLoadOrder,
+  writeLoadOrder,
 }
