@@ -87,7 +87,7 @@ missing the `icons/icon.ico` that `tauri-build` requires; `2070b7f` fixes it.
 |---|---|
 | `cargo fmt --all --check` | pass |
 | `cargo clippy --workspace --all-targets --locked -- -D warnings` | pass |
-| `cargo test --workspace --locked` | pass, 63 tests |
+| `cargo test --workspace --locked` | pass, 70 tests (63 M1/M2 + 7 QA fixture contracts from `main`) |
 | `pnpm typecheck` | pass |
 | `pnpm lint` | pass |
 | `pnpm test` | pass, 37 tests |
