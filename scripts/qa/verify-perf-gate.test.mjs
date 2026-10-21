@@ -4,10 +4,15 @@ import * as nodePath from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 
+import { readFileSync } from 'node:fs'
+
 import {
   COMPARISON_SCHEMA,
+  LEGACY_REPORT,
+  NEW_APP_REPORT,
   PRIMARY_METRICS,
   validateComparison,
+  validatePerfReports,
 } from './verify-perf-gate.mjs'
 
 const REPO_ROOT = nodePath.resolve(nodePath.dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -185,4 +190,131 @@ test('the release command blocks when the comparison file is missing', () => {
   assert.match(result.stdout, /BLOCKED/)
   const parsed = JSON.parse(result.stdout)
   assert.equal(parsed.blocked, true)
+})
+
+
+const REPORTS_REPO = REPO_ROOT
+function rawReports() {
+  return {
+    legacy: JSON.parse(readFileSync(nodePath.join(REPORTS_REPO, LEGACY_REPORT), 'utf8')),
+    newApp: JSON.parse(readFileSync(nodePath.join(REPORTS_REPO, NEW_APP_REPORT), 'utf8')),
+  }
+}
+
+function reportResult(mutator = () => {}, options = {}) {
+  const { legacy, newApp } = rawReports()
+  mutator(legacy, newApp)
+  return validatePerfReports(legacy, newApp, { checkRawOutputs: false, ...options })
+}
+
+function rowFor(newApp, key) {
+  return newApp.comparison.rows.find((row) => row.key === key)
+}
+
+test('the committed raw reports pass the release gate', () => {
+  const { legacy, newApp } = rawReports()
+  const result = validatePerfReports(legacy, newApp)
+  assert.equal(result.ok, true, result.failures.join('\n'))
+  assert.equal(result.report.length, 6)
+  assert.equal(result.warnings.length, 0)
+})
+
+test('raw reports: host mismatch fails', () => {
+  const result = reportResult((_legacy, newApp) => {
+    newApp.environment.runnerImage = 'different-image'
+  })
+  assert.equal(result.ok, false)
+  assert.match(result.failures.join('\n'), /host mismatch on runnerImage/)
+})
+
+test('raw reports: fixture mismatch fails', () => {
+  const result = reportResult((_legacy, newApp) => {
+    newApp.environment.fixtureSha256 = 'b'.repeat(64)
+  })
+  assert.equal(result.ok, false)
+  assert.match(result.failures.join('\n'), /same fixtureSha256/)
+})
+
+test('raw reports: a slower metric fails', () => {
+  const result = reportResult((_legacy, newApp) => {
+    const metric = newApp.metrics.coldStartMs
+    metric.samplesMs = Array(12).fill(2000)
+    metric.medianMs = 2000
+    const row = rowFor(newApp, 'coldStartMs')
+    row.newMedianMs = 2000
+    row.ratio = row.legacyAdjustedMs / 2000
+  })
+  assert.equal(result.ok, false)
+  assert.match(result.failures.join('\n'), /coldStartMs: new app 2000 ms is not strictly faster/)
+})
+
+test('raw reports: a declared median that disagrees with the samples fails', () => {
+  const result = reportResult((_legacy, newApp) => {
+    newApp.metrics.headerScanMs.medianMs = 1
+  })
+  assert.equal(result.ok, false)
+  assert.match(result.failures.join('\n'), /declared median 1 does not match/)
+})
+
+test('raw reports: a dishonest declared ratio fails', () => {
+  const result = reportResult((_legacy, newApp) => {
+    rowFor(newApp, 'headerScanMs').ratio = 999
+  })
+  assert.equal(result.ok, false)
+  assert.match(result.failures.join('\n'), /declared ratio 999 disagrees/)
+})
+
+test('raw reports: a debug binary fails the release-build check', () => {
+  const result = reportResult((_legacy, newApp) => {
+    newApp.environment.binPath = 'D:\\target\\debug\\wh3mm-perf.exe'
+  })
+  assert.equal(result.ok, false)
+  assert.match(result.failures.join('\n'), /release build/)
+})
+
+test('raw reports: fewer than five runs fails', () => {
+  const result = reportResult((_legacy, newApp) => {
+    newApp.environment.runs = 4
+  })
+  assert.equal(result.ok, false)
+  assert.match(result.failures.join('\n'), /runs must be at least 5/)
+})
+
+test('raw reports: a metric with fewer than five samples fails', () => {
+  const result = reportResult((_legacy, newApp) => {
+    const metric = newApp.metrics.presetSwitchMs
+    metric.samplesMs = metric.samplesMs.slice(0, 4)
+    metric.n = 4
+  })
+  assert.equal(result.ok, false)
+  assert.match(result.failures.join('\n'), /needs at least 5 samples/)
+})
+
+test('raw reports: an undocumented legacy adjustment fails', () => {
+  const result = reportResult((_legacy, newApp) => {
+    const row = rowFor(newApp, 'headerScanMs')
+    row.legacyAdjustMs = 5000
+    row.adjustNote = 'arbitrary'
+  })
+  assert.equal(result.ok, false)
+  assert.match(result.failures.join('\n'), /only modListPopulatedMs may subtract/)
+})
+
+test('raw reports: the launch row must stay labelled as a proxy', () => {
+  const result = reportResult((_legacy, newApp) => {
+    rowFor(newApp, 'gameLaunchHandoffMs').proxy = false
+  })
+  assert.equal(result.ok, false)
+  assert.match(result.failures.join('\n'), /proxy flag must be true/)
+})
+
+test('the default release command passes on the committed reports', () => {
+  const result = spawnSync(process.execPath, [SCRIPT, '--json'], {
+    cwd: REPORTS_REPO,
+    encoding: 'utf8',
+  })
+  assert.equal(result.status, 0, result.stdout + result.stderr)
+  const parsed = JSON.parse(result.stdout)
+  assert.equal(parsed.ok, true, parsed.failures.join('\n'))
+  assert.equal(parsed.report.length, 6)
 })
