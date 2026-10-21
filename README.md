@@ -9,9 +9,10 @@ backend and a TypeScript frontend.
 
 ## Status
 
-M0 (bootstrap) is complete: Rust workspace, Windows-gated Tauri 2 shell, React +
-Vite UI, typed IPC round trip (`app_info`), ADRs 001-004, and CI. Mod discovery
-and the mod list land in M1/M2.
+M0 (bootstrap) is implemented: Rust workspace, Windows-gated Tauri 2 shell,
+React + Vite UI, typed IPC round trip (`app_info`), ADRs 001-004, and CI.
+Current progress and evidence live in [docs/STATUS.md](docs/STATUS.md). Mod
+discovery and the mod list land in M1/M2.
 
 ## Layout
 
