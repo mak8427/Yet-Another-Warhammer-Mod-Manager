@@ -17,6 +17,7 @@ export const ERROR_CODES = [
   'config_corrupt',
   'game_not_found',
   'steam_not_found',
+  'process_detection_failed',
   'pack_parse_failed',
   'not_found',
   'validation',
