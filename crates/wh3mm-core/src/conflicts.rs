@@ -444,46 +444,8 @@ pub fn compute_report(
 
 pub fn base_game_index(location: &GameLocation) -> BaseGameIndex {
     let mut index = BaseGameIndex::default();
-    if let Ok(entries) = std::fs::read_dir(&location.data_path) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path
-                .extension()
-                .is_some_and(|extension| extension.to_string_lossy().eq_ignore_ascii_case("pack"))
-            {
-                if let Some(name) = path.file_name() {
-                    index
-                        .pack_names
-                        .insert(name.to_string_lossy().to_lowercase());
-                }
-            }
-        }
-    }
-    let manifest = std::fs::read_to_string(location.data_path.join("manifest.txt"));
-    let names = match manifest {
-        Ok(text) => {
-            let mut names: Vec<String> = text
-                .lines()
-                .filter_map(|line| line.split_whitespace().next())
-                .filter(|name| name.to_ascii_lowercase().ends_with(".pack"))
-                .map(|name| name.to_ascii_lowercase())
-                .collect();
-            names.sort();
-            names.dedup();
-            if names.is_empty() {
-                FALLBACK_VANILLA_PACKS
-                    .iter()
-                    .map(|name| name.to_string())
-                    .collect()
-            } else {
-                names
-            }
-        }
-        Err(_) => FALLBACK_VANILLA_PACKS
-            .iter()
-            .map(|name| name.to_string())
-            .collect(),
-    };
+    let names = vanilla_pack_names(&location.data_path);
+    index.pack_names.extend(names.iter().cloned());
 
     for name in names {
         let path = location.data_path.join(&name);
@@ -506,6 +468,34 @@ pub fn base_game_index(location: &GameLocation) -> BaseGameIndex {
         }
     }
     index
+}
+
+fn vanilla_pack_names(data_path: &Path) -> Vec<String> {
+    let manifest = std::fs::read_to_string(data_path.join("manifest.txt"));
+    match manifest {
+        Ok(text) => {
+            let mut names: Vec<String> = text
+                .lines()
+                .filter_map(|line| line.split_whitespace().next())
+                .filter(|name| name.to_ascii_lowercase().ends_with(".pack"))
+                .map(|name| name.to_ascii_lowercase())
+                .collect();
+            names.sort();
+            names.dedup();
+            if names.is_empty() {
+                FALLBACK_VANILLA_PACKS
+                    .iter()
+                    .map(|name| name.to_string())
+                    .collect()
+            } else {
+                names
+            }
+        }
+        Err(_) => FALLBACK_VANILLA_PACKS
+            .iter()
+            .map(|name| name.to_string())
+            .collect(),
+    }
 }
 
 impl Session {
@@ -729,6 +719,53 @@ mod tests {
                 .map(String::as_str),
             Some("patch.pack")
         );
+    }
+
+    #[test]
+    fn disabled_local_dependency_is_not_treated_as_a_base_game_pack() {
+        let dir = TempDir::new("conflicts-disabled-local");
+        let data = dir.path().join("data");
+        fs::create_dir_all(&data).unwrap();
+        fs::write(data.join("manifest.txt"), "data.pack\n").unwrap();
+        write_pack(&data.join("data.pack"), &[("db\\units_tables\\unit", b"x")]);
+        write_pack(&data.join("off.pack"), &[("script\\off.lua", b"off")]);
+        let location = GameLocation {
+            game_path: dir.path().to_path_buf(),
+            data_path: data,
+            workshop_path: std::path::PathBuf::new(),
+            steam_root: dir.path().join("steam"),
+            proton_prefix: None,
+            source: crate::ipc::LocationSource::Manual,
+        };
+
+        let base = base_game_index(&location);
+        assert!(base.pack_names.contains("data.pack"));
+        assert!(!base.pack_names.contains("off.pack"));
+        assert_eq!(base.pack_names.len(), 1);
+
+        let enabled = vec![input("mod-a", "a.pack", &[], &["data.pack", "off.pack"])];
+        let all_packs = vec![
+            PackAvailability {
+                mod_id: "mod-a".to_string(),
+                pack_name: "a.pack".to_string(),
+                enabled: true,
+            },
+            PackAvailability {
+                mod_id: "mod-off".to_string(),
+                pack_name: "off.pack".to_string(),
+                enabled: false,
+            },
+        ];
+
+        let report = compute_report(&enabled, &all_packs, Vec::new(), &base);
+        assert!(
+            report.missing_dependencies.is_empty(),
+            "unexpected missing dependencies: {:?}",
+            report.missing_dependencies
+        );
+        assert_eq!(report.disabled_dependencies.len(), 1);
+        assert_eq!(report.disabled_dependencies[0].dependency, "off.pack");
+        assert_eq!(report.disabled_dependencies[0].provider_mod_id, "mod-off");
     }
 
     #[test]
