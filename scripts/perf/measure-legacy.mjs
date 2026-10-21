@@ -43,6 +43,8 @@ const CDP_PORT = Number(readArg("cdp-port", 9227));
 const SKIP_CDP = hasFlag("no-cdp");
 const SKIP_INTERACTIONS = hasFlag("no-interactions");
 const PRESET_SWITCH_NAME = readArg("switch-preset", "Perf Half");
+const GAME_STUB = readArg("game-stub", process.env.WH3MM_GAME_STUB ?? null);
+const GAME_STUB_NAME = "Warhammer3.exe";
 
 if (!APP) {
   console.error("missing --app <path to wh3mm.exe>");
@@ -364,64 +366,86 @@ async function measureLoadOrderPersist(cdp, configPath) {
   };
 }
 
+/** Dispatches a real key event through CDP; the renderer sees the same path as a user keypress. */
+async function pressKey(cdp, key, code, virtualKeyCode) {
+  const event = { key, code, windowsVirtualKeyCode: virtualKeyCode, nativeVirtualKeyCode: virtualKeyCode };
+  await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", ...event });
+  await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", ...event });
+}
+
+/** Focuses the preset combobox input and returns a DOM snapshot for diagnostics. */
+async function focusPresetInput(cdp) {
+  return cdp.evaluate(`(() => {
+    const section = document.getElementById("presetSection");
+    const input = document.querySelector("#createOrSelectPreset input");
+    if (!input) {
+      return {
+        ok: false,
+        error: "preset combobox input not found",
+        html: section ? section.innerHTML.slice(0, 2000) : null,
+      };
+    }
+    input.focus();
+    const rect = input.getBoundingClientRect();
+    return { ok: true, x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, value: input.value };
+  })()`);
+}
+
 /**
- * Preset switch: pick the named preset in the sidebar select, then time from the option click to the
- * config.json write that persists the new enabled set. The menu is opened before the clock starts, so
- * the number is the switch itself, not the dropdown animation.
+ * Preset (profile) switch: focus the react-select combobox, open it with the keyboard, filter to the
+ * target preset, then time from the Enter keypress that commits the option to the legacy app's
+ * config.json write. The menu work is done before the clock starts, so the sample is the switch and
+ * its persist, not the dropdown animation. Keyboard navigation is used because a synthetic click at
+ * the control's centre did not expand this react-select instance in CI.
  */
 async function measurePresetSwitch(cdp, configPath, presetName) {
   const before = await waitForConfigQuiet(configPath);
   if (!before) return { ok: false, error: "config.json is not readable before the preset switch" };
 
-  const opened = await cdp.evaluate(`(() => {
-    const section = document.getElementById("presetSection");
-    if (!section) return { ok: false, error: "preset section not found" };
-    const container = document.getElementById("createOrSelectPreset") || section.firstElementChild;
-    if (!container) return { ok: false, error: "preset select container not found" };
-    const input = container.querySelector("input");
-    if (input) input.focus();
-    const rect = container.getBoundingClientRect();
-    return {
-      ok: rect.width > 0 && rect.height > 0,
-      x: rect.left + rect.width / 2,
-      y: rect.top + rect.height / 2,
-      debug: { id: container.id || null, width: rect.width, height: rect.height, x: rect.left, y: rect.top, inputs: container.querySelectorAll("input").length },
-    };
-  })()`);
-  if (!opened?.ok) {
-    return { ok: false, error: opened?.error ?? "preset select has no clickable area", debug: opened?.debug };
-  }
-  await clickAtPoint(cdp, opened.x, opened.y);
+  const focused = await focusPresetInput(cdp);
+  if (!focused?.ok) return { ok: false, error: focused?.error ?? "could not focus the preset input", debug: focused };
 
-  const options = await waitForRenderer(
+  await pressKey(cdp, "ArrowDown", "ArrowDown", 40);
+  const listbox = await waitForRenderer(
     cdp,
     `(() => {
-      const menu = document.querySelector('[id$="-listbox"]');
-      if (!menu) return [];
-      return [...menu.querySelectorAll('[id*="-option-"]')].map((option) => option.textContent.trim());
+      const menu = document.getElementById("createOrSelectPreset-listbox") || document.querySelector('[id$="-listbox"]');
+      return {
+        menu: !!menu,
+        menuId: menu?.id ?? null,
+        options: menu ? [...menu.querySelectorAll('[id*="-option-"]')].map((option) => option.textContent.trim()) : [],
+        html: document.getElementById("presetSection")?.innerHTML.slice(0, 2000) ?? null,
+      };
     })()`,
-    (labels) => Array.isArray(labels) && labels.length > 0,
+    (state) => state.menu,
     2_000,
   );
-  if (!Array.isArray(options) || !options.includes(presetName)) {
-    await cdp.evaluate(`(() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })))()`);
-    return { ok: false, error: `preset option "${presetName}" not found`, options, debug: opened.debug };
+  if (!listbox?.menu) {
+    return { ok: false, error: "preset menu did not open from the keyboard", debug: listbox };
   }
 
-  const target = await cdp.evaluate(`(() => {
-    const menu = document.querySelector('[id$="-listbox"]');
-    if (!menu) return { ok: false };
-    const option = [...menu.querySelectorAll('[id*="-option-"]')].find(
-      (element) => element.textContent.trim() === ${JSON.stringify(presetName)},
-    );
-    if (!option) return { ok: false };
-    const rect = option.getBoundingClientRect();
-    return { ok: true, x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-  })()`);
-  if (!target?.ok) return { ok: false, error: "preset option has no position" };
+  await cdp.send("Input.insertText", { text: presetName });
+  const filtered = await waitForRenderer(
+    cdp,
+    `(() => {
+      const menu = document.getElementById("createOrSelectPreset-listbox") || document.querySelector('[id$="-listbox"]');
+      return {
+        menu: !!menu,
+        menuId: menu?.id ?? null,
+        options: menu ? [...menu.querySelectorAll('[id*="-option-"]')].map((option) => option.textContent.trim()) : [],
+        selected: menu?.querySelector('[id*="-option-"][aria-selected="true"]')?.textContent?.trim() ?? null,
+      };
+    })()`,
+    (state) => state.options.includes(presetName),
+    2_000,
+  );
+  if (!Array.isArray(filtered?.options) || !filtered.options.includes(presetName)) {
+    await pressKey(cdp, "Escape", "Escape", 27);
+    return { ok: false, error: `preset option "${presetName}" not found`, options: filtered?.options ?? [], debug: filtered };
+  }
 
   const started = Date.now();
-  await clickAtPoint(cdp, target.x, target.y);
+  await pressKey(cdp, "Enter", "Enter", 13);
 
   const after = await waitForConfigChange(configPath, before.text, INTERACTION_TIMEOUT_MS);
   if (!after) {
@@ -432,6 +456,7 @@ async function measurePresetSwitch(cdp, configPath, presetName) {
     ok: true,
     ms: Date.now() - started,
     preset: presetName,
+    selection: filtered.selected,
     enabledBefore: before.enabledCount,
     enabledAfter: after.enabledCount,
     modsBefore: before.modCount,
@@ -441,11 +466,52 @@ async function measurePresetSwitch(cdp, configPath, presetName) {
   };
 }
 
+/**
+ * Game-launch handoff, proxy only: click Play in the renderer, then wait for the stub game process
+ * to write its marker file. The stub is a compiled Windows executable installed as Warhammer3.exe
+ * in the fixture's game folder; it records the argv it was started with and exits on its own.
+ * The sample therefore covers renderer click -> startGame IPC -> used_mods.txt write -> launch-plan
+ * resolution -> process creation -> stub startup. It does not include game engine initialisation,
+ * Steam, or a real TW:WH3 launch, and CI has no game install.
+ */
+async function measureGameLaunchHandoff(cdp, markerPath) {
+  const armed = await cdp.evaluate(`(() => {
+    const button = document.getElementById("playGame");
+    if (!button) return { ok: false, error: "playGame button not found" };
+    button.scrollIntoView({ block: "center" });
+    const rect = button.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return { ok: false, error: "playGame button has no clickable area" };
+    return { ok: true, x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  })()`);
+  if (!armed?.ok) return { ok: false, error: armed?.error ?? "could not locate the play button", debug: armed };
+
+  await rm(markerPath, { force: true });
+  const started = Date.now();
+  await clickAtPoint(cdp, armed.x, armed.y);
+
+  const deadline = Date.now() + INTERACTION_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    try {
+      const argv = await readFile(markerPath, "utf8");
+      return { ok: true, ms: Date.now() - started, marker: markerPath, argv, method: "stub-process-start", proxy: true };
+    } catch {
+      await sleep(5);
+    }
+  }
+  return {
+    ok: false,
+    error: `the stub game process did not start within ${INTERACTION_TIMEOUT_MS}ms`,
+    marker: markerPath,
+    proxy: true,
+  };
+}
+
 async function runOnce({ index, appPath, fixture, runDirectory }) {
   const userData = await prepareUserData(fixture, runDirectory);
   const cachePath = nodePath.join(userData, "pack-headers-cache.bin");
   const configPath = nodePath.join(userData, "config.json");
   const logPath = nodePath.join(runDirectory, `run-${index + 1}.log`);
+  const markerPath = nodePath.join(runDirectory, `launch-marker-${index + 1}.txt`);
   const port = CDP_PORT + index;
   const environment = captureEnvironment();
   const startedAt = process.hrtime.bigint();
@@ -453,7 +519,7 @@ async function runOnce({ index, appPath, fixture, runDirectory }) {
 
   const child = spawn(appPath, [`--remote-debugging-port=${port}`, `--user-data-dir=${userData}`, "-nogpu"], {
     cwd: nodePath.dirname(appPath),
-    env: { ...process.env, ELECTRON_ENABLE_LOGGING: "0" },
+    env: { ...process.env, ELECTRON_ENABLE_LOGGING: "0", WH3MM_STUB_MARKER: markerPath },
     stdio: ["ignore", "pipe", "pipe"],
     detached: process.platform !== "win32",
   });
@@ -497,6 +563,7 @@ async function runOnce({ index, appPath, fixture, runDirectory }) {
     appVersion: null,
     loadOrderPersist: null,
     presetSwitch: null,
+    gameLaunch: null,
     error: null,
   };
 
@@ -558,6 +625,13 @@ async function runOnce({ index, appPath, fixture, runDirectory }) {
           } catch (error) {
             result.presetSwitch = { ok: false, error: String(error.message ?? error) };
           }
+          if (GAME_STUB) {
+            try {
+              result.gameLaunch = await measureGameLaunchHandoff(cdp, markerPath);
+            } catch (error) {
+              result.gameLaunch = { ok: false, proxy: true, error: String(error.message ?? error) };
+            }
+          }
         }
         const finalTitle = await cdp.evaluate(`document.title`);
         result.domReady = { ...(result.domReady ?? {}), titleAfterSettle: finalTitle };
@@ -590,6 +664,13 @@ async function main() {
   const workDirectory = nodePath.join(outputDirectory, `.legacy-baseline-${Date.now()}`);
   await mkdir(workDirectory, { recursive: true });
 
+  if (GAME_STUB) {
+    if (process.platform !== "win32") {
+      throw new Error("--game-stub is Windows-only: the game handoff proxy launches a Windows process");
+    }
+    await copyFile(GAME_STUB, nodePath.join(FIXTURE, GAME_STUB_NAME));
+  }
+
   const fixtureManifestPath = nodePath.join(FIXTURE, "fixture-manifest.json");
   const fixtureManifest = JSON.parse(await readFile(fixtureManifestPath, "utf8"));
   const fixtureConfig = JSON.parse(await readFile(nodePath.join(FIXTURE, "userdata", "config.json"), "utf8"));
@@ -605,6 +686,14 @@ async function main() {
     runs: RUNS,
     presetSwitchTarget: PRESET_SWITCH_NAME,
     presets: fixturePresets.map((preset) => ({ name: preset.name, entries: preset.mods.length })),
+    gameStub: GAME_STUB
+      ? {
+          sourcePath: GAME_STUB,
+          installedAs: nodePath.join(FIXTURE, GAME_STUB_NAME),
+          sha256: await sha256File(GAME_STUB),
+          proxy: true,
+        }
+      : null,
   };
 
   const runs = [];
@@ -613,7 +702,8 @@ async function main() {
     console.log(
       `run ${index + 1}/${RUNS}: coldStart=${result.coldStartMs} modsPopulated=${result.modListPopulatedMs} ` +
         `headerScan=${result.headerScanMs} loadOrderPersist=${result.loadOrderPersist?.ms ?? "n/a"} ` +
-        `presetSwitch=${result.presetSwitch?.ms ?? "n/a"} mods=${result.modCount}` +
+        `presetSwitch=${result.presetSwitch?.ms ?? "n/a"} gameLaunch=${result.gameLaunch?.ms ?? "n/a"} ` +
+        `mods=${result.modCount}` +
         `${result.error ? ` error=${result.error}` : ""}`,
     );
     runs.push(result);
@@ -627,12 +717,16 @@ async function main() {
   const presetSamples = successful
     .map((run) => (run.presetSwitch?.ok ? run.presetSwitch.ms : null))
     .filter((value) => value !== null);
+  const gameLaunchSamples = successful
+    .map((run) => (run.gameLaunch?.ok ? run.gameLaunch.ms : null))
+    .filter((value) => value !== null);
   const metrics = {
     coldStartMs: summarize(successful.map((run) => run.coldStartMs).filter(Number.isFinite)),
     modListPopulatedMs: summarize(successful.map((run) => run.modListPopulatedMs).filter(Number.isFinite)),
     headerScanMs: summarize(successful.map((run) => run.headerScanMs).filter((value) => value !== null)),
     loadOrderPersistMs: summarize(loadOrderSamples),
     presetSwitchMs: summarize(presetSamples),
+    gameLaunchHandoffMs: summarize(gameLaunchSamples),
     modCount: successful.map((run) => run.modCount),
   };
 
@@ -650,6 +744,14 @@ async function main() {
       verified: successful.filter((run) => run.presetSwitch?.verified).length,
       errors: successful.filter((run) => run.presetSwitch && !run.presetSwitch.ok).map((run) => run.presetSwitch.error),
     },
+    gameLaunch: {
+      attempted: GAME_STUB ? successful.length : 0,
+      measured: gameLaunchSamples.length,
+      verified: successful.filter((run) => run.gameLaunch?.ok && run.gameLaunch?.argv).length,
+      proxy: true,
+      method: "stub-process-start",
+      errors: successful.filter((run) => run.gameLaunch && !run.gameLaunch.ok).map((run) => run.gameLaunch.error),
+    },
   };
 
   const report = {
@@ -665,8 +767,8 @@ async function main() {
       "headerScanMs is the time to parse every mod's PFH5 header, marked by the pack-headers-cache.bin write.",
       "The legacy app waits up to 5000ms for Steam subscription ids; without Steam this fixed wait is included.",
       "loadOrderPersistMs is CDP click (drop a row at position 5) to the legacy app's own config.json write; v2.29.0 has no Apply button and persists through the debounced saveConfig.",
-      "presetSwitchMs is CDP click on the named preset option to the config.json write that persists the new enabled set.",
-      "Game launch handoff is not measured here: it needs a real game install. The CEO decision of 2026-10-21 keeps it optional and non-blocking for M2/M5; see docs/PERF.md.",
+      "presetSwitchMs is the Enter keypress on the filtered preset option to the config.json write that persists the new enabled set.",
+      "gameLaunchHandoffMs is a PROXY: CDP click on Play to the marker write of a compiled stub Warhammer3.exe. It covers the startGame IPC, used_mods.txt write, launch-plan resolution, process creation and stub startup. It excludes Steam, the game engine, and a real TW:WH3 launch; CI has no game install.",
     ],
   };
   await writeFile(OUT, `${JSON.stringify(report, null, 2)}\n`, "utf8");
