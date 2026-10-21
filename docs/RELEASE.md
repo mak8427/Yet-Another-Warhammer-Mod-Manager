@@ -15,10 +15,12 @@ is `docs/adr/004-testing-strategy.md`.
   so a mismatch is a release blocker.
 - The release tag is `vX.Y.Z` and must match the configured version. The tag
   workflow refuses to build on a mismatch.
-- v1.0.0 is the first release. The tag and draft release are created only after
-  M4 (WAR-10), WAR-106/WAR-107 (WAR-104 ruling B), and the release gates are on
-  `main`. Creating the tag is not publication: the workflow creates a draft,
-  WAR-12 audits that draft, and only then may a human publish it.
+- v1.0.0 is the first release. Create the `v1.0.0` tag only after M4 (WAR-10),
+  WAR-106/WAR-107 (WAR-104 ruling B), the perf gate
+  (`node scripts/qa/verify-perf-gate.mjs` PASS with Genny4Real's v1.0 sign-off),
+  the **0-missing** parity check, and a green `main` are in place. Creating the
+  tag is not publication: the tag run produces the Windows artifact and a draft
+  release, WAR-12 audits that draft, and only then may a human publish it.
 
 ## Build locally on Windows
 
@@ -105,8 +107,9 @@ the release-engineering PR merges to `main`: dispatch `release.yml` at the
 release head, link the run and artifact on the task, and only then continue the
 approval path. Do not dispatch from an unmerged feature branch. Create the
 `v1.0.0` tag only after M4 (WAR-10), the WAR-104 ruling's WAR-106/WAR-107 work,
-the release gates, and a green `main` are in place. The tag run produces the
-artifact and draft that WAR-12 audits; publish only after WAR-12 signs off.
+the perf gate, the 0-missing parity check, and a green `main` are in place. The
+tag run produces the artifact and draft that WAR-12 audits; publish only after
+WAR-12 signs off.
 
 ## Manual Windows QA script
 
@@ -181,19 +184,18 @@ release task.
       head; `docs/STATUS.md` names the five limitations with their manual checks.
       Never hand-edit `docs/PARITY.md`.
 - [x] WAR-106 (WS-2 Workshop Open test) is merged and QA-approved (`f2e8b0f`).
-- [ ] WAR-107 (DSC-1 author surface cut and `PRODUCT_SCOPE` correction) is merged and QA-approved; it blocks the `v1.0.0` tag.
-- [ ] Version matches in `tauri.conf.json`, `Cargo.toml`, and both `package.json` files.
+- [x] WAR-107 (DSC-1 author surface cut and `PRODUCT_SCOPE` correction) is merged and QA-approved (`84b11c6`).
+- [x] Version matches in `tauri.conf.json`, `Cargo.toml`, and both `package.json` files.
 - [ ] `CHANGELOG.md` reflects the merged scope.
+- [ ] `node scripts/qa/verify-perf-gate.mjs` passes at the tag head and Genny4Real's v1.0 perf sign-off is recorded (WAR-98).
 - [ ] Tag workflow produced the NSIS installer, `SHA256SUMS.txt`, and a draft release.
 - [ ] WAR-12 audit signed off on that draft.
 - [ ] Manual QA script passed on clean Windows 10 and 11 machines.
 - [ ] Installer SHA-256 published in the release notes.
 - [ ] Publish the draft only after every item above is checked.
 
-At the release head `0e051204` the parity generator reports 0 missing checks
-(91.750%; SET-4, ML-3, CF-4, and PRF-2 are done after WAR-10). After WAR-106
-(`f2e8b0f`) and WAR-107 merge, the combined report is **94.000% with 35 done /
-5 partial / 0 missing**, with DSC-1 done against the corrected PRODUCT_SCOPE
-criteria and WS-2 done with automated evidence. Regenerate the report at the
-release head. The pre-tag gate stays **0 missing**; do not tag while any check
-is missing, and never hand-edit `docs/PARITY.md`.
+At the WAR-106/WAR-107 head `84b11c6` the parity generator reports **94.000% with 35 done / 5 partial / 0 missing**,
+with DSC-1 done against the corrected PRODUCT_SCOPE criteria and WS-2 done with
+automated evidence. Regenerate the report at the exact tag head. The pre-tag
+gate stays **0 missing**; do not tag while any check is missing, and never
+hand-edit `docs/PARITY.md`.
