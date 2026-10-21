@@ -127,30 +127,38 @@ pub struct ModListSnapshot {
     pub warnings: Vec<String>,
 }
 
-/// What happened to `used_mods.txt` during a reset to documented defaults.
+/// How a confirmed reset handled the game-owned load-order file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ResetLoadOrderOutcome {
-    /// An empty order was written through the atomic writer.
+#[serde(rename_all = "camelCase")]
+pub enum ResetLoadOrderStatus {
+    /// An empty `used_mods.txt` was written through the atomic path.
     Written,
-    /// No game path was available; only the config reset was persisted.
+    /// The override was cleared and automatic detection found no game.
     NoGamePath,
-    /// A game path exists, but the load-order write was refused (for example a
-    /// corrupt `used_mods.txt`). The file is left untouched.
-    Blocked,
+    /// The reset stopped because the existing file cannot be safely replaced.
+    Failed,
+    /// The reset stopped because dropping unmanaged directives needs confirmation.
+    UnmanagedDirectives,
+}
+
+/// Load-order outcome of a confirmed reset.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResetLoadOrderReport {
+    pub status: ResetLoadOrderStatus,
+    /// Why the write failed or is waiting for confirmation.
+    pub message: Option<String>,
+    /// Directives that the pending reset write would drop.
+    pub unmanaged_directives: Vec<String>,
+    /// Repeat the reset with `confirmUnmanagedLoss: true` to drop them.
+    pub requires_unmanaged_confirmation: bool,
 }
 
 /// Result of a confirmed reset to documented defaults.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ResetDefaultsReport {
-    /// True when an empty `used_mods.txt` was written through the atomic path.
-    pub load_order_written: bool,
-    /// Explicit reason for `load_order_written`, so the UI never has to guess.
-    pub load_order_outcome: ResetLoadOrderOutcome,
-    /// The safety refusal from the load-order planner when the outcome is
-    /// `blocked`; `None` for the other outcomes.
-    pub load_order_blocked_reason: Option<String>,
+    pub load_order: ResetLoadOrderReport,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -158,6 +166,7 @@ pub struct ResetDefaultsReport {
 pub struct Profile {
     pub id: String,
     pub name: String,
+    /// Ordered enabled set; the index is the load order.
     pub enabled_mod_ids: Vec<String>,
     pub created_at: String,
     pub updated_at: String,

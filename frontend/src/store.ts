@@ -14,6 +14,7 @@ import {
   type ModListSnapshot,
   type ModSummary,
   type ProfilesState,
+  type ResetDefaultsReport,
   type SteamActionResult,
   type Tag,
   type UiPreferences,
@@ -689,16 +690,18 @@ export class AppStore {
     }
   }
 
-  async resetToDefaults(): Promise<void> {
+  async resetToDefaults(
+    confirmUnmanagedLoss = false,
+  ): Promise<ResetDefaultsReport | null> {
     this.set({ busy: 'Resetting settings and load order' })
     try {
-      const report = await this.client.resetToDefaults(true)
-      let game = this.state.game
+      const report = await this.client.resetToDefaults(true, confirmUnmanagedLoss)
+      let game: GameLocation | null = this.state.game
       try {
         game = await this.client.detectGame()
       } catch (cause) {
-        const error = toIpcError(cause)
-        if (error.code !== 'game_not_found') throw cause
+        if (toIpcError(cause).code !== 'game_not_found') throw cause
+        game = null
       }
       const [snapshot, profiles, tags, ui] = await Promise.all([
         this.client.listMods(),
@@ -706,31 +709,39 @@ export class AppStore {
         this.client.listTags(),
         this.client.getUiPreferences(),
       ])
-      const message =
-        report.loadOrderOutcome === 'written'
-          ? 'Settings and load order reset to defaults'
-          : report.loadOrderOutcome === 'blocked'
-            ? `Settings reset; the load order was not rewritten. ${report.loadOrderBlockedReason ?? 'The file is locked or corrupt.'}`
-            : 'Settings reset; no game path was available for the load order'
+      const outcome = report.loadOrder
+      const written = outcome.status === 'written'
       this.set({
+        status: game ? 'ready' : 'no-game',
         game,
         snapshot,
         profiles,
         tags,
         ui,
         busy: null,
-        dirty: false,
-        lastWriteAt: report.loadOrderWritten
+        dirty: written || outcome.status === 'noGamePath' ? false : this.state.dirty,
+        lastWriteAt: written
           ? new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           : this.state.lastWriteAt,
-        notice: {
-          kind: report.loadOrderOutcome === 'blocked' ? 'warning' : 'success',
-          message,
-        },
+        notice: written
+          ? { kind: 'success', message: 'Settings and load order reset to defaults' }
+          : outcome.status === 'noGamePath'
+            ? {
+                kind: 'warning',
+                message: 'Settings reset; no game path was available for the load order',
+              }
+            : outcome.status === 'failed'
+              ? {
+                  kind: 'error',
+                  message: outcome.message ?? 'The load order was not reset',
+                }
+              : null,
       })
       void this.refreshConflicts()
+      return report
     } catch (cause) {
       this.set({ busy: null, error: toIpcError(cause) })
+      return null
     }
   }
 

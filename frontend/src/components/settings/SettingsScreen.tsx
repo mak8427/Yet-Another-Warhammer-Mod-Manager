@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import { store, useAppStore } from '../../store'
 import { DENSITIES, DENSITY_LABEL } from '../../lib/ui'
-import type { Density } from '../../lib/ipc'
+import type { Density, ResetDefaultsReport } from '../../lib/ipc'
 import { Modal } from '../common/Modal'
 import { ErrorBanner } from '../shell/ErrorBanner'
 
 export function SettingsScreen() {
   const state = useAppStore()
-  const [draftPath, setDraftPath] = useState(state.game?.gamePath ?? '')
-  const [resetOpen, setResetOpen] = useState(false)
   const savedPath = state.game?.gamePath ?? ''
+  const [draft, setDraft] = useState({ value: savedPath, base: savedPath })
+  const [resetOpen, setResetOpen] = useState(false)
+  const [pendingReset, setPendingReset] = useState<ResetDefaultsReport | null>(null)
+  const draftPath = draft.base === savedPath ? draft.value : savedPath
   const pathDirty = draftPath.trim() !== savedPath
 
   const save = async () => {
@@ -70,7 +72,7 @@ export function SettingsScreen() {
                 id="settings-path"
                 spellCheck={false}
                 value={draftPath}
-                onChange={(event) => setDraftPath(event.target.value)}
+                onChange={(event) => setDraft({ value: event.target.value, base: savedPath })}
                 aria-invalid={!draftPath.trim() && pathDirty}
               />
             </div>
@@ -214,8 +216,12 @@ export function SettingsScreen() {
                 type="button"
                 className="btn btn-danger"
                 onClick={() => {
-                  void store.resetToDefaults()
                   setResetOpen(false)
+                  void store.resetToDefaults(false).then((report) => {
+                    if (report?.loadOrder.status === 'unmanagedDirectives') {
+                      setPendingReset(report)
+                    }
+                  })
                 }}
               >
                 Reset settings and load order
@@ -230,6 +236,48 @@ export function SettingsScreen() {
             available. Profiles, tags, mod tags, and launch options are kept. One config backup and
             one load-order backup are kept.
           </p>
+          <p>
+            If <code>used_mods.txt</code> contains directives this app does not manage, you will be
+            asked before they are removed.
+          </p>
+        </Modal>
+      )}
+
+      {pendingReset && (
+        <Modal
+          title="Drop unmanaged directives?"
+          width="sm"
+          onClose={() => setPendingReset(null)}
+          footer={
+            <>
+              <button type="button" className="btn" data-autofocus onClick={() => setPendingReset(null)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={() => {
+                  setPendingReset(null)
+                  void store.resetToDefaults(true)
+                }}
+              >
+                Drop directives and reset
+              </button>
+            </>
+          }
+        >
+          <p>
+            <code>used_mods.txt</code> contains directives this app does not manage. Resetting
+            writes an empty order and drops them; the previous file is kept in{' '}
+            <code>used_mods.txt.bak</code>.
+          </p>
+          <ul className="mono">
+            {pendingReset.loadOrder.unmanagedDirectives.map((directive) => (
+              <li key={directive}>
+                <code>{directive}</code>
+              </li>
+            ))}
+          </ul>
         </Modal>
       )}
     </section>

@@ -26,21 +26,50 @@ fn app_info_serializes_camel_case_fields() {
 
 #[test]
 fn reset_defaults_report_uses_camel_case_on_the_wire() {
-    let report = wh3mm_core::ipc::ResetDefaultsReport {
-        load_order_written: false,
-        load_order_outcome: wh3mm_core::ipc::ResetLoadOrderOutcome::NoGamePath,
-        load_order_blocked_reason: None,
+    use wh3mm_core::ipc::{ResetDefaultsReport, ResetLoadOrderReport, ResetLoadOrderStatus};
+
+    let report = ResetDefaultsReport {
+        load_order: ResetLoadOrderReport {
+            status: ResetLoadOrderStatus::UnmanagedDirectives,
+            message: Some("confirm first".into()),
+            unmanaged_directives: vec!["add_working_directory \"C:/tools\";".into()],
+            requires_unmanaged_confirmation: true,
+        },
     };
 
     let json = serde_json::to_value(&report).expect("ResetDefaultsReport must serialize");
 
-    assert_eq!(json["loadOrderWritten"], false);
-    assert_eq!(json["loadOrderOutcome"], "no_game_path");
-    assert_eq!(json["loadOrderBlockedReason"], serde_json::Value::Null);
+    assert_eq!(json["loadOrder"]["status"], "unmanagedDirectives");
+    assert_eq!(json["loadOrder"]["message"], "confirm first");
+    assert_eq!(
+        json["loadOrder"]["unmanagedDirectives"][0],
+        "add_working_directory \"C:/tools\";"
+    );
+    assert_eq!(json["loadOrder"]["requiresUnmanagedConfirmation"], true);
     assert!(
-        json.get("load_order_written").is_none(),
+        json.get("load_order").is_none(),
         "snake_case keys must not leak onto the wire"
     );
+}
+
+#[test]
+fn reset_load_order_status_is_camel_case_and_distinguishes_outcomes() {
+    use wh3mm_core::ipc::ResetLoadOrderStatus;
+
+    let cases = [
+        (ResetLoadOrderStatus::Written, "written"),
+        (ResetLoadOrderStatus::NoGamePath, "noGamePath"),
+        (ResetLoadOrderStatus::Failed, "failed"),
+        (
+            ResetLoadOrderStatus::UnmanagedDirectives,
+            "unmanagedDirectives",
+        ),
+    ];
+
+    for (status, expected) in cases {
+        let json = serde_json::to_value(status).expect("status must serialize");
+        assert_eq!(json, expected);
+    }
 }
 
 #[test]

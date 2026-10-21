@@ -146,12 +146,21 @@ export interface UiPreferences {
   lastScrollTop: number
 }
 
-export type ResetLoadOrderOutcome = 'written' | 'no_game_path' | 'blocked'
+export type ResetLoadOrderStatus =
+  | 'written'
+  | 'noGamePath'
+  | 'failed'
+  | 'unmanagedDirectives'
+
+export interface ResetLoadOrderReport {
+  status: ResetLoadOrderStatus
+  message: string | null
+  unmanagedDirectives: string[]
+  requiresUnmanagedConfirmation: boolean
+}
 
 export interface ResetDefaultsReport {
-  loadOrderWritten: boolean
-  loadOrderOutcome: ResetLoadOrderOutcome
-  loadOrderBlockedReason: string | null
+  loadOrder: ResetLoadOrderReport
 }
 
 export interface FileConflict {
@@ -405,8 +414,11 @@ export async function updateUiPreferences(preferences: UiPreferences): Promise<U
   return invokeCommand<UiPreferences>('update_ui_preferences', { preferences })
 }
 
-export async function resetToDefaults(confirm: boolean): Promise<ResetDefaultsReport> {
-  return invokeCommand<ResetDefaultsReport>('reset_to_defaults', { confirm })
+export async function resetToDefaults(
+  confirm: boolean,
+  confirmUnmanagedLoss = false,
+): Promise<ResetDefaultsReport> {
+  return invokeCommand<ResetDefaultsReport>('reset_to_defaults', { confirm, confirmUnmanagedLoss })
 }
 
 export async function readLoadOrder(): Promise<LoadOrderReadReport> {
