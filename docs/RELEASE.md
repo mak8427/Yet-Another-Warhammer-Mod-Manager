@@ -122,9 +122,9 @@ number (from the About/app-info surface) and every result.
 8. **Corrupt `used_mods.txt` recovery.** Close the app. In the detected WH3 game
    directory, replace `used_mods.txt` (next to `used_mods.txt.bak`) with
    garbage. Start the app: it must report the corrupt file and offer the backup,
-   not crash or silently overwrite the user's data. Use the app's Restore action
-   to recover `used_mods.txt.bak`, then confirm the previous order returns. Do
-   not restore by copying files while the app is running.
+   not crash or silently overwrite the user's data. Choose **Restore backup** in
+   the app to recover `used_mods.txt.bak`, then confirm the previous order
+   returns. Do not restore by copying files while the app is running.
 9. **Uninstall.** Uninstall from Windows Settings. The Start-menu entry and
    program files are removed. User configuration under `%APPDATA%` may remain;
    note whether the user data is preserved (expected) and that no game files
