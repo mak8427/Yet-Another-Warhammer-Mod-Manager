@@ -614,6 +614,13 @@ function renderConsole(config, result, scan) {
     )
   }
   lines.push('')
+  lines.push('Checks:')
+  for (const capability of result.capabilities) {
+    for (const check of config.capabilities.find((item) => item.id === capability.id).checks) {
+      lines.push(`  ${check.id.padEnd(6)} ${check.status.padEnd(8)} ${check.title}`)
+    }
+  }
+  lines.push('')
   lines.push(`Capability Parity Index: ${ordinal(result.index)}%`)
   lines.push(
     `Checks: ${result.done} done / ${result.partial} partial / ${result.missing} missing (${result.checks} total)`,
