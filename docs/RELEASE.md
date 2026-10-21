@@ -167,15 +167,15 @@ release task.
 ## Pre-release checklist
 
 - [ ] M4 merged (WAR-10), including SET-4, ML-3, CF-4, PRF-2, and DET-1; `main` is green.
-- [ ] WAR-104 ruling B is implemented: WAR-106 (Workshop Open test, WS-2) and
-      WAR-107 (author-surface cut, DSC-1) are merged. Both block the `v1.0.0`
-      tag (WAR-99).
 - [ ] `node scripts/parity-report.mjs` reports **0 missing checks** at the release
       head. The allowed limitations are WS-3, LA-1, ML-4, SET-2, and DET-1's
-      Linux roots; DSC-1 and WS-2 are not limitations (WAR-106/WAR-107).
+      Linux roots; DSC-1 (author) and WS-2 (Workshop open) are not limitations
+      and are resolved by WAR-106/WAR-107 (see below).
 - [ ] The generated `docs/PARITY.md` and `docs/STATUS.md` are committed at that
       head; `docs/STATUS.md` names the five limitations with their manual checks.
       Never hand-edit `docs/PARITY.md`.
+- [ ] WAR-106 (WS-2 Workshop Open test) is merged and QA-approved; it blocks the `v1.0.0` tag.
+- [ ] WAR-107 (DSC-1 author surface cut and `PRODUCT_SCOPE` correction) is merged and QA-approved; it blocks the `v1.0.0` tag.
 - [ ] Version matches in `tauri.conf.json`, `Cargo.toml`, and both `package.json` files.
 - [ ] `CHANGELOG.md` reflects the merged scope.
 - [ ] Tag workflow produced the NSIS installer, `SHA256SUMS.txt`, and a draft release.

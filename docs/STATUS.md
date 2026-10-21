@@ -160,9 +160,9 @@ and tests cited in `docs/PARITY.yaml`; DET-1 stays partial for the documented
 Flatpak/Snap/XDG Linux roots. The five documented v1.0 limitations are WS-3,
 LA-1, ML-4, SET-2, and DET-1's Linux roots. DSC-1's author requirement and
 WS-2's open path are not limitations: WAR-104 ruling B resolves them with
-WAR-106 (missing Workshop Open test) and WAR-107 (cut the author surface). Both
-tasks block the `v1.0.0` tag (WAR-99), so it cannot ship ahead of them; neither
-is a WAR-79 parity-gate blocker.
+WAR-106 (missing Workshop Open test) and WAR-107 (cut the author surface and
+correct `docs/PRODUCT_SCOPE.md`). Both tasks block the `v1.0.0` tag (WAR-99), so
+it cannot ship ahead of them; neither is a WAR-79 parity-gate blocker.
 The parity percentage itself is a monitoring metric, not the ship gate (WAR-79).
 A `v1.0.0` tag and draft release are created only after the `release.yml`
 artifact dispatch on `main` is green, WAR-106/WAR-107 are merged, and the
