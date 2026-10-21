@@ -243,6 +243,12 @@ Field rules:
   currently has mod lines, is refused until the matching confirmation flag is
   supplied. A non-empty enabled set that resolves to zero packs is always
   refused.
+- `reset_to_defaults` applies the same rule before it changes any state. It
+  first returns a pre-write `ResetLoadOrderReport`; when directives would be
+  dropped the status is `unmanagedDirectives`, the directives are listed, and the
+  caller must repeat the reset with `confirmUnmanagedLoss: true`. A corrupt or
+  unreadable file returns `failed` and leaves the session untouched; it is never
+  reported as a successful reset.
 - Toggling a mod or changing the enabled order updates the **active profile**
   immediately, so the working state survives a restart without a separate
   "save" action. Creating/renaming/duplicating/deleting profiles remains an
