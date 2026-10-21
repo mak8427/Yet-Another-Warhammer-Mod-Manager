@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      run_windows:
+        description: 'Run the Windows Tauri build check'
+        type: boolean
+        default: false
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -67,10 +72,12 @@ jobs:
   windows-tauri:
     name: Windows Tauri shell (manual until packaging)
     # The shell is Windows-only by design (ADR-001). This job is manual in M0;
-    # M5 promotes it to push/tag builds with an installer artifact.
-    if: github.event_name == 'workflow_dispatch'
+    # M5 promotes it to push/tag builds with an installer artifact. Run it from
+    # workflow_dispatch with run_windows enabled. No rust-cache here: its
+    # post-step upload has hung the job.
+    if: github.event_name == 'workflow_dispatch' && inputs.run_windows
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -84,8 +91,6 @@ jobs:
           cache: pnpm
 
       - uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
