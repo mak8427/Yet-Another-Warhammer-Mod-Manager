@@ -5,6 +5,7 @@ import { IpcError, ipc } from './lib/ipc'
 import { store } from './store'
 import {
   APP_INFO,
+  CONFLICT_REPORT,
   PROFILES,
   TAGS,
   UI,
@@ -102,6 +103,19 @@ describe('App', () => {
       expect(ipc.setModEnabled).toHaveBeenCalledWith('mod-a', false)
     })
     expect(ipc.listProfiles).toHaveBeenCalled()
+  })
+
+  it('navigates to the conflict report and shows the winning mod', async () => {
+    mockReady()
+    vi.mocked(ipc.getConflicts).mockResolvedValue(CONFLICT_REPORT)
+    render(<App />)
+
+    await screen.findByRole('listbox', { name: 'Mods' })
+    fireEvent.click(screen.getByRole('button', { name: /Conflicts/ }))
+
+    expect(await screen.findByRole('heading', { name: 'Conflicts' })).toBeInTheDocument()
+    expect(await screen.findByText('db/units_tables/units')).toBeInTheDocument()
+    expect(screen.getAllByText('beta.pack').length).toBeGreaterThan(0)
   })
 
   it('switches profiles and applies the returned enabled set', async () => {

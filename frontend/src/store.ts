@@ -3,20 +3,26 @@ import {
   ipc,
   toIpcError,
   type AppInfo,
+  type ConflictReport,
   type Density,
   type GameLocation,
   type IpcClient,
   type IpcError,
+  type LaunchOptions,
+  type LaunchResult,
   type LoadOrderWriteReport,
   type ModListSnapshot,
   type ModSummary,
   type ProfilesState,
+  type SteamActionResult,
   type Tag,
   type UiPreferences,
+  type WorkshopAction,
+  type WorkshopItem,
 } from './lib/ipc'
 
 export type AppStatus = 'loading' | 'ready' | 'no-game' | 'error'
-export type View = 'mods' | 'profiles'
+export type View = 'mods' | 'profiles' | 'conflicts' | 'workshop' | 'launch'
 export type SelectMode = 'single' | 'toggle' | 'range'
 export type MoveTarget = 'up' | 'down' | 'top' | 'bottom'
 
@@ -44,6 +50,16 @@ export interface AppState {
   notice: Notice | null
   preview: LoadOrderWriteReport | null
   previewOpen: boolean
+  conflicts: ConflictReport | null
+  conflictLoading: boolean
+  conflictError: IpcError | null
+  workshop: WorkshopItem[] | null
+  workshopLoading: boolean
+  workshopError: IpcError | null
+  launchOptions: LaunchOptions
+  launchLoading: boolean
+  launchError: IpcError | null
+  launchResult: LaunchResult | null
 }
 
 export const DEFAULT_UI: UiPreferences = {
@@ -73,6 +89,16 @@ export function initialState(): AppState {
     notice: null,
     preview: null,
     previewOpen: false,
+    conflicts: null,
+    conflictLoading: false,
+    conflictError: null,
+    workshop: null,
+    workshopLoading: false,
+    workshopError: null,
+    launchOptions: { skipIntro: false, scriptLogging: false },
+    launchLoading: false,
+    launchError: null,
+    launchResult: null,
   }
 }
 
@@ -170,6 +196,9 @@ export class AppStore {
         busy: null,
         error: null,
       })
+      void this.refreshConflicts()
+      void this.refreshWorkshop()
+      void this.refreshLaunchOptions()
     } catch (cause) {
       const error = toIpcError(cause)
       if (error.code === 'game_not_found') {
@@ -220,6 +249,9 @@ export class AppStore {
         selection: [],
         anchorId: null,
       })
+      void this.refreshConflicts()
+      void this.refreshWorkshop()
+      void this.refreshLaunchOptions()
     } catch (cause) {
       const error = toIpcError(cause)
       if (error.code === 'game_not_found') {
@@ -257,6 +289,90 @@ export class AppStore {
       anchorId:
         this.state.anchorId && known.has(this.state.anchorId) ? this.state.anchorId : null,
     })
+    void this.refreshConflicts()
+  }
+
+  async refreshConflicts(): Promise<void> {
+    if (this.state.status !== 'ready' || this.state.conflictLoading) return
+    this.set({ conflictLoading: true, conflictError: null })
+    try {
+      const conflicts = await this.client.getConflicts()
+      this.set({ conflicts, conflictLoading: false })
+    } catch (cause) {
+      this.set({ conflictLoading: false, conflictError: toIpcError(cause) })
+    }
+  }
+
+  async refreshWorkshop(): Promise<void> {
+    if (this.state.status !== 'ready' || this.state.workshopLoading) return
+    this.set({ workshopLoading: true, workshopError: null })
+    try {
+      const workshop = await this.client.listWorkshopItems()
+      this.set({ workshop, workshopLoading: false })
+    } catch (cause) {
+      this.set({ workshopLoading: false, workshopError: toIpcError(cause) })
+    }
+  }
+
+  async refreshLaunchOptions(): Promise<void> {
+    if (this.state.status !== 'ready') return
+    try {
+      const launchOptions = await this.client.getLaunchOptions()
+      this.set({ launchOptions })
+    } catch (cause) {
+      this.set({ launchError: toIpcError(cause) })
+    }
+  }
+
+  async runWorkshopAction(action: WorkshopAction, workshopId: string): Promise<void> {
+    this.set({ busy: 'Talking to Steam', workshopError: null })
+    try {
+      const result: SteamActionResult = await this.client.workshopAction(action, workshopId)
+      this.set({
+        busy: null,
+        notice: { kind: 'info', message: result.message },
+      })
+      await this.refreshWorkshop()
+    } catch (cause) {
+      this.set({ busy: null, workshopError: toIpcError(cause) })
+    }
+  }
+
+  async setLaunchOption(key: keyof LaunchOptions, value: boolean): Promise<void> {
+    const previous = this.state.launchOptions
+    const next = { ...previous, [key]: value }
+    this.set({ launchOptions: next, launchError: null, busy: 'Saving launch options' })
+    try {
+      const saved = await this.client.setLaunchOptions(next)
+      this.set({ launchOptions: saved, busy: null })
+    } catch (cause) {
+      this.set({
+        launchOptions: previous,
+        busy: null,
+        launchError: toIpcError(cause),
+      })
+    }
+  }
+
+  async launchGame(): Promise<void> {
+    this.set({ launchLoading: true, launchError: null, launchResult: null, busy: 'Launching' })
+    try {
+      const result = await this.client.launchGame(
+        this.state.launchOptions.skipIntro,
+        this.state.launchOptions.scriptLogging,
+      )
+      this.set({
+        launchLoading: false,
+        launchResult: result,
+        busy: null,
+        notice: {
+          kind: 'success',
+          message: result.message ?? 'Launch requested through Steam',
+        },
+      })
+    } catch (cause) {
+      this.set({ launchLoading: false, busy: null, launchError: toIpcError(cause) })
+    }
   }
 
   async toggleMod(modId: string): Promise<void> {
@@ -345,6 +461,7 @@ export class AppStore {
       this.setSnapshot(snapshot)
       this.set({ busy: null })
       await this.refreshProfiles()
+      await this.refreshLaunchOptions()
     } catch (cause) {
       this.set({ busy: null, error: toIpcError(cause) })
     }
@@ -391,6 +508,7 @@ export class AppStore {
         busy: null,
         notice: { kind: 'success', message: 'Profile deleted' },
       })
+      await this.refreshLaunchOptions()
       return true
     } catch (cause) {
       this.set({ busy: null, error: toIpcError(cause) })
@@ -452,6 +570,12 @@ export class AppStore {
 
   setView(view: View): void {
     this.set({ view })
+    if (view === 'conflicts' && !this.state.conflicts) void this.refreshConflicts()
+    if (view === 'workshop' && !this.state.workshop) void this.refreshWorkshop()
+    if (view === 'launch') {
+      void this.refreshLaunchOptions()
+      void this.refreshConflicts()
+    }
   }
 
   select(modId: string, mode: SelectMode): void {
@@ -583,6 +707,18 @@ export class AppStore {
 
   dismissNotice(): void {
     this.set({ notice: null })
+  }
+
+  dismissConflictError(): void {
+    this.set({ conflictError: null })
+  }
+
+  dismissWorkshopError(): void {
+    this.set({ workshopError: null })
+  }
+
+  dismissLaunchError(): void {
+    this.set({ launchError: null })
   }
 }
 
