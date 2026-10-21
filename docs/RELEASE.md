@@ -40,15 +40,18 @@ pnpm lint
 pnpm test
 cargo test --workspace --locked
 cd crates/wh3mm-app
-npx --yes @tauri-apps/cli@2.12.4 build --ci --bundles nsis,msi
+npx --yes @tauri-apps/cli@2.12.4 build --ci --bundles nsis
 ```
 
 Outputs (paths are relative to the repository root because the crates share one
 Cargo target directory):
 
 - NSIS: `target/release/bundle/nsis/WH3 Mod Manager_1.0.0_x64-setup.exe`
-- MSI: `target/release/bundle/msi/WH3 Mod Manager_1.0.0_x64_en-US.msi`
 - Unpacked executable: `target/release/wh3mm.exe`
+
+The NSIS installer is configured `currentUser`: it installs per user and needs no
+administrator elevation. An MSI bundle is intentionally not shipped for v1.0;
+Tauri's WiX MSI path is per-machine and would require UAC.
 
 The installer is **not code-signed**. Windows SmartScreen will show an
 "Unknown publisher" warning. Tell testers to choose **More info → Run anyway**
@@ -74,10 +77,10 @@ manual check in the QA pass below.
 
 1. Checks the tag against `tauri.conf.json` and fails on a mismatch.
 2. Runs `cargo test --workspace --locked` and installs the frontend.
-3. Builds NSIS and MSI on `windows-latest`.
-4. Writes `SHA256SUMS.txt` and uploads the installers plus that file as the
+3. Builds the NSIS installer on `windows-latest`.
+4. Writes `SHA256SUMS.txt` and uploads the installer plus that file as the
    `wh3mm-windows-<version>` run artifact.
-5. Creates a **draft** GitHub release with the installers and checksums attached.
+5. Creates a **draft** GitHub release with the installer and checksums attached.
 
 It never publishes a release automatically. A human reviews the draft, edits the
 notes, and publishes it. Linux PR gates in `.github/workflows/ci.yml` are
@@ -101,7 +104,7 @@ number (from the About/app-info surface) and every result.
 
 1. **Install.** Run the NSIS installer as a normal user. Confirm it completes
    without an administrator prompt, creates a Start-menu entry, and launches
-   from the Start menu. Repeat with the MSI if both are shipped.
+   from the Start menu.
 2. **First run.** The window opens at 1280x840, the title is `WH3 Mod Manager`,
    and no unhandled error dialog appears. Copy the version shown by the app; it
    must read `1.0.0`.
@@ -163,7 +166,7 @@ release task.
       Never hand-edit `docs/PARITY.md`.
 - [ ] Version matches in `tauri.conf.json`, `Cargo.toml`, and both `package.json` files.
 - [ ] `CHANGELOG.md` reflects the merged scope.
-- [ ] Tag workflow produced NSIS and MSI artifacts, `SHA256SUMS.txt`, and a draft release.
+- [ ] Tag workflow produced the NSIS installer, `SHA256SUMS.txt`, and a draft release.
 - [ ] Manual QA script passed on clean Windows 10 and 11 machines.
 - [ ] Installer SHA-256 published in the release notes.
 

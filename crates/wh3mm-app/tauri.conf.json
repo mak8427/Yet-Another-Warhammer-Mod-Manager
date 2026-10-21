@@ -34,8 +34,7 @@
   "bundle": {
     "active": true,
     "targets": [
-      "nsis",
-      "msi"
+      "nsis"
     ],
     "publisher": "Warhammer Labs",
     "icon": [

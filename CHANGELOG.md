@@ -28,9 +28,9 @@ audit; see `docs/RELEASE.md`.
   acceptance checklist.
 - **Performance and QA gates** (`#4`, `#7`, `#19`): the legacy baseline
   measurement harness, the 500-mod fixture, acceptance suites, and the perf gate.
-- **Release engineering** (this branch): Windows NSIS and MSI bundle
+- **Release engineering** (this branch): Windows NSIS per-user installer
   configuration at version 1.0.0, a `v*` tag workflow that builds the
-  installers, uploads the artifact, and opens a draft release, and this release
+  installer, uploads the artifact, and opens a draft release, and this release
   guide plus changelog.
 
 ### Known limitations
