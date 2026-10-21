@@ -8,15 +8,17 @@ is `docs/adr/004-testing-strategy.md`.
 ## Versioning
 
 - The app uses semantic versioning: `MAJOR.MINOR.PATCH`.
-- **One version, two files.** `crates/wh3mm-app/tauri.conf.json` and the Cargo
-  workspace (`[workspace.package].version` in `Cargo.toml`) must both say the
-  same `X.Y.Z`. The frontend packages mirror it as well.
+- **One version, four files.** `crates/wh3mm-app/tauri.conf.json`, the Cargo
+  workspace (`[workspace.package].version` in `Cargo.toml`), `package.json`, and
+  `frontend/package.json` must all say the same `X.Y.Z`.
 - The installer version and the `app_info` IPC response come from those files,
   so a mismatch is a release blocker.
 - The release tag is `vX.Y.Z` and must match the configured version. The tag
   workflow refuses to build on a mismatch.
-- v1.0.0 is the first release. The tag is created only after M4 (WAR-10) is
-  merged and the WAR-12 release audit is signed off.
+- v1.0.0 is the first release. The tag and draft release are created only after
+  M4 (WAR-10) and the release gates are on `main`. Creating the tag is not
+  publication: the workflow creates a draft, WAR-12 audits that draft, and only
+  then may a human publish it.
 
 ## Build locally on Windows
 
@@ -94,8 +96,9 @@ artifact only.
 the default branch. The artifact-producing Windows run therefore comes **after**
 the release-engineering PR merges to `main`: dispatch `release.yml` at the
 release head, link the run and artifact on the task, and only then continue the
-approval path. Do not dispatch from an unmerged feature branch and do not create
-the `v1.0.0` tag until M4 (WAR-10) and the WAR-12 audit are done.
+approval path. Do not dispatch from an unmerged feature branch. Create the
+`v1.0.0` tag only after M4 (WAR-10) and the release gates are on `main`; that
+tag exists so WAR-12 can audit the draft installer it produces.
 
 ## Manual Windows QA script
 
@@ -157,19 +160,21 @@ release task.
 ## Pre-release checklist
 
 - [ ] M4 merged (WAR-10), including SET-4, ML-3, CF-4, PRF-2, and DET-1; `main` is green.
-- [ ] WAR-12 audit signed off.
 - [ ] `node scripts/parity-report.mjs` reports **0 missing checks** at the release
-      head. Only WS-3, LA-1, ML-4, and SET-2 may remain `partial`; DET-1 Linux
-      roots is documented separately.
+      head. The allowed limitations are WS-3, LA-1, ML-4, SET-2, and DET-1's
+      Linux roots; DSC-1 (author) and WS-2 (Workshop open) may also remain
+      `partial` — under WAR-79 the parity percentage is monitoring, not the gate.
 - [ ] The generated `docs/PARITY.md` and `docs/STATUS.md` are committed at that
       head; `docs/STATUS.md` names the five limitations with their manual checks.
       Never hand-edit `docs/PARITY.md`.
 - [ ] Version matches in `tauri.conf.json`, `Cargo.toml`, and both `package.json` files.
 - [ ] `CHANGELOG.md` reflects the merged scope.
 - [ ] Tag workflow produced the NSIS installer, `SHA256SUMS.txt`, and a draft release.
+- [ ] WAR-12 audit signed off on that draft.
 - [ ] Manual QA script passed on clean Windows 10 and 11 machines.
 - [ ] Installer SHA-256 published in the release notes.
+- [ ] Publish the draft only after every item above is checked.
 
-Until WAR-10's blockers merge, the parity generator is expected to report
-`SET-4` as missing. That is a pre-tag gate, not a reason to hold the release
-machinery PR; do not tag while any check is missing.
+At the release head `0e051204` the parity generator reports 0 missing checks
+(91.750%; SET-4, ML-3, CF-4, and PRF-2 are done after WAR-10). The pre-tag gate
+stays **0 missing**; do not tag while any check is missing.

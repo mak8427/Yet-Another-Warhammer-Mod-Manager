@@ -17,8 +17,8 @@ when its acceptance checks are recorded here with command evidence.
 | M1 | Karl | Steam/WH3 detection, pack parser, mod index, fixtures | Done; merged as `c1a9cdd` (PR #6) |
 | M2 | Karl | Mod list, load order, tags, profiles | Done; merged as `c1a9cdd` (PR #6) |
 | M3 | Karl | Conflicts, Workshop, launch | Done; merged as `bb306d4` (PR #18) |
-| M4 | Katerina + Karl | TW:WH3 visual system, density, keyboard map, states | Not started |
-| M5 | Baltasar + Genny4Real | E2E, performance budgets, Windows installer, release | Release machinery in PR #25; Windows artifact and final parity follow merge and WAR-10 |
+| M4 | Katerina + Karl | TW:WH3 visual system, density, keyboard map, states | Done; merged as `0e051204` (PR #26), including the five WAR-79 ship-gate blockers |
+| M5 | Baltasar + Genny4Real | E2E, performance budgets, Windows installer, release | Release machinery merged as `e31eb64` (PR #25); Windows NSIS artifact blocked on WAR-101 |
 
 ## M0 evidence (WAR-4)
 
@@ -148,15 +148,26 @@ These are accepted for v1.0; the full manual scripts are in `docs/RELEASE.md`.
 
 The capability-parity index in `docs/PARITY.md` is generated from
 `docs/PARITY.yaml`; only WS-3, LA-1, ML-4, and SET-2 may remain `partial` there.
-At the release head, `node scripts/parity-report.mjs` must report 0 missing
-checks. Until WAR-10's blockers merge, SET-4 is expected to be the missing
-check, and no `v1.0.0` tag is created.
+At the release head `0e051204`, `node scripts/parity-report.mjs` reports
+91.750% with 33 done / 7 partial / **0 missing**. SET-4, ML-3, CF-4, and PRF-2
+moved to done with the WAR-10 code and tests cited in `docs/PARITY.yaml`; DET-1
+stays partial for the documented Flatpak/Snap/XDG Linux roots. The four allowed
+v1.0 limitations are WS-3, LA-1, ML-4, and SET-2. DSC-1 (author parsing) and
+WS-2 (open Workshop page) also remain partial; under the WAR-79 ruling the
+parity percentage is a monitoring metric, not the ship gate.
+A `v1.0.0` tag and draft release are created only after the `release.yml`
+artifact dispatch on `main` is green and the release gates are on the branch;
+publishing waits for the WAR-12 audit of that draft.
 
 ## Risks and open items
 
-- The Windows Tauri shell is not compiled by the Linux gates. It is verified by
-  the manual `workflow_dispatch` job, not by a required PR check, until M5
-  packaging makes it mandatory.
+- The Windows Tauri shell is not compiled by the Linux gates: `tauri` and
+  `tauri-build` are `cfg(windows)`-only dependencies, so `cargo test --workspace`
+  never runs their build scripts. The first release dispatch on `main`
+  (`e31eb64`, run `39628830515`) failed on a missing `protocol-asset` feature
+  that Linux CI could not see; WAR-101 fixes it. Until a required Windows PR
+  check exists, treat every Windows-only dependency/feature change as untested
+  by the Linux gates.
 - `main` has no GitHub branch protection; the branch/PR policy is enforced by
   review. Enabling protection is an owner action for Torgrim.
 - The M0 scaffold commit reached `main` before the CEO's no-direct-push
@@ -167,7 +178,9 @@ check, and no `v1.0.0` tag is created.
 
 ## Next
 
-1. Genny4Real: use `ModListSnapshot.timings` and the `wh3mm: timing` log lines
-   as the new-app baseline for WAR-7.
-2. Baltasar Gelt: execute the Windows/Steam manual QA script in
-   `docs/M3_MANUAL_QA.md` against a real install.
+1. Karl Franz: land WAR-101 (`protocol-asset`) with a green `release.yml` run on
+   the fix branch that uploads `wh3mm-windows-1.0.0`.
+2. Katerina Zarina: merge WAR-101 after QA and tech-lead approval, re-dispatch
+   `release.yml` on `main`, and record the artifact on WAR-95/WAR-73.
+3. Baltasar Gelt: run the WAR-12 audit on the draft release produced by the
+   `v1.0.0` tag, after the artifact proof; publish only on his sign-off.
