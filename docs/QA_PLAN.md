@@ -91,11 +91,11 @@ owner named), `BLOCKED` (cannot be proven until another issue lands).
 | --- | --- | --- | --- |
 | A1 | `cargo fmt --check` passes | `cargo fmt --all --check` on the QA branch | PASS — 2026-10-21 |
 | A2 | `cargo clippy -- -D warnings` passes | `cargo clippy --workspace --all-targets --locked -- -D warnings` | PASS — 2026-10-21 |
-| A3 | `cargo test` passes for the workspace | `cargo test --workspace --locked` | PASS — 95 passed, 0 failed, 1 ignored (WAR-47), 0.18 s warm |
-| A4 | `pnpm typecheck`, `lint`, `test`, `build` pass | frontend gate + `node --test scripts/qa/*.test.mjs` | PASS — 42 Vitest tests / 6 files; 23 Node tests |
+| A3 | `cargo test` passes for the workspace | `cargo test --workspace --locked` | PASS — 97 passed, 0 failed, 0 ignored (WAR-47 regression un-ignored) |
+| A4 | `pnpm typecheck`, `lint`, `test`, `build` pass | frontend gate + `node --test scripts/qa/*.test.mjs` | PASS — 42 Vitest tests / 6 files; 24 Node tests |
 
-The single ignored test is quarantined against WAR-47 with a reason and an
-owner. It is listed as a known S2 defect below; it is not a silent skip.
+No test is ignored or quarantined. The WAR-47 regression is un-ignored and
+passes; the defect it covered is closed in §8.
 
 ### 3.2 Rust integration coverage
 
@@ -114,7 +114,7 @@ in the same PR.
 | R7 | `.bak` is byte-exact; recovery is explicit and never silent | `load_order_fixtures.rs::successful_write_creates_a_byte_exact_backup_and_restore_brings_it_back`, `fault_injection.rs::fi06_corrupt_load_order_requires_explicit_restore`, `::fi10_interrupted_write_is_not_restored_silently` | PASS |
 | R8 | Byte-stable read → write → read | `session_flow.rs::writes_byte_compatible_used_mods_and_backs_up_the_previous_file`, `load_order::tests::write_round_trip_is_byte_stable_and_creates_backup` | PASS |
 | R9 | Profile round-trip: create/save/apply/duplicate/delete; rename keeps the target's set | `session_flow.rs::profiles_create_switch_duplicate_and_delete`, `frontend/src/store.test.ts::renames a non-active profile with its saved set, not the visible one` | PASS |
-| R10 | Config corrupt + valid `.bak` recovery; **future schema never overwritten** | `config_fixtures.rs::corrupt_primary_recovers_from_a_valid_backup_and_says_so`, `::future_schema_is_refused_and_never_overwritten`, `::double_corrupt_config_leaves_both_files_untouched` | **FAIL — WAR-47 (S2)**: future schema + stale v1 `.bak` is overwritten; quarantined test |
+| R10 | Config corrupt + valid `.bak` recovery; **future schema never overwritten** | `config_fixtures.rs::corrupt_primary_recovers_from_a_valid_backup_and_says_so`, `::future_schema_is_refused_and_never_overwritten`, `::double_corrupt_config_leaves_both_files_untouched`, `::future_schema_with_a_stale_backup_must_still_not_overwrite` | PASS — WAR-47 fixed by PR #15 (`76dd0b9`); future `config.json` and stale v1 `.bak` both stay byte-identical |
 | R11 | Deleting the last profile refused; deleting the active profile activates a sibling | `config.rs` unit tests `::deleting_the_last_profile_is_refused`, `::deleting_the_active_profile_activates_a_sibling` | PASS |
 | R12 | Conflict winner calculation (last line wins) | `conflicts.rs::last_enabled_pack_wins_each_path` (to be added) | BLOCKED — WAR-9 |
 | R13 | Missing dependency warning | `conflicts.rs::reports_missing_dependencies` (to be added) | BLOCKED — WAR-9 |
@@ -220,7 +220,7 @@ hook; the gate accepts it only with FI-03 covering the pre-rename failure.
 | K2 | A malformed pack panics the scanner and the app dies | Medium | High | Typed `pack_parse_failed`; R4, FI-01, FI-02 |
 | K3 | Duplicate pack names resolve to the wrong file | Medium | High | Case-insensitive name match + duplicate warning; R14 |
 | K4 | Steam/Proton/Flatpak path detection misses a valid install | High | Medium | Multi-candidate detection + manual override; R1, R2 |
-| K5 | A config downgrade destroys a newer schema | Low | High | ADR-003; R10 — currently **open** as WAR-47 |
+| K5 | A config downgrade destroys a newer schema | Low | High | ADR-003; R10 — **mitigated** by PR #15 (`76dd0b9`); un-ignored regression asserts both files stay byte-identical |
 | K6 | The 500-mod list is slow or unvirtualized | Medium | High | F2, R16, P1–P3 |
 | K7 | Flaky suite erodes trust in the gate | Medium | Medium | Deterministic fixtures, no network/time, bounded CI; §1 |
 | K8 | Fixtures drift from the documented format | Medium | Medium | `--verify` in CI + R17 + manifest |
@@ -308,7 +308,7 @@ A flaky test is a defect: quarantine with an issue and a deadline, not a silent
 retry or `skip` (ADR-004). A release-blocking regression is reported on the PR
 and the task with the run URL, failing test, and expected vs actual.
 
-**Open defects:** WAR-47 (S2, config downgrade overwrite, owner Karl Franz).
+**Open defects:** none at S1/S2. WAR-47 (S2, config downgrade overwrite) is closed by PR #15 (`76dd0b9`) and its un-ignored regression.
 
 ---
 
@@ -320,9 +320,12 @@ and the task with the run URL, failing test, and expected vs actual.
 | 2026-10-21 | `c1a9cdd` + QA branch | `cargo clippy --workspace --all-targets --locked -- -D warnings` | PASS |
 | 2026-10-21 | `c1a9cdd` + QA branch | `cargo test --workspace --locked` | PASS — 95 passed, 0 failed, 1 ignored (WAR-47), 0.18 s warm |
 | 2026-10-21 | `c1a9cdd` + QA branch | `pnpm typecheck / lint / test / build` | PASS — 42 tests across 6 files, 0.72 s |
-| 2026-10-21 | `c1a9cdd` + QA branch | `node --test scripts/qa/*.test.mjs` | PASS — 23 tests (12 perf-gate, 11 fixture guard) |
+| 2026-10-21 | `c1a9cdd` + QA branch | `node --test scripts/qa/*.test.mjs` | PASS — 24 tests (13 perf-gate, 11 fixture guard) |
 | 2026-10-21 | `c1a9cdd` + QA branch | `node scripts/qa/generate-fixtures.mjs --verify` | PASS — 33 fixtures + 500-mod index verified |
 | 2026-10-21 | `c1a9cdd` + QA branch | `node scripts/qa/verify-perf-gate.mjs` | BLOCKED — no `docs/perf/comparison.json` (expected) |
+| 2026-10-21 | WAR-56 head (`test/qa-harness` + `main` @ `76dd0b9`) | `cargo fmt --all --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, `cargo test --workspace --locked` | PASS — 97 passed, 0 failed, 0 ignored |
+| 2026-10-21 | WAR-56 head (`test/qa-harness` + `main` @ `76dd0b9`) | `pnpm typecheck`, `lint`, `test`, `build`; `node scripts/qa/generate-fixtures.mjs --verify`; `node --test scripts/qa/*.test.mjs` | PASS — 42 Vitest tests / 6 files; 33 fixtures + 500-mod index; 24 Node tests |
+| 2026-10-21 | WAR-56 head (`test/qa-harness` + `main` @ `76dd0b9`) | `node scripts/qa/verify-perf-gate.mjs` | BLOCKED — no `docs/perf/comparison.json` (expected; WAR-7/WAR-19 still open) |
 | 2026-10-21 | fixture set | legacy `parsePFH5Header`/`parsePFH5Index` (commit `07fcf3e`) | 6/6 valid packs parse; 7/7 malformed packs rejected |
 
 The counts above are the regression baseline: if a later run has fewer tests,
@@ -339,7 +342,7 @@ the gate fails until the decrease is explained and approved.
 | G3 | Perf gate cannot be verified: `docs/PERF.md` and `docs/perf/` are not on `main`, no comparison JSON, WAR-7 PR #8 closed/conflicting | §7.3; PR #4; WAR-19 in review | WAR-7/WAR-19; P1–P3 stay BLOCKED and block v1.0 |
 | G4 | Windows shell and packaging are manual (`workflow_dispatch`) until M5 | `.github/workflows/ci.yml` | WAR-11 promotes them; M1/M2 stay manual |
 | G5 | Conflict winner, dependency warning, and duplicate-name proof are missing | `conflicts.rs` does not exist on `main`; WAR-9 PR #12 is closed and conflicting, issue `in_review` | R12–R14 stay BLOCKED until M3 lands |
-| G6 | Future config is overwritten by a stale v1 backup | WAR-47; `config_fixtures.rs` ignored regression test; S2 | Karl Franz fixes; QA un-ignores and re-runs |
+| G6 | Future config is overwritten by a stale v1 backup. **Resolved.** | WAR-47 fixed by PR #15 (`76dd0b9`); `config_fixtures.rs::future_schema_with_a_stale_backup_must_still_not_overwrite` is un-ignored and asserts both `config.json` and `config.json.bak` are byte-identical | Closed |
 | G7 | No navigation/cut-feature audit yet | F9 blocked on WAR-8 (PR #10 open) and WAR-9 | WAR-8/WAR-9; M3 stays BLOCKED |
 | G8 | Manual Windows script has not been executed | Needs Windows + Steam + WH3 | QA + CEO before v1.0; M1 stays PENDING |
 
