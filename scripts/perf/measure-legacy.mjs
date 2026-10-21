@@ -467,12 +467,17 @@ async function measurePresetSwitch(cdp, configPath, presetName) {
 }
 
 /**
- * Game-launch handoff, proxy only: click Play in the renderer, then wait for the stub game process
- * to write its marker file. The stub is a compiled Windows executable installed as Warhammer3.exe
- * in the fixture's game folder; it records the argv it was started with and exits on its own.
- * The sample therefore covers renderer click -> startGame IPC -> used_mods.txt write -> launch-plan
- * resolution -> process creation -> stub startup. It does not include game engine initialisation,
- * Steam, or a real TW:WH3 launch, and CI has no game install.
+ * Game-launch handoff, proxy only: invoke the renderer's Play button, then wait for the stub game
+ * process to write its marker file. The stub is a compiled Windows executable installed as
+ * Warhammer3.exe in the fixture's game folder; it records the argv it was started with and exits.
+ *
+ * The click is dispatched in the page (element.click()) rather than as a hit-tested mouse event:
+ * the Play button can sit below the fold in the sidebar on a small CI desktop, and a pointer click
+ * then lands on empty space. element.click() runs the same React onClick handler as a user click.
+ *
+ * The sample covers renderer click -> startGame IPC -> used_mods.txt write -> launch-plan
+ * resolution -> process creation -> stub startup. It excludes Steam, the game engine and a real
+ * TW:WH3 launch; CI has no game install.
  */
 async function measureGameLaunchHandoff(cdp, markerPath) {
   const armed = await cdp.evaluate(`(() => {
@@ -480,29 +485,51 @@ async function measureGameLaunchHandoff(cdp, markerPath) {
     if (!button) return { ok: false, error: "playGame button not found" };
     button.scrollIntoView({ block: "center" });
     const rect = button.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) return { ok: false, error: "playGame button has no clickable area" };
-    return { ok: true, x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    return {
+      ok: !button.disabled,
+      disabled: button.disabled,
+      rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+    };
   })()`);
-  if (!armed?.ok) return { ok: false, error: armed?.error ?? "could not locate the play button", debug: armed };
+  if (!armed?.ok) return { ok: false, error: armed?.error ?? "playGame button is disabled", debug: armed };
 
   await rm(markerPath, { force: true });
   const started = Date.now();
-  await clickAtPoint(cdp, armed.x, armed.y);
+  const clicked = await cdp.evaluate(
+    `(() => {
+      const button = document.getElementById("playGame");
+      if (!button) return false;
+      button.click();
+      return true;
+    })()`,
+  );
+  if (!clicked) return { ok: false, error: "playGame click could not be dispatched", debug: armed };
 
-  const deadline = Date.now() + INTERACTION_TIMEOUT_MS;
+  const deadline = Date.now() + Math.max(INTERACTION_TIMEOUT_MS, 30_000);
   while (Date.now() < deadline) {
     try {
       const argv = await readFile(markerPath, "utf8");
-      return { ok: true, ms: Date.now() - started, marker: markerPath, argv, method: "stub-process-start", proxy: true };
+      return {
+        ok: true,
+        ms: Date.now() - started,
+        marker: markerPath,
+        argv,
+        method: "stub-process-start",
+        click: "dom-element-click",
+        proxy: true,
+        debug: armed,
+      };
     } catch {
       await sleep(5);
     }
   }
   return {
     ok: false,
-    error: `the stub game process did not start within ${INTERACTION_TIMEOUT_MS}ms`,
-    marker: markerPath,
     proxy: true,
+    error: `the stub game process did not start within ${Math.max(INTERACTION_TIMEOUT_MS, 30_000)}ms`,
+    marker: markerPath,
+    debug: armed,
   };
 }
 
@@ -768,7 +795,7 @@ async function main() {
       "The legacy app waits up to 5000ms for Steam subscription ids; without Steam this fixed wait is included.",
       "loadOrderPersistMs is CDP click (drop a row at position 5) to the legacy app's own config.json write; v2.29.0 has no Apply button and persists through the debounced saveConfig.",
       "presetSwitchMs is the Enter keypress on the filtered preset option to the config.json write that persists the new enabled set.",
-      "gameLaunchHandoffMs is a PROXY: CDP click on Play to the marker write of a compiled stub Warhammer3.exe. It covers the startGame IPC, used_mods.txt write, launch-plan resolution, process creation and stub startup. It excludes Steam, the game engine, and a real TW:WH3 launch; CI has no game install.",
+      "gameLaunchHandoffMs is a PROXY: DOM click on #playGame to the marker write of a compiled stub Warhammer3.exe. It covers the startGame IPC, used_mods.txt write, launch-plan resolution, process creation and stub startup. It excludes Steam, the game engine, and a real TW:WH3 launch; CI has no game install.",
     ],
   };
   await writeFile(OUT, `${JSON.stringify(report, null, 2)}\n`, "utf8");
