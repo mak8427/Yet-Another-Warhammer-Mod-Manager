@@ -602,20 +602,28 @@ impl Session {
                 true,
                 confirm_unmanaged_loss,
             )?;
-            if !writes_here {
-                if plan.hard_blocked {
+            // A corrupt or unreadable file can also contain unmanaged lines.
+            // Refuse it before asking for a directive-loss confirmation: the
+            // write cannot succeed, so the confirmation would be false.
+            if plan.hard_blocked {
+                return Ok(ResetDefaultsReport {
+                    load_order: failed_report(plan.blocked_reason, plan.unmanaged_directives),
+                });
+            }
+            if writes_here {
+                if plan.requires_unmanaged_confirmation {
+                    return Ok(ResetDefaultsReport {
+                        load_order: unmanaged_report(
+                            plan.blocked_reason,
+                            plan.unmanaged_directives,
+                        ),
+                    });
+                }
+                if !plan.can_write {
                     return Ok(ResetDefaultsReport {
                         load_order: failed_report(plan.blocked_reason, plan.unmanaged_directives),
                     });
                 }
-            } else if plan.requires_unmanaged_confirmation {
-                return Ok(ResetDefaultsReport {
-                    load_order: unmanaged_report(plan.blocked_reason, plan.unmanaged_directives),
-                });
-            } else if !plan.can_write {
-                return Ok(ResetDefaultsReport {
-                    load_order: failed_report(plan.blocked_reason, plan.unmanaged_directives),
-                });
             }
         }
 
@@ -645,6 +653,11 @@ impl Session {
         // the write. Never start a new confirmation round after the config has
         // already been reset; report the race instead.
         let plan = self.plan_write(true, confirm_unmanaged_loss)?;
+        if plan.hard_blocked {
+            return Ok(ResetDefaultsReport {
+                load_order: failed_report(plan.blocked_reason, plan.unmanaged_directives),
+            });
+        }
         if plan.requires_unmanaged_confirmation {
             return Ok(ResetDefaultsReport {
                 load_order: failed_report(

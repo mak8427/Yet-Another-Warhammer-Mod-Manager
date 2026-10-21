@@ -440,6 +440,49 @@ fn reset_to_defaults_reports_a_corrupt_used_mods_file_without_claiming_success()
 }
 
 #[test]
+fn reset_to_defaults_refuses_a_mixed_corrupt_and_unmanaged_file_without_asking() {
+    let dir = TempDir::new("session-reset-corrupt-unmanaged");
+    let (steam_root, game) = steam_game_fixture(&dir, &["a.pack"]);
+    let mixed = "add_working_directory \"C:/tools\";\nmod \"unterminated;\n";
+    fs::write(game.join("used_mods.txt"), mixed).unwrap();
+    let mut session = Session::initialize(steam_options(&dir, &steam_root)).unwrap();
+    let preferences = UiPreferences {
+        density: Density::Compact,
+        show_authors: false,
+        show_thumbnails: false,
+        last_scroll_top: 300,
+    };
+    session.update_ui_preferences(preferences.clone()).unwrap();
+
+    let report = session.reset_to_defaults(true, false).unwrap();
+
+    assert_eq!(report.load_order.status, ResetLoadOrderStatus::Failed);
+    assert!(
+        report
+            .load_order
+            .message
+            .as_deref()
+            .unwrap_or_default()
+            .contains("corrupt"),
+        "{:?}",
+        report.load_order.message
+    );
+    assert!(
+        !report.load_order.requires_unmanaged_confirmation,
+        "a write that cannot succeed must not ask for directive-loss confirmation"
+    );
+    assert_eq!(
+        fs::read_to_string(game.join("used_mods.txt")).unwrap(),
+        mixed
+    );
+    assert_eq!(session.ui_preferences(), preferences);
+    assert_eq!(
+        session.game_location().unwrap().source,
+        LocationSource::Auto
+    );
+}
+
+#[test]
 fn reset_to_defaults_reports_an_unreadable_used_mods_file_without_claiming_success() {
     let dir = TempDir::new("session-reset-unreadable");
     let (steam_root, game) = steam_game_fixture(&dir, &["a.pack"]);
