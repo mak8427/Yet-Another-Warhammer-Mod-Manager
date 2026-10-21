@@ -229,7 +229,7 @@ async function generate(out, count, seed) {
     },
     games: {
       wh3: {
-        currentPreset: { name: "", mods: [], version: 2 },
+        currentPreset: { name: "Perf All", mods: uniqueModNames.map((name) => ({ name })), version: 2 },
         presets: [
           { name: "Perf Half", mods: halfPresetNames.map((name) => ({ name })), version: 2 },
           { name: "Perf All", mods: uniqueModNames.map((name) => ({ name })), version: 2 },

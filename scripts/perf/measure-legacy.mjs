@@ -385,7 +385,7 @@ async function measurePresetSwitch(cdp, configPath, presetName) {
       ok: rect.width > 0 && rect.height > 0,
       x: rect.left + rect.width / 2,
       y: rect.top + rect.height / 2,
-      debug: { id: container.id || null, width: rect.width, height: rect.height, inputs: container.querySelectorAll("input").length },
+      debug: { id: container.id || null, width: rect.width, height: rect.height, x: rect.left, y: rect.top, inputs: container.querySelectorAll("input").length },
     };
   })()`);
   if (!opened?.ok) {
@@ -395,7 +395,11 @@ async function measurePresetSwitch(cdp, configPath, presetName) {
 
   const options = await waitForRenderer(
     cdp,
-    `(() => [...document.querySelectorAll('[role="option"]')].map((option) => option.textContent.trim()))()`,
+    `(() => {
+      const menu = document.querySelector('[id$="-listbox"]');
+      if (!menu) return [];
+      return [...menu.querySelectorAll('[id*="-option-"]')].map((option) => option.textContent.trim());
+    })()`,
     (labels) => Array.isArray(labels) && labels.length > 0,
     2_000,
   );
@@ -405,7 +409,9 @@ async function measurePresetSwitch(cdp, configPath, presetName) {
   }
 
   const target = await cdp.evaluate(`(() => {
-    const option = [...document.querySelectorAll('[role="option"]')].find(
+    const menu = document.querySelector('[id$="-listbox"]');
+    if (!menu) return { ok: false };
+    const option = [...menu.querySelectorAll('[id*="-option-"]')].find(
       (element) => element.textContent.trim() === ${JSON.stringify(presetName)},
     );
     if (!option) return { ok: false };
