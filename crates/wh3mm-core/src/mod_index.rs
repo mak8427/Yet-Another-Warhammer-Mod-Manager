@@ -1,7 +1,7 @@
 //! Mod discovery for the WH3 data folder and the Steam Workshop content folder.
 
 use crate::clock::system_time_to_iso8601;
-use crate::pack::{read_pack_header, PackType};
+use crate::pack::{read_pack_header_with_metadata, PackType};
 use crate::paths::{lexical_absolute, GameLocation};
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -128,6 +128,7 @@ fn collect_local(
         return Vec::new();
     };
     let mut candidates = Vec::new();
+    let mut thumbnails: HashMap<String, (u8, PathBuf)> = HashMap::new();
     for entry in entries.flatten() {
         let path = entry.path();
         let Ok(file_type) = entry.file_type() else {
@@ -137,6 +138,18 @@ fn collect_local(
             continue;
         }
         if !is_pack(&path) {
+            if let Some(priority) = local_thumbnail_priority(&path) {
+                if file_type.is_file() || path.is_file() {
+                    if let Some(key) = local_thumbnail_key(&path) {
+                        if thumbnails
+                            .get(&key)
+                            .is_none_or(|(current, _)| priority < *current)
+                        {
+                            thumbnails.insert(key, (priority, path));
+                        }
+                    }
+                }
+            }
             continue;
         }
         let name = file_name_lower(&path);
@@ -148,7 +161,7 @@ fn collect_local(
         }
         report.local_candidates += 1;
         candidates.push(Candidate {
-            thumbnail: local_thumbnail(&path),
+            thumbnail: local_thumbnail(&thumbnails, &path),
             path,
             priority,
             is_workshop: false,
@@ -221,16 +234,13 @@ fn discover_mod(candidate: Candidate, report: &mut IndexReport) -> DiscoveredMod
         .file_stem()
         .map(|stem| stem.to_string_lossy().into_owned())
         .unwrap_or_else(|| name.clone());
-    let metadata = fs::metadata(&path).ok();
-    let size_bytes = metadata
-        .as_ref()
-        .map(|metadata| metadata.len())
-        .unwrap_or(0);
+    let read = read_pack_header_with_metadata(&path);
+    let metadata = read.metadata.as_ref();
+    let size_bytes = metadata.map(|metadata| metadata.len()).unwrap_or(0);
     let updated_at = metadata
-        .as_ref()
         .and_then(|metadata| metadata.modified().ok())
         .and_then(system_time_to_iso8601);
-    let (dependencies, pack_error, is_movie) = match read_pack_header(&path) {
+    let (dependencies, pack_error, is_movie) = match read.header {
         Ok(header) => (
             header.dependencies,
             None,
@@ -280,15 +290,38 @@ fn vanilla_pack_names(data_dir: &Path) -> HashSet<String> {
     names
 }
 
-fn local_thumbnail(pack_path: &Path) -> Option<PathBuf> {
-    let stem = pack_path.file_stem()?;
-    for extension in ["png", "jpg", "jpeg", "webp"] {
-        let candidate = pack_path.with_file_name(format!("{}.{extension}", stem.to_string_lossy()));
-        if candidate.is_file() {
-            return Some(candidate);
-        }
+fn local_thumbnail(
+    thumbnails: &HashMap<String, (u8, PathBuf)>,
+    pack_path: &Path,
+) -> Option<PathBuf> {
+    let key = local_thumbnail_key(pack_path)?;
+    thumbnails.get(&key).map(|(_, thumbnail)| thumbnail.clone())
+}
+
+fn local_thumbnail_key(path: &Path) -> Option<String> {
+    let stem = path.file_stem()?.to_string_lossy();
+    Some(if cfg!(windows) {
+        stem.to_lowercase()
+    } else {
+        stem.into_owned()
+    })
+}
+
+fn local_thumbnail_priority(path: &Path) -> Option<u8> {
+    let extension = path.extension()?.to_string_lossy();
+    let lower = extension.to_ascii_lowercase();
+    let extension = if cfg!(windows) {
+        lower.as_str()
+    } else {
+        extension.as_ref()
+    };
+    match extension {
+        "png" => Some(0),
+        "jpg" => Some(1),
+        "jpeg" => Some(2),
+        "webp" => Some(3),
+        _ => None,
     }
-    None
 }
 
 fn is_pack(path: &Path) -> bool {
@@ -405,8 +438,74 @@ mod tests {
 
         let broken = mods.iter().find(|m| m.name == "broken.pack").unwrap();
         assert!(broken.pack_error.is_some());
+        assert_eq!(broken.size_bytes, 10);
         assert_eq!(report.local_candidates, 1);
         assert_eq!(report.workshop_candidates, 2);
+    }
+
+    #[test]
+    fn local_thumbnails_use_extension_priority_from_directory_entries() {
+        let dir = TempDir::new("index-thumb-priority");
+        let game = dir.path().join("game");
+        let data = game.join("data");
+        fs::create_dir_all(&data).unwrap();
+        write(
+            &data.join("png_wins.pack"),
+            &synthetic_pack_bytes(0, &[], 0),
+        );
+        write(&data.join("png_wins.webp"), b"webp");
+        write(&data.join("png_wins.jpg"), b"jpg");
+        write(&data.join("png_wins.png"), b"png");
+        write(
+            &data.join("jpeg_wins.pack"),
+            &synthetic_pack_bytes(0, &[], 0),
+        );
+        write(&data.join("jpeg_wins.webp"), b"webp");
+        write(&data.join("jpeg_wins.jpeg"), b"jpeg");
+        write(
+            &data.join("unrelated.pack"),
+            &synthetic_pack_bytes(0, &[], 0),
+        );
+        write(&data.join("other.png"), b"png");
+
+        let (mods, _) = scan(&fixture_location(&game, None));
+        let png_wins = mods.iter().find(|m| m.name == "png_wins.pack").unwrap();
+        assert_eq!(
+            png_wins.thumbnail_path.as_deref(),
+            Some(data.join("png_wins.png").as_path())
+        );
+        let jpeg_wins = mods.iter().find(|m| m.name == "jpeg_wins.pack").unwrap();
+        assert_eq!(
+            jpeg_wins.thumbnail_path.as_deref(),
+            Some(data.join("jpeg_wins.jpeg").as_path())
+        );
+        let unrelated = mods.iter().find(|m| m.name == "unrelated.pack").unwrap();
+        assert_eq!(unrelated.thumbnail_path, None);
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn local_thumbnails_keep_the_legacy_case_sensitive_probe() {
+        let dir = TempDir::new("index-thumb-case");
+        let game = dir.path().join("game");
+        let data = game.join("data");
+        fs::create_dir_all(&data).unwrap();
+        write(
+            &data.join("upper_ext.pack"),
+            &synthetic_pack_bytes(0, &[], 0),
+        );
+        write(&data.join("upper_ext.PNG"), b"png");
+        write(
+            &data.join("UpperStem.pack"),
+            &synthetic_pack_bytes(0, &[], 0),
+        );
+        write(&data.join("upperstem.png"), b"png");
+
+        let (mods, _) = scan(&fixture_location(&game, None));
+        let upper_ext = mods.iter().find(|m| m.name == "upper_ext.pack").unwrap();
+        assert_eq!(upper_ext.thumbnail_path, None);
+        let upper_stem = mods.iter().find(|m| m.name == "UpperStem.pack").unwrap();
+        assert_eq!(upper_stem.thumbnail_path, None);
     }
 
     #[test]
