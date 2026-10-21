@@ -3,6 +3,7 @@ import { IpcError } from './lib/ipc'
 import { AppStore, moveEnabled, visibleMods } from './store'
 import {
   GAME,
+  PROFILE_CAMPAIGN,
   PROFILES,
   UI,
   makeClient,
@@ -102,6 +103,43 @@ describe('AppStore', () => {
     await store.init()
     await store.reorder(['mod-c'], 'mod-a')
     expect(client.setLoadOrder).not.toHaveBeenCalled()
+  })
+
+  it('renames a non-active profile with its saved set, not the visible one', async () => {
+    const client = makeClient({
+      listMods: vi.fn(async () => makeSnapshot([MOD_A, MOD_B, MOD_C])),
+      saveProfile: vi.fn(async () => ({ ...PROFILE_CAMPAIGN, name: 'Campaign renamed' })),
+    })
+    const store = new AppStore(client)
+    await store.init()
+    await store.renameProfile('profile-campaign', 'Campaign renamed')
+    expect(client.saveProfile).toHaveBeenCalledWith(
+      'Campaign renamed',
+      PROFILE_CAMPAIGN.enabledModIds,
+      'profile-campaign',
+    )
+    expect(store.getState().notice?.message).toBe('Profile renamed')
+  })
+
+  it('creates a profile from the visible enabled set', async () => {
+    const client = makeClient({
+      listMods: vi.fn(async () => makeSnapshot([MOD_A, MOD_B, MOD_C])),
+    })
+    const store = new AppStore(client)
+    await store.init()
+    await store.saveProfile('Emperor')
+    expect(client.saveProfile).toHaveBeenCalledWith('Emperor', ['mod-a', 'mod-b'], undefined)
+  })
+
+  it('refuses to rename a profile that is no longer loaded', async () => {
+    const client = makeClient({
+      listMods: vi.fn(async () => makeSnapshot([MOD_A, MOD_B, MOD_C])),
+    })
+    const store = new AppStore(client)
+    await store.init()
+    await store.renameProfile('profile-gone', 'Nope')
+    expect(client.saveProfile).not.toHaveBeenCalled()
+    expect(store.getState().error?.code).toBe('not_found')
   })
 
   it('applies profiles and keeps the active id in the snapshot', async () => {

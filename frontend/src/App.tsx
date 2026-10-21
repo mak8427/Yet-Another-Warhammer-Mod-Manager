@@ -208,7 +208,8 @@ export function App() {
                 profiles={state.profiles}
                 busy={Boolean(state.busy)}
                 onApply={(id) => void store.applyProfile(id)}
-                onSave={(name, id) => store.saveProfile(name, id)}
+                onCreate={(name) => store.saveProfile(name)}
+                onRename={(id, name) => store.renameProfile(id, name)}
                 onDuplicate={(id, name) => store.duplicateProfile(id, name)}
                 onDelete={(id) => store.deleteProfile(id)}
               />
@@ -238,7 +239,7 @@ export function App() {
           onClose={() => setProfileDialog(null)}
           onSubmit={(name) => {
             if (profileDialog === 'create') return store.saveProfile(name)
-            if (profileDialog === 'rename') return store.saveProfile(name, activeProfile.id)
+            if (profileDialog === 'rename') return store.renameProfile(activeProfile.id, name)
             return store.duplicateProfile(activeProfile.id, name)
           }}
         />
