@@ -92,9 +92,12 @@ receives opaque `modId`s and talks only through `frontend/src/lib/ipc.ts`.
   a stub and never link WebKitGTK.
 - Command implementations stay platform-neutral and are unit-tested on Linux.
 - The Tauri shell is compiled by the manual Windows CI job, which runs
-  `pnpm build` before `cargo build -p wh3mm-app` because `generate_context!`
+  `pnpm build` before `cargo build -p wh3mm-app --locked` because `generate_context!`
   embeds `frontend/dist` at compile time.
 - Cross-compiling the Windows shell from Linux is out of scope for M0.
+- `tauri.conf.json` sets `app.security.csp` to `null` for M0. ADR-002 records
+  the exception and the M1/M2 requirement to set a restrictive CSP before
+  the shell renders external content or Workshop thumbnails.
 
 ### Frontend state and navigation
 

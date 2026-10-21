@@ -66,11 +66,15 @@ Read:
 - Parse case-insensitively: `mod "name";` with optional whitespace before `mod`,
   between tokens, and before `;`.
 - Deduplicate names case-insensitively (Windows semantics), keeping the first
-  occurrence and reporting duplicates as a warning. This matches legacy
-  `parseUsedMods`.
+  occurrence and reporting duplicates as a warning. This is an intentional
+  divergence from the legacy `parseUsedMods` in `src/usedMods.ts`, which dedupes
+  exact strings (case-sensitive). WH3 runs on Windows, where pack file names are
+  resolved case-insensitively; treating `Foo.pack` and `foo.pack` as two mods
+  would let one silently shadow the other and make the load order depend on
+  spelling. The first spelling wins and the duplicate is reported.
 - Preserve the order of first occurrence. Unknown lines (for example
   `add_working_directory "…";`) are parsed as unmanaged directives: they are
-  not interpreted, but they are counted and included in the pre-write report and
+  not interpreted, but they are counted and included in the preview report and
   in the `.bak`.
 - Resolve names against the discovered mod index using case-insensitive pack
   file names. Names that do not resolve are reported, not guessed.
@@ -78,15 +82,19 @@ Read:
 Write:
 
 - The file contains only managed `mod "<name>";` lines, matching legacy
-  behaviour. Unmanaged directives are **not** re-emitted; if any were present,
-  the command must have returned them in the pre-write report so the UI warned
-  the user before the destructive change.
-- Only enabled, resolvable packs are written. `written` and `skipped` are
-  returned in `LoadOrderWriteReport` (ADR-002).
-- Refuse to write when the enabled set is non-empty but zero packs resolve, and
-  refuse when the resulting file would be empty while the existing file has mod
-  lines, unless the caller explicitly requested "write empty" (disable-all).
-  This prevents a detection failure from wiping a working setup.
+  behaviour. Unmanaged directives are **not** re-emitted. `preview_load_order`
+  returns them in `LoadOrderWriteReport.unmanagedDirectives`; `write_load_order`
+  refuses with `validation` unless the caller passes `confirmUnmanagedLoss:
+  true` (ADR-002). Nothing is written and no `.bak` is created on refusal.
+- Only enabled, resolvable packs are written. `written`, `skipped`, and
+  `unmanagedDirectives` are returned in `LoadOrderWriteReport` (ADR-002).
+- Refuse to write when the enabled set is non-empty but zero packs resolve.
+  Refuse when the resulting file would be empty while the existing file has
+  managed mod lines, unless the caller passes `allowEmpty: true` (disable-all).
+  Both refusals are `validation` and write nothing. This prevents a detection
+  failure from wiping a working setup.
+- `write_load_order` repeats the read/resolve/plan step; it does not trust a
+  previous preview. The UI flow is preview -> show warnings -> confirm -> write.
 - Atomic replace:
   1. Serialize to `used_mods.txt.tmp-<pid>` in the same directory.
   2. Flush and `fsync` the temp file.
@@ -97,8 +105,10 @@ Write:
      Windows.
   5. On Unix, `fsync` the parent directory.
 - On any failure the original file is untouched. The temp file is removed.
-- Crash recovery is explicit: if `used_mods.txt` is missing and `.bak` exists,
-  the UI offers restore; core never silently restores.
+- Crash recovery is explicit: if `used_mods.txt` is missing or unreadable and
+  `.bak` exists, the UI offers `restore_load_order_backup`; core never silently
+  restores. The command refuses with `validation` when a readable live file
+  exists, so it cannot be used as a general overwrite (ADR-002).
 
 Encoding note: legacy used UTF-16LE only for Shogun 2, which is out of scope.
 WH3 writes UTF-8.
@@ -214,8 +224,9 @@ Field rules:
 - Deleting the active profile activates the next profile; deleting the last
   profile is refused (`validation`).
 - Applying a profile sets the enabled set/order and writes `used_mods.txt` only
-  through the explicit `write_load_order` command (the UI shows the pre-write
-  report and requires confirmation for destructive changes).
+  through the explicit `write_load_order` command. The UI runs
+  `preview_load_order` first and passes `allowEmpty`/`confirmUnmanagedLoss` only
+  after the user confirms the reported destructive changes.
 - Saving a profile with zero enabled mods is allowed (the user explicitly asked
   for it); no silent background save can produce an empty profile.
 
