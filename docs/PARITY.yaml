@@ -5,16 +5,16 @@ snapshot:
   previous_index: 87.25
   previous_label: "WAR-3 parity document rev 2 (2026-10-21T11:25Z), reported as 87.3%"
   drop_reason: >-
-    SET-4 (reset to defaults) was scored Partial in the WAR-3 snapshot, but no reset
-    command, screen, or test exists on main or in an open PR. It is Missing here.
-    The correction drops the weighted index by 0.625 points; no other check changed score.
+    Net change +0.875: SET-4 (reset to defaults) is Missing, not Partial (-0.625);
+    the disabled-dependency conflict check is done on QA-approved PR #18 at b6696e5
+    (+1.500). No other check changed score.
   history:
     - date: "2026-10-21"
-      index: 86.625
+      index: 88.125
       reason: >-
-        SET-4 (reset to defaults) was scored Partial in the WAR-3 snapshot, but no reset
-        command, screen, or test exists on main or in an open PR. It is Missing here.
-        The correction drops the weighted index by 0.625 points; no other check changed score.
+        Net change +0.875: SET-4 (reset to defaults) is Missing, not Partial (-0.625);
+        the disabled-dependency conflict check is done on QA-approved PR #18 at b6696e5
+        (+1.500). No other check changed score.
   scoring: >-
     Each capability has four binary checks. A check scores 1.0 when it is done, 0.5 when
     it is partial, and 0.0 when it is missing. The capability score is the mean of its
@@ -33,7 +33,7 @@ corrections:
   - id: set-4-reset-defaults
     claim: "Reset-to-defaults was Partial."
     verified: "Missing: no reset command, screen, or test exists."
-    effect: "Settings 3.0 -> 2.5; index 87.250 -> 86.625."
+    effect: "Settings 3.0 -> 2.5; contributes -0.625 to the index."
   - id: detection-partial-reason
     claim: "The remaining detection gap is real Windows install detection plus manual override."
     verified: "Manual override and no-game recovery are tested. The untested part is the platform root candidate list (Windows registry, Flatpak, Snap, XDG)."
@@ -47,9 +47,9 @@ corrections:
     verified: "Search and tag filtering are implemented and tested. Sort is not implemented. Virtualization is tested at 500 rows; the 20k guard and persisted-scroll proof are not on this branch."
     effect: "Score unchanged at 3.0; partial reasons corrected."
   - id: conflicts-partials
-    claim: "Conflict analysis is Partial."
-    verified: "File-index conflicts and missing dependencies are tested on PR #18 (QA-approved at ada14ff). The disabled-dependency fix is on PR #20 at 774c252 and awaits QA."
-    effect: "Score unchanged at 3.0; partial reason narrowed to the pending fix."
+    claim: "Conflict analysis is Partial, including the disabled-dependency fix in review."
+    verified: "PR #18 is QA-approved at b6696e5; the WAR-64 fix is in that head and its test passes. The duplicate-name warning path still has no session/frontend assertion, so CF-4 stays Partial."
+    effect: "Conflicts 3.0 -> 3.5; contributes +1.500 to the index."
   - id: test-counts
     claim: "92 Rust tests and 45 frontend assertions in 8 files."
     verified: "Those counts mix main and the M3 PR. This tree has the counts printed in docs/PARITY.md; test counts are informational and are not scored."
@@ -328,18 +328,22 @@ capabilities:
             test: detects_missing_and_disabled_dependencies
       - id: CF-3
         title: Report a disabled local dependency correctly instead of treating it as base-game
-        status: partial
+        status: done
         evidence:
+          - kind: pr
+            pr: 18
+            url: https://github.com/mak8427/Warhammer_mod_manager/pull/18
+            head: b6696e5
+            qa: approved
+            path: crates/wh3mm-core/src/conflicts.rs
+            test: disabled_local_dependency_is_not_treated_as_a_base_game_pack
           - kind: pr
             pr: 20
             url: https://github.com/mak8427/Warhammer_mod_manager/pull/20
-            head: 774c252
-            qa: pending
+            head: 7b646c8
+            qa: merged
             path: crates/wh3mm-core/src/conflicts.rs
             test: disabled_local_dependency_is_not_treated_as_a_base_game_pack
-        need: >-
-          QA approval at 774c252 and merge. The fix and its test are on the stacked
-          PR #20, not on main.
       - id: CF-4
         title: Detect duplicate pack names and surface the warning
         status: partial

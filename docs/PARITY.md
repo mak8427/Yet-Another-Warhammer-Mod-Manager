@@ -8,10 +8,10 @@ Snapshot: **2026-10-21** · weighted scope: `docs/PRODUCT_SCOPE.md`
 
 | Metric | Value |
 |---|---:|
-| **Capability Parity Index** | **86.625%** |
+| **Capability Parity Index** | **88.125%** |
 | Previous snapshot | 87.250% |
-| Change | -0.625 points |
-| Checks | 30 done / 9 partial / 1 missing (40 total) |
+| Change | +0.875 points |
+| Checks | 31 done / 8 partial / 1 missing (40 total) |
 | Legacy oracle coverage | 39/39 (100.0%) |
 | Oracle dispositions | 12 ported / 10 rewritten / 17 not-applicable |
 | Cut-feature scan | 0 findings in 28 UI/IPC files |
@@ -27,24 +27,24 @@ Snapshot: **2026-10-21** · weighted scope: `docs/PRODUCT_SCOPE.md`
 | 3 | Mod list | 15 | 2 | 2 | 0 | 3.00/4 | 11.25 |
 | 4 | Load order write | 15 | 4 | 0 | 0 | 4.00/4 | 15.00 |
 | 5 | Profiles | 10 | 3 | 1 | 0 | 3.50/4 | 8.75 |
-| 6 | Conflicts | 12 | 2 | 2 | 0 | 3.00/4 | 9.00 |
+| 6 | Conflicts | 12 | 3 | 1 | 0 | 3.50/4 | 10.50 |
 | 7 | Workshop | 8 | 3 | 1 | 0 | 3.50/4 | 7.00 |
 | 8 | Launch | 8 | 3 | 1 | 0 | 3.50/4 | 7.00 |
 | 9 | Settings | 5 | 2 | 1 | 1 | 2.50/4 | 3.13 |
 | 10 | Safety | 5 | 4 | 0 | 0 | 4.00/4 | 5.00 |
-| | **Total** | **100** | **30** | **9** | **1** | | **86.625** |
+| | **Total** | **100** | **31** | **8** | **1** | | **88.125** |
 
 ## Corrections to the WAR-3 snapshot
 
-**Recorded index drop:** SET-4 (reset to defaults) was scored Partial in the WAR-3 snapshot, but no reset command, screen, or test exists on main or in an open PR. It is Missing here. The correction drops the weighted index by 0.625 points; no other check changed score.
+**Recorded index change:** Net change +0.875: SET-4 (reset to defaults) is Missing, not Partial (-0.625); the disabled-dependency conflict check is done on QA-approved PR #18 at b6696e5 (+1.500). No other check changed score.
 
 | Correction | Claim | Verified | Effect |
 |---|---|---|---|
-| set-4-reset-defaults | Reset-to-defaults was Partial. | Missing: no reset command, screen, or test exists. | Settings 3.0 -> 2.5; index 87.250 -> 86.625. |
+| set-4-reset-defaults | Reset-to-defaults was Partial. | Missing: no reset command, screen, or test exists. | Settings 3.0 -> 2.5; contributes -0.625 to the index. |
 | detection-partial-reason | The remaining detection gap is real Windows install detection plus manual override. | Manual override and no-game recovery are tested. The untested part is the platform root candidate list (Windows registry, Flatpak, Snap, XDG). | Score unchanged at 3.5; partial reason corrected. |
 | profiles-partial-reason | Rename cannot overwrite a non-active profile; the UI path is unverified. | The UI path is tested in frontend/src/App.test.tsx and store.test.ts. The remaining gap is an assertion that applying a profile restores its saved order, not just its count. | Score unchanged at 3.5; partial reason corrected. |
 | mod-list-partials | Search, sort, and tag filtering are implemented in logic; the remaining gap is final UI sign-off. | Search and tag filtering are implemented and tested. Sort is not implemented. Virtualization is tested at 500 rows; the 20k guard and persisted-scroll proof are not on this branch. | Score unchanged at 3.0; partial reasons corrected. |
-| conflicts-partials | Conflict analysis is Partial. | File-index conflicts and missing dependencies are tested on PR #18 (QA-approved at ada14ff). The disabled-dependency fix is on PR #20 at 774c252 and awaits QA. | Score unchanged at 3.0; partial reason narrowed to the pending fix. |
+| conflicts-partials | Conflict analysis is Partial, including the disabled-dependency fix in review. | PR #18 is QA-approved at b6696e5; the WAR-64 fix is in that head and its test passes. The duplicate-name warning path still has no session/frontend assertion, so CF-4 stays Partial. | Conflicts 3.0 -> 3.5; contributes +1.500 to the index. |
 | test-counts | 92 Rust tests and 45 frontend assertions in 8 files. | Those counts mix main and the M3 PR. This tree has the counts printed in docs/PARITY.md; test counts are informational and are not scored. | No index effect; counts are generated from the current tree. |
 | oracle-count | 39 relevant legacy files / 2,437 legacy tests. | The 39-file subset contains 272 it() assertions in the pinned checkout. 2,437 is the whole legacy suite. | No index effect; the oracle map uses 272 for the selected subset. |
 

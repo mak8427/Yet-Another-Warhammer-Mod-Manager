@@ -556,7 +556,7 @@ export function renderMarkdown(config, result, { scan = { findings: [], scanned:
   )
   const dropReason = recordedDrop?.reason ?? snapshot.drop_reason
   if (dropReason) {
-    lines.push(`**Recorded index drop:** ${String(dropReason).replace(/\s+/g, ' ').trim()}`)
+    lines.push(`**Recorded index change:** ${String(dropReason).replace(/\s+/g, ' ').trim()}`)
     lines.push('')
   }
   if (Array.isArray(config.corrections) && config.corrections.length > 0) {
