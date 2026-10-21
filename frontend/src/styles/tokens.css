@@ -1,0 +1,381 @@
+/*
+ * WH3 Mod Manager — design tokens (single source).
+ *
+ * Contract: ADR-005 and docs/UI_DIRECTION.md.
+ * Components consume semantic tokens only. Raw palette values live here and
+ * nowhere else. Do not add component selectors to this file.
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* ---------------------------------------------------------------------
+   * Palette (private). Never reference raw palette tokens from components.
+   * ------------------------------------------------------------------ */
+  --iron-1000: #0a0c0e;
+  --iron-950: #0f1215;
+  --iron-900: #14181c;
+  --iron-850: #191e23;
+  --iron-800: #1f252b;
+  --iron-750: #252c33;
+  --iron-700: #2d353d;
+  --iron-650: #39424c;
+
+  --parchment-50: #f6efe0;
+  --parchment-100: #e8dcc4;
+  --parchment-200: #d6c8ac;
+  --parchment-300: #a59a83;
+  --parchment-400: #948a76;
+
+  --brass-300: #e3c374;
+  --brass-400: #d7b45f;
+  --brass-500: #c9a24d;
+  --brass-600: #9a7a32;
+  --brass-700: #6f5724;
+
+  --oxide-700: #7f2a21;
+  --oxide-600: #8f2d21;
+
+  --signal-green: #a3c178;
+  --signal-amber: #e0b45c;
+  --signal-red: #e07a63;
+  --signal-azure: #7fb0d0;
+
+  /* Faction accent slots. Identity always comes from the visible label. */
+  --faction-accent-default: var(--brass-400);
+  --faction-accent-brass: #d7b45f;
+  --faction-accent-crimson: #e37b84;
+  --faction-accent-moss: #9bb86a;
+  --faction-accent-copper: #d09055;
+  --faction-accent-azure: #7fb0d0;
+  --faction-accent-violet: #b08cc8;
+  --faction-accent-ember: #e07a63;
+  --faction-accent-jade: #6fbf9e;
+
+  /* ---------------------------------------------------------------------
+   * Typography
+   * ------------------------------------------------------------------ */
+  --font-display: 'Palatino Linotype', 'Book Antiqua', Palatino, 'URW Palladio L', Georgia, serif;
+  --font-body: 'Segoe UI Variable Text', 'Segoe UI', 'Noto Sans', system-ui, sans-serif;
+  --font-mono: 'Cascadia Mono', 'Cascadia Code', Consolas, 'DejaVu Sans Mono', monospace;
+
+  --text-2xs: 0.6875rem; /* 11px */
+  --text-xs: 0.75rem; /* 12px */
+  --text-sm: 0.8125rem; /* 13px */
+  --text-md: 0.875rem; /* 14px */
+  --text-lg: 1rem; /* 16px */
+  --text-xl: 1.125rem; /* 18px */
+  --text-2xl: 1.375rem; /* 22px */
+  --text-3xl: 1.75rem; /* 28px */
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.4;
+  --leading-loose: 1.55;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --tracking-label: 0.08em;
+  --tracking-title: 0.01em;
+
+  /* ---------------------------------------------------------------------
+   * Spacing (4px grid, with a 2px micro step)
+   * ------------------------------------------------------------------ */
+  --space-0: 0;
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 10px;
+  --space-6: 12px;
+  --space-7: 16px;
+  --space-8: 20px;
+  --space-9: 24px;
+  --space-10: 32px;
+  --space-11: 40px;
+  --space-12: 48px;
+
+  --content-pad-x: var(--space-7);
+  --content-pad-y: var(--space-6);
+  --gutter: var(--space-4);
+
+  /* ---------------------------------------------------------------------
+   * Shell geometry
+   * ------------------------------------------------------------------ */
+  --titlebar-h: 40px;
+  --statusbar-h: 24px;
+  --toolbar-h: 40px;
+  --list-header-h: 28px;
+  --rail-w: 208px;
+  --inspector-w: 320px;
+  --inspector-min-w: 280px;
+  --inspector-max-w: 420px;
+  --dialog-w-sm: 480px;
+  --dialog-w-md: 640px;
+  --dialog-w-lg: 880px;
+  --menu-min-w: 200px;
+  --tooltip-max-w: 360px;
+
+  --control-h-sm: 24px;
+  --control-h-md: 28px;
+  --control-h-lg: 32px;
+
+  /* Row geometry */
+  --row-h-compact: 32px;
+  --row-h-comfortable: 40px;
+  --row-h-roomy: 48px;
+  --row-thumb-sm: 24px;
+  --row-thumb-md: 32px;
+  --row-thumb-lg: 40px;
+  --row-order-w: 36px;
+  --row-check-w: 32px;
+  --row-author-w: 140px;
+  --row-tags-w: 132px;
+  --row-status-w: 28px;
+  --row-menu-w: 28px;
+
+  /* Density is selected by data-density on <html>. Comfortable is default. */
+  --row-h: var(--row-h-comfortable);
+  --row-thumb: var(--row-thumb-md);
+  --row-pad-x: var(--space-5);
+  --row-title-size: var(--text-sm);
+  --row-title-line: 1rem;
+  --row-meta-size: var(--text-2xs);
+  --row-meta-line: 0.875rem;
+
+  /* ---------------------------------------------------------------------
+   * Semantic colour — surfaces
+   * ------------------------------------------------------------------ */
+  --color-bg-app: var(--iron-950);
+  --color-bg-rail: var(--iron-900);
+  --color-bg-content: var(--iron-950);
+  --color-bg-surface: var(--iron-850);
+  --color-bg-surface-raised: var(--iron-800);
+  --color-bg-row: var(--iron-950);
+  --color-bg-row-alt: var(--iron-900);
+  --color-bg-row-hover: #20262c;
+  --color-bg-row-selected: #262d34;
+  --color-bg-row-dragging: var(--iron-800);
+  --color-bg-list-header: var(--iron-850);
+  --color-bg-toolbar: var(--iron-900);
+  --color-bg-inspector: var(--iron-900);
+  --color-bg-input: var(--iron-1000);
+  --color-bg-menu: var(--iron-850);
+  --color-bg-dialog: var(--iron-850);
+  --color-bg-tooltip: var(--parchment-100);
+  --color-bg-overlay: rgb(5 7 9 / 0.72);
+
+  --color-state-success-bg: #1c2418;
+  --color-state-warning-bg: #2a2318;
+  --color-state-danger-bg: #2a1c19;
+  --color-state-info-bg: #18242b;
+
+  /* ---------------------------------------------------------------------
+   * Semantic colour — text
+   * ------------------------------------------------------------------ */
+  --color-text-primary: var(--parchment-100);
+  --color-text-secondary: var(--parchment-200);
+  --color-text-muted: var(--parchment-300);
+  --color-text-disabled: var(--parchment-400);
+  --color-text-inverse: #1a1408;
+  --color-text-accent: var(--brass-400);
+  --color-text-link: var(--brass-400);
+  --color-text-success: var(--signal-green);
+  --color-text-warning: var(--signal-amber);
+  --color-text-danger: var(--signal-red);
+  --color-text-info: var(--signal-azure);
+
+  --color-state-success: var(--signal-green);
+  --color-state-warning: var(--signal-amber);
+  --color-state-danger: var(--signal-red);
+  --color-state-info: var(--signal-azure);
+
+  /* ---------------------------------------------------------------------
+   * Semantic colour — borders
+   * ------------------------------------------------------------------ */
+  --color-border-subtle: var(--iron-750);
+  --color-border-default: var(--iron-700);
+  --color-border-strong: var(--iron-650);
+  --color-border-control: #66717e;
+  --color-border-accent: var(--brass-600);
+  --color-border-focus: var(--brass-400);
+  --color-border-selected: var(--brass-500);
+  --color-border-success: var(--signal-green);
+  --color-border-warning: var(--signal-amber);
+  --color-border-danger: var(--signal-red);
+
+  /* ---------------------------------------------------------------------
+   * Semantic colour — actions, tags, focus
+   * ------------------------------------------------------------------ */
+  --color-action-primary-bg: var(--brass-500);
+  --color-action-primary-bg-hover: var(--brass-400);
+  --color-action-primary-text: var(--color-text-inverse);
+  --color-action-secondary-bg: transparent;
+  --color-action-secondary-bg-hover: var(--iron-800);
+  --color-action-danger-bg: var(--oxide-700);
+  --color-action-danger-bg-hover: var(--oxide-600);
+  --color-action-danger-text: var(--parchment-50);
+  --color-action-disabled-bg: transparent;
+  --color-action-disabled-text: var(--color-text-disabled);
+
+  --color-tag-bg: var(--iron-800);
+  --color-tag-border: var(--iron-650);
+  --color-tag-text: var(--color-text-secondary);
+  --color-selection-bg: var(--brass-700);
+  --color-selection-text: var(--parchment-50);
+  --color-state-pending: var(--brass-600);
+  --faction-accent: var(--faction-accent-default);
+
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+  --focus-ring-color: var(--color-border-focus);
+
+  /* ---------------------------------------------------------------------
+   * Borders, radius, elevation
+   * ------------------------------------------------------------------ */
+  --border-hairline: 1px;
+  --border-strong: 1px;
+  --radius-none: 0;
+  --radius-control: 2px;
+  --radius-panel: 3px;
+  --radius-dialog: 4px;
+  --radius-scrollbar: 2px;
+
+  --shadow-menu: 0 8px 24px rgb(0 0 0 / 0.45);
+  --shadow-dialog: 0 16px 40px rgb(0 0 0 / 0.55);
+  --shadow-drag: 0 2px 8px rgb(0 0 0 / 0.35);
+
+  /* ---------------------------------------------------------------------
+   * Motion, stacking, scrollbars
+   * ------------------------------------------------------------------ */
+  --motion-fast: 80ms;
+  --motion-base: 140ms;
+  --motion-reorder: 220ms;
+  --ease-standard: cubic-bezier(0.2, 0.7, 0.3, 1);
+
+  --z-rail: 20;
+  --z-titlebar: 30;
+  --z-toolbar: 40;
+  --z-menu: 60;
+  --z-dialog: 80;
+  --z-toast: 90;
+  --z-tooltip: 100;
+
+  --scrollbar-size: 10px;
+  --scrollbar-thumb: var(--iron-650);
+  --scrollbar-thumb-hover: var(--iron-600);
+  --scrollbar-track: var(--iron-900);
+}
+
+:root[data-density='compact'] {
+  --row-h: var(--row-h-compact);
+  --row-thumb: var(--row-thumb-sm);
+  --row-pad-x: var(--space-4);
+  --row-title-size: var(--text-xs);
+  --row-title-line: 1rem;
+  --row-meta-size: var(--text-2xs);
+  --row-meta-line: 0.875rem;
+}
+
+:root[data-density='comfortable'] {
+  --row-h: var(--row-h-comfortable);
+  --row-thumb: var(--row-thumb-md);
+  --row-pad-x: var(--space-5);
+  --row-title-size: var(--text-sm);
+  --row-title-line: 1rem;
+  --row-meta-size: var(--text-2xs);
+  --row-meta-line: 0.875rem;
+}
+
+:root[data-density='roomy'] {
+  --row-h: var(--row-h-roomy);
+  --row-thumb: var(--row-thumb-lg);
+  --row-pad-x: var(--space-6);
+  --row-title-size: var(--text-md);
+  --row-title-line: 1.125rem;
+  --row-meta-size: var(--text-xs);
+  --row-meta-line: 1rem;
+}
+
+/* Faction accent slots. Apply data-faction to a tag or a screen header. */
+[data-faction='brass'] {
+  --faction-accent: var(--faction-accent-brass);
+}
+
+[data-faction='crimson'] {
+  --faction-accent: var(--faction-accent-crimson);
+}
+
+[data-faction='moss'] {
+  --faction-accent: var(--faction-accent-moss);
+}
+
+[data-faction='copper'] {
+  --faction-accent: var(--faction-accent-copper);
+}
+
+[data-faction='azure'] {
+  --faction-accent: var(--faction-accent-azure);
+}
+
+[data-faction='violet'] {
+  --faction-accent: var(--faction-accent-violet);
+}
+
+[data-faction='ember'] {
+  --faction-accent: var(--faction-accent-ember);
+}
+
+[data-faction='jade'] {
+  --faction-accent: var(--faction-accent-jade);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0.01ms;
+    --motion-base: 0.01ms;
+    --motion-reorder: 0.01ms;
+  }
+}
+
+@media (forced-colors: active) {
+  :root {
+    --color-bg-app: Canvas;
+    --color-bg-rail: Canvas;
+    --color-bg-content: Canvas;
+    --color-bg-surface: Canvas;
+    --color-bg-surface-raised: Canvas;
+    --color-bg-row: Canvas;
+    --color-bg-row-alt: Canvas;
+    --color-bg-row-hover: Highlight;
+    --color-bg-row-selected: Highlight;
+    --color-bg-row-dragging: Canvas;
+    --color-bg-list-header: Canvas;
+    --color-bg-toolbar: Canvas;
+    --color-bg-inspector: Canvas;
+    --color-bg-input: Canvas;
+    --color-bg-menu: Canvas;
+    --color-bg-dialog: Canvas;
+    --color-bg-tooltip: Canvas;
+    --color-text-primary: CanvasText;
+    --color-text-secondary: CanvasText;
+    --color-text-muted: CanvasText;
+    --color-text-disabled: GrayText;
+    --color-text-inverse: Canvas;
+    --color-text-accent: LinkText;
+    --color-text-link: LinkText;
+    --color-text-success: CanvasText;
+    --color-text-warning: CanvasText;
+    --color-text-danger: CanvasText;
+    --color-text-info: CanvasText;
+    --color-border-subtle: CanvasText;
+    --color-border-default: CanvasText;
+    --color-border-strong: CanvasText;
+    --color-border-control: CanvasText;
+    --color-border-focus: Highlight;
+    --color-border-selected: Highlight;
+    --faction-accent: Highlight;
+  }
+}
