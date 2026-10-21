@@ -309,11 +309,14 @@ describe('App', () => {
     expect(document.activeElement?.closest('[data-region="rail"]')).not.toBeNull()
   })
 
-  it('skips the closed overlay inspector in the F6 cycle below 1280px', async () => {
+  it('skips the closed overlay inspector and hidden toolbar content below 1280px', async () => {
     mockReady()
     render(<App />)
     const list = await screen.findByRole('listbox', { name: 'Mods' })
     const row = within(list).getAllByRole('option')[0]
+    const title = document.querySelector<HTMLElement>('[data-screen-title]')
+    expect(title).not.toBeNull()
+    if (title) title.style.display = 'none'
     row.focus()
     mockViewportOverlay(true)
 
@@ -321,11 +324,14 @@ describe('App', () => {
     expect(document.activeElement?.closest('[data-region="rail"]')).not.toBeNull()
 
     fireEvent.keyDown(window, { key: 'F6' })
-    expect(document.activeElement?.closest('[data-region="toolbar"]')).not.toBeNull()
+    expect(screen.getByLabelText('Search mods')).toHaveFocus()
+
+    fireEvent.keyDown(window, { key: 'F6' })
+    expect(document.activeElement?.closest('[data-region="list"]')).not.toBeNull()
 
     row.focus()
     fireEvent.keyDown(window, { key: 'F6', shiftKey: true })
-    expect(document.activeElement?.closest('[data-region="toolbar"]')).not.toBeNull()
+    expect(screen.getByLabelText('Search mods')).toHaveFocus()
   })
 
   it('focuses Cancel and marks the write action dangerous when directives are dropped', async () => {

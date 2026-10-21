@@ -24,8 +24,25 @@ const SECTION_KEYS: Record<string, 'mods' | 'profiles' | 'conflicts' | 'workshop
 
 const FOCUS_REGIONS = ['rail', 'toolbar', 'list', 'inspector']
 
+const FOCUSABLE =
+  'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex="0"], [tabindex="-1"]'
+
+function hasBox(element: HTMLElement): boolean {
+  if (element.hasAttribute('inert') || element.closest('[inert]')) return false
+  if (element.closest('[aria-hidden="true"]')) return false
+  const style = window.getComputedStyle(element)
+  if (style.display === 'none' || style.visibility === 'hidden') return false
+  const checkVisibility = (
+    element as HTMLElement & {
+      checkVisibility?: (options?: { visibilityProperty?: boolean }) => boolean
+    }
+  ).checkVisibility
+  return typeof checkVisibility === 'function'
+    ? checkVisibility.call(element, { visibilityProperty: true })
+    : true
+}
+
 function regionIsVisible(element: HTMLElement, overlayInspector: boolean): boolean {
-  if (element.hasAttribute('inert') || element.getAttribute('aria-hidden') === 'true') return false
   if (
     overlayInspector &&
     element.matches('[data-region="inspector"]') &&
@@ -33,8 +50,14 @@ function regionIsVisible(element: HTMLElement, overlayInspector: boolean): boole
   ) {
     return false
   }
-  const style = window.getComputedStyle(element)
-  return style.display !== 'none' && style.visibility !== 'hidden'
+  return hasBox(element)
+}
+
+function firstFocusable(region: HTMLElement): HTMLElement | null {
+  for (const candidate of Array.from(region.querySelectorAll<HTMLElement>(FOCUSABLE))) {
+    if (hasBox(candidate)) return candidate
+  }
+  return null
 }
 
 function focusRegion(direction: 1 | -1): void {
@@ -48,12 +71,14 @@ function focusRegion(direction: 1 | -1): void {
   const active = document.activeElement as HTMLElement | null
   const current = active?.closest<HTMLElement>('[data-region]')
   const index = current ? regions.indexOf(current) : -1
-  const next = regions[(index + direction + regions.length) % regions.length]
-  const target =
-    next.querySelector<HTMLElement>(
-      'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex="0"], [tabindex="-1"]',
-    ) ?? next
-  target.focus()
+  for (let step = 1; step <= regions.length; step += 1) {
+    const next = regions[(((index + direction * step) % regions.length) + regions.length) % regions.length]
+    const target = firstFocusable(next)
+    if (target) {
+      target.focus()
+      return
+    }
+  }
 }
 
 export function App() {
@@ -93,15 +118,15 @@ export function App() {
         store.setView('settings')
         return
       }
+      if (event.key === 'F6') {
+        event.preventDefault()
+        focusRegion(event.shiftKey ? -1 : 1)
+        return
+      }
       if (typing) return
       if (event.key === 'F5') {
         event.preventDefault()
         void store.rescan()
-        return
-      }
-      if (event.key === 'F6') {
-        event.preventDefault()
-        focusRegion(event.shiftKey ? -1 : 1)
         return
       }
       if (event.key === 'Escape' && state.inspectorOpen) {

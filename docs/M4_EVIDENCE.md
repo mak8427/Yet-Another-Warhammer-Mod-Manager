@@ -65,12 +65,23 @@ that directory's README).
 
 | Defect | Fix | Test |
 |---|---|---|
-| F6 forward cycle stuck at <1280 with the closed overlay inspector | `focusRegion` now skips regions whose computed visibility is hidden and skips a closed overlay inspector; `Ctrl+F` from another screen switches to Mods and focuses the search after mount | `App.test.tsx` — `cycles F6 ... >=1280`, `skips the closed overlay inspector ... <1280`, `focuses search from another screen with Ctrl+F` |
+| F6 forward cycle stuck at <1280 with the closed overlay inspector | `focusRegion` skips regions whose computed visibility is hidden, skips the closed overlay inspector, and focuses the first visible control in the next region (at 1024 the toolbar title is media-hidden). F6 also works while the search input has focus, so the cycle cannot trap. `Ctrl+F` from another screen switches to Mods and focuses the search after mount | `App.test.tsx` — `cycles F6 ... >=1280`, `skips the closed overlay inspector and hidden toolbar content below 1280px`, `focuses search from another screen with Ctrl+F`; production-build CDP trace at 1024×720/1366×768 |
 | `reset_to_defaults` reported "no game path" for a blocked write | `ResetDefaultsReport` now carries `loadOrderOutcome` (`written` / `no_game_path` / `blocked`) and `loadOrderBlockedReason`; the store renders the real reason and a warning notice | `session_flow.rs` — `reset_to_defaults_reports_a_blocked_load_order_and_leaves_the_file_untouched`; `store.test.ts` — `reports the real load-order reason when a reset is blocked` |
 | Reset left `game.source = manual` until restart | a reset that clears the override refreshes the location from auto-detection and the store re-runs `detect_game` | `session_flow.rs` — `reset_to_defaults_returns_the_location_to_auto_detection`; `store.test.ts` — `re-detects the game after a reset ...` |
 | Workshop did not use the mod-list virtualization contract at 500 rows | `WorkshopScreen` windows 40px rows with the shared `virtualRange` helper and spacer rows | `WorkshopScreen.test.tsx` — `mounts only the virtual window at 500 subscriptions` |
 | App allowed a 960×640 window although the contract is 1024×720 | `tauri.conf.json` minimum is 1024×720 | capture run at 1024×720 |
 | UI acceptance checklist was 0/120 | 115 items checked with per-item evidence; 5 open items have named owners | `docs/UI_ACCEPTANCE.md` |
+
+Keyboard trace on the production build (`pnpm build`, headless Chromium CDP
+`Input.dispatchKeyEvent`):
+
+- 1024×720, focus a mod row: `F6` → rail → search input → Name sort button →
+  rail; `Shift+F6` from the row → search input. The closed overlay inspector is
+  never focused.
+- 1366×768, focus a mod row: `F6` → inspector → rail (the wide inspector is a
+  persistent column).
+- 1024×720: `Ctrl+5` opens Settings, then `Ctrl+F` switches to Mods and focuses
+  `#mod-search`.
 
 ## Grayscale pass (X-04)
 
