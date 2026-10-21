@@ -83,6 +83,27 @@ test('rejects a metric that is slower than legacy', () => {
   assert.match(result.failures.join('\n'), /modLoad500: new app .* is not strictly faster/)
 })
 
+test('rejects a declared median that disagrees with the samples (WAR-56 F1 repro)', () => {
+  const result = validate((data) => {
+    data.metrics.coldStartToInteractive = {
+      unit: 'ms',
+      legacy: { median: 100, samples: [99, 100, 100, 100, 101] },
+      // Declared 50 looks 2x faster, but the real sample median is 200 (slower).
+      newApp: { median: 50, samples: [50, 200, 200, 200, 200] },
+    }
+  })
+  assert.equal(result.ok, false)
+  assert.match(
+    result.failures.join('\n'),
+    /declared median 50 does not match the median 200 computed from the samples/,
+  )
+  assert.equal(
+    result.report.some((row) => row.metric === 'coldStartToInteractive'),
+    false,
+    'a metric with a dishonest median must not appear in the PASS report',
+  )
+})
+
 test('rejects a metric that is equal to legacy', () => {
   const result = validate((data) => {
     data.metrics.profileSwitch = metric(80, 80)

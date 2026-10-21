@@ -12,6 +12,7 @@
  *   - the two runs did not use the same host id or the same fixture digest;
  *   - either build is not a release build;
  *   - fewer than five samples were taken per metric;
+ *   - a declared median disagrees with the median computed from the samples;
  *   - any primary metric is not strictly faster than legacy.
  *
  * Usage:
@@ -47,24 +48,37 @@ function isNonEmptyString(value) {
   return typeof value === 'string' && value.trim().length > 0
 }
 
+/**
+ * Median of a non-empty numeric list. Even-length lists use the mean of the two
+ * middle values, matching the usual statistics definition.
+ */
+export function computeMedian(samples) {
+  const sorted = [...samples].sort((left, right) => left - right)
+  const middle = Math.floor(sorted.length / 2)
+  return sorted.length % 2 === 1 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2
+}
+
 function checkSampleList(label, metric, failures) {
   if (!Array.isArray(metric.samples) || metric.samples.length < MIN_RUNS) {
     failures.push(`${label}: needs at least ${MIN_RUNS} samples, got ${Array.isArray(metric.samples) ? metric.samples.length : 'none'}`)
-    return
+    return null
   }
   if (metric.samples.some((sample) => !isFinitePositive(sample))) {
     failures.push(`${label}: samples must be positive finite numbers`)
-    return
+    return null
   }
   if (!isFinitePositive(metric.median)) {
     failures.push(`${label}: median must be a positive finite number`)
-    return
+    return null
   }
-  const min = Math.min(...metric.samples)
-  const max = Math.max(...metric.samples)
-  if (metric.median < min || metric.median > max) {
-    failures.push(`${label}: median ${metric.median} is outside the sample range ${min}..${max}`)
+  const computed = computeMedian(metric.samples)
+  if (Math.abs(metric.median - computed) > 1e-9 * Math.max(1, Math.abs(computed))) {
+    failures.push(
+      `${label}: declared median ${metric.median} does not match the median ${computed} computed from the samples`,
+    )
+    return null
   }
+  return computed
 }
 
 /**
@@ -140,22 +154,22 @@ export function validateComparison(data, { repoRoot = REPO_ROOT, checkRawOutputs
       failures.push(`metric ${name} is missing`)
       continue
     }
-    checkSampleList(`${name}.legacy`, metric.legacy ?? {}, failures)
-    checkSampleList(`${name}.newApp`, metric.newApp ?? {}, failures)
-    if (!isFinitePositive(metric.legacy?.median) || !isFinitePositive(metric.newApp?.median)) {
+    const legacyMedian = checkSampleList(`${name}.legacy`, metric.legacy ?? {}, failures)
+    const newMedian = checkSampleList(`${name}.newApp`, metric.newApp ?? {}, failures)
+    if (legacyMedian === null || newMedian === null) {
       continue
     }
-    const ratio = metric.legacy.median / metric.newApp.median
+    const ratio = legacyMedian / newMedian
     report.push({
       metric: name,
-      legacyMedianMs: metric.legacy.median,
-      newMedianMs: metric.newApp.median,
+      legacyMedianMs: legacyMedian,
+      newMedianMs: newMedian,
       speedup: Number(ratio.toFixed(2)),
       unit: metric.unit ?? 'ms',
     })
-    if (!(metric.newApp.median < metric.legacy.median)) {
+    if (!(newMedian < legacyMedian)) {
       failures.push(
-        `${name}: new app ${metric.newApp.median}${metric.unit ?? 'ms'} is not strictly faster than legacy ${metric.legacy.median}${metric.unit ?? 'ms'}`,
+        `${name}: new app ${newMedian}${metric.unit ?? 'ms'} is not strictly faster than legacy ${legacyMedian}${metric.unit ?? 'ms'}`,
       )
     }
     if (HEADLINE_METRICS.includes(name) && ratio < 2) {
