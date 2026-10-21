@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import type { Profile, ProfilesState } from '../../lib/ipc'
 import { formatDate } from '../../lib/format'
@@ -33,23 +33,17 @@ export function ProfilesScreen({
   const [selectedId, setSelectedId] = useState<string | null>(profiles.activeProfileId)
   const [dialog, setDialog] = useState<DialogState | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Profile | null>(null)
-  const lastAction = useRef<(() => void) | null>(null)
 
   const selected = profiles.profiles.find((profile) => profile.id === selectedId) ?? null
   const exactlyOne = profiles.profiles.filter((profile) => profile.id === selectedId).length === 1
   const canDelete = exactlyOne && profiles.profiles.length > 1
   const activeProfile = profiles.profiles.find((profile) => profile.id === profiles.activeProfileId)
 
-  const run = (action: () => void) => {
-    lastAction.current = action
-    action()
-  }
-
   const handleRowKey = (event: ReactKeyboardEvent<HTMLTableRowElement>, profile: Profile) => {
     if (event.key === 'Enter') {
       event.preventDefault()
       setSelectedId(profile.id)
-      if (profile.id !== profiles.activeProfileId) run(() => onApply(profile.id))
+      if (profile.id !== profiles.activeProfileId) onApply(profile.id)
     } else if (event.key === 'F2') {
       event.preventDefault()
       setSelectedId(profile.id)
@@ -114,7 +108,7 @@ export function ProfilesScreen({
             title={exactlyOne ? 'Apply the selected profile' : 'Select exactly one profile'}
             onClick={() => {
               if (!selected || selected.id === profiles.activeProfileId) return
-              run(() => onApply(selected.id))
+              onApply(selected.id)
             }}
           >
             Apply
@@ -200,7 +194,7 @@ export function ProfilesScreen({
                         disabled={busy || active}
                         onClick={(event) => {
                           event.stopPropagation()
-                          run(() => onApply(profile.id))
+                          onApply(profile.id)
                         }}
                       >
                         {active ? 'Active' : 'Apply'}
@@ -259,7 +253,7 @@ export function ProfilesScreen({
                 disabled={busy}
                 onClick={() => {
                   const target = deleteTarget
-                  run(() => void onDelete(target.id).then((ok) => ok && setDeleteTarget(null)))
+                  void onDelete(target.id).then((ok) => ok && setDeleteTarget(null))
                 }}
               >
                 Delete profile

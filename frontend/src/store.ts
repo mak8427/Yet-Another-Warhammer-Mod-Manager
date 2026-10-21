@@ -693,13 +693,27 @@ export class AppStore {
     this.set({ busy: 'Resetting settings and load order' })
     try {
       const report = await this.client.resetToDefaults(true)
+      let game = this.state.game
+      try {
+        game = await this.client.detectGame()
+      } catch (cause) {
+        const error = toIpcError(cause)
+        if (error.code !== 'game_not_found') throw cause
+      }
       const [snapshot, profiles, tags, ui] = await Promise.all([
         this.client.listMods(),
         this.client.listProfiles(),
         this.client.listTags(),
         this.client.getUiPreferences(),
       ])
+      const message =
+        report.loadOrderOutcome === 'written'
+          ? 'Settings and load order reset to defaults'
+          : report.loadOrderOutcome === 'blocked'
+            ? `Settings reset; the load order was not rewritten. ${report.loadOrderBlockedReason ?? 'The file is locked or corrupt.'}`
+            : 'Settings reset; no game path was available for the load order'
       this.set({
+        game,
         snapshot,
         profiles,
         tags,
@@ -710,10 +724,8 @@ export class AppStore {
           ? new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           : this.state.lastWriteAt,
         notice: {
-          kind: 'success',
-          message: report.loadOrderWritten
-            ? 'Settings and load order reset to defaults'
-            : 'Settings reset; no game path was available for the load order',
+          kind: report.loadOrderOutcome === 'blocked' ? 'warning' : 'success',
+          message,
         },
       })
       void this.refreshConflicts()

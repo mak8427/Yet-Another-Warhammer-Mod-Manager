@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use wh3mm_core::config::{self, AppConfig, CONFIG_FILE};
 use wh3mm_core::error::ErrorCode;
-use wh3mm_core::ipc::{Density, UiPreferences};
+use wh3mm_core::ipc::{Density, LocationSource, ResetLoadOrderOutcome, UiPreferences};
 use wh3mm_core::load_order;
 use wh3mm_core::pack::synthetic_pack_bytes;
 use wh3mm_core::session::{Session, SessionOptions};
@@ -296,6 +296,8 @@ fn reset_to_defaults_keeps_profiles_and_tags_and_writes_an_empty_order() {
     let report = session.reset_to_defaults(true).unwrap();
 
     assert!(report.load_order_written);
+    assert_eq!(report.load_order_outcome, ResetLoadOrderOutcome::Written);
+    assert_eq!(report.load_order_blocked_reason, None);
     let snapshot = session.snapshot();
     assert_eq!(snapshot.enabled_count, 0);
     assert_eq!(session.config.ui, UiPreferences::default());
@@ -340,10 +342,61 @@ fn reset_to_defaults_without_a_game_still_persists_the_config() {
     let report = session.reset_to_defaults(true).unwrap();
 
     assert!(!report.load_order_written);
+    assert_eq!(report.load_order_outcome, ResetLoadOrderOutcome::NoGamePath);
+    assert_eq!(report.load_order_blocked_reason, None);
     assert_eq!(session.config.ui, UiPreferences::default());
     assert!(session.config.paths.game_path_override.is_none());
     let reloaded = config::load_or_create(&dir.path().join(CONFIG_FILE)).unwrap();
     assert_eq!(reloaded.config.ui, UiPreferences::default());
+}
+
+#[test]
+fn reset_to_defaults_reports_a_blocked_load_order_and_leaves_the_file_untouched() {
+    let dir = TempDir::new("session-reset-blocked");
+    let game = game_fixture(&dir, &["a.pack"]);
+    let original = b"mod \"unterminated;\n";
+    fs::write(game.join("used_mods.txt"), original).unwrap();
+    let mut session = Session::initialize(options(&dir, Some(&game))).unwrap();
+
+    let report = session.reset_to_defaults(true).unwrap();
+
+    assert!(!report.load_order_written);
+    assert_eq!(report.load_order_outcome, ResetLoadOrderOutcome::Blocked);
+    let reason = report.load_order_blocked_reason.unwrap();
+    assert!(reason.contains("corrupt"), "unexpected reason: {reason}");
+    assert_eq!(fs::read(game.join("used_mods.txt")).unwrap(), original);
+    assert_eq!(session.config.ui, UiPreferences::default());
+    assert!(session.config.paths.game_path_override.is_none());
+}
+
+#[test]
+fn reset_to_defaults_returns_the_location_to_auto_detection() {
+    let dir = TempDir::new("session-reset-auto");
+    let steam = dir.path().join("Steam");
+    let game = steam
+        .join("steamapps")
+        .join("common")
+        .join("Total War WARHAMMER III");
+    fs::create_dir_all(game.join("data")).unwrap();
+    write_pack(&game.join("data").join("a.pack"));
+    let mut session = Session::initialize(SessionOptions {
+        config_path: dir.path().join(CONFIG_FILE),
+        steam_root_candidates: Some(vec![steam]),
+        manual_game_path: Some(game.clone()),
+        log_timings: false,
+    })
+    .unwrap();
+    assert_eq!(
+        session.game_location().unwrap().source,
+        LocationSource::Manual
+    );
+
+    let report = session.reset_to_defaults(true).unwrap();
+
+    assert!(report.load_order_written);
+    let location = session.game_location().unwrap();
+    assert_eq!(location.source, LocationSource::Auto);
+    assert_eq!(location.game_path, game.to_string_lossy());
 }
 
 #[test]

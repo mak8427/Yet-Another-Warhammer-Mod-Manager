@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ErrorBanner } from './components/shell/ErrorBanner'
 import { NoticeBanner } from './components/shell/NoticeBanner'
 import { SectionRail } from './components/shell/SectionRail'
@@ -24,10 +24,26 @@ const SECTION_KEYS: Record<string, 'mods' | 'profiles' | 'conflicts' | 'workshop
 
 const FOCUS_REGIONS = ['rail', 'toolbar', 'list', 'inspector']
 
+function regionIsVisible(element: HTMLElement, overlayInspector: boolean): boolean {
+  if (element.hasAttribute('inert') || element.getAttribute('aria-hidden') === 'true') return false
+  if (
+    overlayInspector &&
+    element.matches('[data-region="inspector"]') &&
+    !element.classList.contains('is-open')
+  ) {
+    return false
+  }
+  const style = window.getComputedStyle(element)
+  return style.display !== 'none' && style.visibility !== 'hidden'
+}
+
 function focusRegion(direction: 1 | -1): void {
+  const overlayInspector =
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(max-width: 1279px)').matches
   const regions = FOCUS_REGIONS.flatMap((name) =>
     Array.from(document.querySelectorAll<HTMLElement>(`[data-region="${name}"]`)),
-  ).filter((element) => element.offsetParent !== null)
+  ).filter((element) => regionIsVisible(element, overlayInspector))
   if (regions.length === 0) return
   const active = document.activeElement as HTMLElement | null
   const current = active?.closest<HTMLElement>('[data-region]')
@@ -42,6 +58,8 @@ function focusRegion(direction: 1 | -1): void {
 
 export function App() {
   const state = useAppStore()
+  const [searchFocusRequest, setSearchFocusRequest] = useState(0)
+  const handledSearchFocus = useRef(0)
 
   useEffect(() => {
     void store.init()
@@ -66,12 +84,8 @@ export function App() {
       }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
         event.preventDefault()
-        const search = document.getElementById('mod-search') as HTMLInputElement | null
-        if (search) {
-          store.setView('mods')
-          search.focus()
-          search.select()
-        }
+        store.setView('mods')
+        setSearchFocusRequest((request) => request + 1)
         return
       }
       if ((event.ctrlKey || event.metaKey) && event.key === ',') {
@@ -105,6 +119,15 @@ export function App() {
       document.querySelector<HTMLElement>('.screen-title h2')
     title?.focus()
   }, [state.view, state.status])
+
+  useEffect(() => {
+    if (searchFocusRequest === 0 || searchFocusRequest === handledSearchFocus.current) return
+    if (state.view !== 'mods') return
+    handledSearchFocus.current = searchFocusRequest
+    const search = document.getElementById('mod-search') as HTMLInputElement | null
+    search?.focus()
+    search?.select()
+  }, [searchFocusRequest, state.view])
 
   const fatal = state.status === 'error' ? state.error : null
 

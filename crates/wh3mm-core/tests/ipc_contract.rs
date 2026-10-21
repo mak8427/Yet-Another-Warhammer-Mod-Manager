@@ -28,11 +28,15 @@ fn app_info_serializes_camel_case_fields() {
 fn reset_defaults_report_uses_camel_case_on_the_wire() {
     let report = wh3mm_core::ipc::ResetDefaultsReport {
         load_order_written: false,
+        load_order_outcome: wh3mm_core::ipc::ResetLoadOrderOutcome::NoGamePath,
+        load_order_blocked_reason: None,
     };
 
     let json = serde_json::to_value(&report).expect("ResetDefaultsReport must serialize");
 
     assert_eq!(json["loadOrderWritten"], false);
+    assert_eq!(json["loadOrderOutcome"], "no_game_path");
+    assert_eq!(json["loadOrderBlockedReason"], serde_json::Value::Null);
     assert!(
         json.get("load_order_written").is_none(),
         "snake_case keys must not leak onto the wire"

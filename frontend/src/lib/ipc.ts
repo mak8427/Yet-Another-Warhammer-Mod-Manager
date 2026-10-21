@@ -146,8 +146,12 @@ export interface UiPreferences {
   lastScrollTop: number
 }
 
+export type ResetLoadOrderOutcome = 'written' | 'no_game_path' | 'blocked'
+
 export interface ResetDefaultsReport {
   loadOrderWritten: boolean
+  loadOrderOutcome: ResetLoadOrderOutcome
+  loadOrderBlockedReason: string | null
 }
 
 export interface FileConflict {

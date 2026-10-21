@@ -1577,6 +1577,19 @@ input[aria-invalid='true'] {
   background: var(--color-bg-row-hover);
 }
 
+.data-table tbody tr.virtual-spacer,
+.data-table tbody tr.virtual-spacer:hover {
+  height: auto;
+  border: 0;
+  background: transparent;
+}
+
+.data-table tbody tr.virtual-spacer td {
+  padding: 0;
+  border: 0;
+}
+
+
 .data-table tbody tr:focus-visible {
   outline-offset: -2px;
 }

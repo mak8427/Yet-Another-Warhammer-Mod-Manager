@@ -41,10 +41,28 @@ function mockReady(snapshot = SNAPSHOT) {
   vi.mocked(ipc.getUiPreferences).mockResolvedValue(UI)
 }
 
+function mockViewportOverlay(overlay: boolean) {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    configurable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches: overlay,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  })
+}
+
 describe('App', () => {
   beforeEach(() => {
     store.reset()
     vi.clearAllMocks()
+    mockViewportOverlay(false)
   })
 
   it('starts with the explicit game-not-found state and a manual path form', async () => {
@@ -258,6 +276,56 @@ describe('App', () => {
 
     fireEvent.keyDown(window, { key: 'f', ctrlKey: true })
     expect(screen.getByLabelText('Search mods')).toHaveFocus()
+  })
+
+  it('focuses search from another screen with Ctrl+F', async () => {
+    mockReady()
+    render(<App />)
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    const rail = screen.getByRole('navigation', { name: 'Sections' })
+    fireEvent.click(within(rail).getByRole('button', { name: 'Settings' }))
+    await screen.findByRole('heading', { name: 'Settings' })
+
+    fireEvent.keyDown(window, { key: 'f', ctrlKey: true })
+
+    expect(await screen.findByRole('heading', { name: 'Mods' })).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByLabelText('Search mods')).toHaveFocus()
+    })
+  })
+
+  it('cycles F6 through the visible regions at 1280px and wider', async () => {
+    mockReady()
+    render(<App />)
+    const list = await screen.findByRole('listbox', { name: 'Mods' })
+    const row = within(list).getAllByRole('option')[0]
+    row.focus()
+
+    fireEvent.keyDown(window, { key: 'F6' })
+    expect(document.activeElement?.closest('[data-region="inspector"]')).not.toBeNull()
+
+    fireEvent.keyDown(window, { key: 'F6' })
+    expect(document.activeElement?.closest('[data-region="rail"]')).not.toBeNull()
+  })
+
+  it('skips the closed overlay inspector in the F6 cycle below 1280px', async () => {
+    mockReady()
+    render(<App />)
+    const list = await screen.findByRole('listbox', { name: 'Mods' })
+    const row = within(list).getAllByRole('option')[0]
+    row.focus()
+    mockViewportOverlay(true)
+
+    fireEvent.keyDown(window, { key: 'F6' })
+    expect(document.activeElement?.closest('[data-region="rail"]')).not.toBeNull()
+
+    fireEvent.keyDown(window, { key: 'F6' })
+    expect(document.activeElement?.closest('[data-region="toolbar"]')).not.toBeNull()
+
+    row.focus()
+    fireEvent.keyDown(window, { key: 'F6', shiftKey: true })
+    expect(document.activeElement?.closest('[data-region="toolbar"]')).not.toBeNull()
   })
 
   it('focuses Cancel and marks the write action dangerous when directives are dropped', async () => {

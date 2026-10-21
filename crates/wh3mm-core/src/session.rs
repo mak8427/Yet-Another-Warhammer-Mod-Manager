@@ -12,7 +12,8 @@ use crate::config::{self, AppConfig, ConfigStatus};
 use crate::error::{AppError, ErrorCode};
 use crate::ipc::{
     GameLocation as IpcGameLocation, LoadOrderReadReport, LoadOrderWriteReport, ModListSnapshot,
-    ModSummary, Profile, ProfilesState, ResetDefaultsReport, Tag, UiPreferences,
+    ModSummary, Profile, ProfilesState, ResetDefaultsReport, ResetLoadOrderOutcome, Tag,
+    UiPreferences,
 };
 use crate::load_order::{self, LoadOrderFile, PlannedName, WritePlan};
 use crate::mod_index::{self, DiscoveredMod, IndexReport};
@@ -567,28 +568,70 @@ impl Session {
     /// Resets UI preferences and the active profile's enabled set, clears the
     /// manual game path override, and writes an empty load order when a game is
     /// available. Profiles, tags, mod tags, and launch options are kept.
+    ///
+    /// When the reset clears a manual override, the location is refreshed from
+    /// auto-detection so the UI can truthfully report the new source. If no
+    /// game path was available or the load-order write is refused, the config
+    /// reset still succeeds and the report names the reason.
     pub fn reset_to_defaults(&mut self, confirm: bool) -> Result<ResetDefaultsReport, AppError> {
         if !confirm {
             return Err(AppError::validation(
                 "Resetting settings and the load order requires confirmation",
             ));
         }
+        let cleared_override = self.config.paths.game_path_override.is_some();
         self.commit_config(|config| {
             config.reset_to_defaults();
             Ok(())
         })?;
         self.enabled_ids.clear();
 
-        let mut load_order_written = false;
+        if cleared_override {
+            self.refresh_location_from_autodetect();
+        }
+
+        let mut outcome = ResetLoadOrderOutcome::NoGamePath;
+        let mut blocked_reason = None;
         if self.location.is_some() {
             let plan = self.plan_write(true, true)?;
             if plan.can_write {
                 load_order::write_plan(&plan)?;
                 self.refresh_load_order_after_write()?;
-                load_order_written = true;
+                outcome = ResetLoadOrderOutcome::Written;
+            } else {
+                outcome = ResetLoadOrderOutcome::Blocked;
+                blocked_reason = plan.blocked_reason;
             }
         }
-        Ok(ResetDefaultsReport { load_order_written })
+        Ok(ResetDefaultsReport {
+            load_order_written: outcome == ResetLoadOrderOutcome::Written,
+            load_order_outcome: outcome,
+            load_order_blocked_reason: blocked_reason,
+        })
+    }
+
+    fn refresh_location_from_autodetect(&mut self) {
+        let candidates = self
+            .steam_root_candidates
+            .clone()
+            .unwrap_or_else(paths::default_steam_root_candidates);
+        let (detected, detection) = paths::autodetect(&candidates);
+        let Some(detected) = detected else {
+            return;
+        };
+        let path_changed = self
+            .location
+            .as_ref()
+            .is_none_or(|current| current.game_path != detected.game_path);
+        if path_changed {
+            let (mods, report) = mod_index::scan(&detected);
+            let file = load_order::read_file(&load_order::used_mods_path(&detected.game_path));
+            self.load_order = read_report(&file, &mods);
+            self.mods = mods;
+            self.index_report = report;
+        }
+        self.location = Some(detected);
+        self.detection = detection;
     }
 
     pub fn read_load_order(&mut self) -> Result<LoadOrderReadReport, AppError> {

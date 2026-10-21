@@ -5,6 +5,7 @@ import {
   GAME,
   PROFILE_CAMPAIGN,
   PROFILES,
+  RESET_REPORT,
   UI,
   makeClient,
   makeMod,
@@ -173,6 +174,42 @@ describe('AppStore', () => {
     expect(store.getState().notice?.kind).toBe('success')
   })
 
+  it('re-detects the game after a reset so the source returns to automatic', async () => {
+    const manual = { ...GAME, source: 'manual' as const }
+    const auto = { ...GAME, source: 'auto' as const }
+    const client = makeClient({
+      detectGame: vi.fn().mockResolvedValueOnce(manual).mockResolvedValue(auto),
+    })
+    const store = new AppStore(client)
+    await store.init()
+    expect(store.getState().game?.source).toBe('manual')
+
+    await store.resetToDefaults()
+
+    expect(client.detectGame).toHaveBeenCalledTimes(2)
+    expect(store.getState().game?.source).toBe('auto')
+  })
+
+  it('reports the real load-order reason when a reset is blocked', async () => {
+    const blocked = {
+      ...RESET_REPORT,
+      loadOrderWritten: false,
+      loadOrderOutcome: 'blocked' as const,
+      loadOrderBlockedReason:
+        'used_mods.txt is corrupt; restore the backup before writing again',
+    }
+    const client = makeClient({ resetToDefaults: vi.fn(async () => blocked) })
+    const store = new AppStore(client)
+    await store.init()
+
+    await store.resetToDefaults()
+
+    const notice = store.getState().notice
+    expect(notice?.kind).toBe('warning')
+    expect(notice?.message).toContain('used_mods.txt is corrupt')
+    expect(notice?.message).not.toContain('no game path')
+  })
+
   it('sorts deterministically with an id tie-break in every non-drag mode', async () => {
     const mods = [
       makeMod({
@@ -201,9 +238,14 @@ describe('AppStore', () => {
     await store.init()
     const order = () => visibleMods(store.getState()).map((mod) => mod.id)
 
+    const sourceOrder = () =>
+      store.getState().snapshot?.mods.map((mod) => mod.id)
+
     store.setSort('name')
     expect(order()).toEqual(['mod-m', 'mod-a', 'mod-z'])
+    store.setSort('name')
     expect(order()).toEqual(['mod-m', 'mod-a', 'mod-z'])
+    expect(sourceOrder()).toEqual(['mod-z', 'mod-a', 'mod-m'])
 
     store.setSort('author')
     expect(order()).toEqual(['mod-a', 'mod-z', 'mod-m'])

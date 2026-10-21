@@ -1,4 +1,6 @@
+import { useEffect, useRef, useState } from 'react'
 import type { IpcError, WorkshopAction, WorkshopItem, WorkshopState } from '../../lib/ipc'
+import { virtualRange } from '../../lib/virtual'
 import { formatDate } from '../../lib/format'
 import { EmptyState } from '../common/EmptyState'
 import { ErrorBanner } from '../shell/ErrorBanner'
@@ -11,6 +13,7 @@ interface WorkshopScreenProps {
   onRefresh: () => void
   onDismissError: () => void
   onAction: (action: WorkshopAction, workshopId: string) => void
+  viewportHeightOverride?: number
 }
 
 const STATE_LABEL: Record<WorkshopState, string> = {
@@ -27,6 +30,9 @@ const STATE_ICON: Record<WorkshopState, string> = {
   unknown: '?',
 }
 
+const ROW_HEIGHT = 40
+const OVERSCAN = 6
+
 export function WorkshopScreen({
   items,
   loading,
@@ -35,10 +41,40 @@ export function WorkshopScreen({
   onRefresh,
   onDismissError,
   onAction,
+  viewportHeightOverride,
 }: WorkshopScreenProps) {
   const rows = items ?? []
   const pending = rows.filter((item) => item.state === 'update_pending').length
   const unavailable = Boolean(error) && !loading && rows.length === 0
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [scrollTop, setScrollTop] = useState(0)
+  const [measuredHeight, setMeasuredHeight] = useState(520)
+  const viewportHeight = viewportHeightOverride ?? measuredHeight
+  const maxScrollTop = Math.max(0, rows.length * ROW_HEIGHT - viewportHeight)
+  const effectiveScrollTop = Math.min(scrollTop, maxScrollTop)
+  const range = virtualRange(
+    rows.length,
+    ROW_HEIGHT,
+    viewportHeight,
+    effectiveScrollTop,
+    OVERSCAN,
+  )
+  const visible = rows.slice(range.start, range.end)
+
+  useEffect(() => {
+    if (viewportHeightOverride !== undefined) return
+    const element = containerRef.current
+    if (!element) return
+    const measure = () => setMeasuredHeight(element.clientHeight || 520)
+    measure()
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', measure)
+      return () => window.removeEventListener('resize', measure)
+    }
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [viewportHeightOverride])
 
   return (
     <section className="workshop-screen" aria-labelledby="workshop-heading">
@@ -75,7 +111,11 @@ export function WorkshopScreen({
           </EmptyState>
         )
       ) : (
-        <div className="table-wrap">
+        <div
+          className="table-wrap"
+          ref={containerRef}
+          onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
+        >
           <table className="data-table workshop-table">
             <colgroup>
               <col />
@@ -94,8 +134,13 @@ export function WorkshopScreen({
               </tr>
             </thead>
             <tbody>
-              {rows.map((item) => (
-                <tr key={item.workshopId}>
+              {range.topPadding > 0 && (
+                <tr className="virtual-spacer" aria-hidden="true" style={{ height: range.topPadding }}>
+                  <td colSpan={5} />
+                </tr>
+              )}
+              {visible.map((item) => (
+                <tr key={item.workshopId} data-workshop-row>
                   <td>
                     <span className="truncate workshop-title" title={item.title}>
                       {item.title}
@@ -152,6 +197,11 @@ export function WorkshopScreen({
                   </td>
                 </tr>
               ))}
+              {range.bottomPadding > 0 && (
+                <tr className="virtual-spacer" aria-hidden="true" style={{ height: range.bottomPadding }}>
+                  <td colSpan={5} />
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

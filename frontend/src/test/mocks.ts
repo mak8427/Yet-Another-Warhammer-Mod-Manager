@@ -186,6 +186,8 @@ export const LAUNCH_RESULT: LaunchResult = {
 
 export const RESET_REPORT: ResetDefaultsReport = {
   loadOrderWritten: true,
+  loadOrderOutcome: 'written',
+  loadOrderBlockedReason: null,
 }
 
 export const WRITE_REPORT: LoadOrderWriteReport = {

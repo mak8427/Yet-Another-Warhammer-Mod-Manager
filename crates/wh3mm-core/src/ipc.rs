@@ -127,14 +127,30 @@ pub struct ModListSnapshot {
     pub warnings: Vec<String>,
 }
 
-/// Ordered enabled set; the index is the load order.
+/// What happened to `used_mods.txt` during a reset to documented defaults.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ResetLoadOrderOutcome {
+    /// An empty order was written through the atomic writer.
+    Written,
+    /// No game path was available; only the config reset was persisted.
+    NoGamePath,
+    /// A game path exists, but the load-order write was refused (for example a
+    /// corrupt `used_mods.txt`). The file is left untouched.
+    Blocked,
+}
+
 /// Result of a confirmed reset to documented defaults.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ResetDefaultsReport {
     /// True when an empty `used_mods.txt` was written through the atomic path.
-    /// False when no game path was available; the config reset still succeeds.
     pub load_order_written: bool,
+    /// Explicit reason for `load_order_written`, so the UI never has to guess.
+    pub load_order_outcome: ResetLoadOrderOutcome,
+    /// The safety refusal from the load-order planner when the outcome is
+    /// `blocked`; `None` for the other outcomes.
+    pub load_order_blocked_reason: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
