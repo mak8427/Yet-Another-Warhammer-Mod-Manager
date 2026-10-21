@@ -1609,7 +1609,7 @@ select:focus {
   gap: 0.75rem;
   padding: 0.5rem 0.7rem;
   border: 1px solid var(--brass-line);
-  background: linear-gradient(180deg, rgba(201, 162, 39, 0.04), transparent), var(--ink-panel);
+  background: var(--ink-panel);
 }
 
 .m3-stat span {
