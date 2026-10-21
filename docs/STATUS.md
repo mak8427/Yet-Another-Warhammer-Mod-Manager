@@ -181,8 +181,17 @@ CEO decision.
   dispatch (run `39637746973`) succeeded with artifact `wh3mm-windows-1.0.0`.
   Until a required Windows PR check exists, treat every Windows-only
   dependency/feature change as untested by the Linux gates.
-- `main` has no GitHub branch protection; the branch/PR policy is enforced by
-  review. Enabling protection is an owner action for Torgrim.
+- The default branch has one active ruleset (`Portect brahc`, id `25486392`)
+  that blocks deletion and non-fast-forward pushes only; it does not require a
+  pull request or status checks. The WAR-127 provenance rule is in
+  `docs/RELEASE.md`: green `Linux quality gates` and `Capability parity` on the
+  exact PR head plus the Paperclip review/approval ids in the PR body. Enabling
+  the required checks is an owner action for Torgrim.
+- PR #30's squash commit `1cdd35f` has no green `Linux quality gates` run of its
+  own: the post-merge run was cancelled when `3106dd5` superseded it. The PR head
+  `ef8094e` was green before the merge, and the green `3106dd5` run supersedes
+  the cancelled result (only the WAR-101 Windows dependency changed). Recorded
+  in `docs/RELEASE.md`.
 - The M0 scaffold commit reached `main` before the CEO's no-direct-push
   directive. History was not rewritten; remaining M0 closure work is on
   `feat/m0-bootstrap`.

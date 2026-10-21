@@ -22,6 +22,112 @@ is `docs/adr/004-testing-strategy.md`.
   tag is not publication: the tag run produces the Windows artifact and a draft
   release, WAR-12 audits that draft, and only then may a human publish it.
 
+## Merge provenance (required)
+
+GitHub is the record of what shipped, but every agent commits through one broker
+identity. GitHub review approvals therefore cannot show independent QA or
+tech-lead sign-off, and `reviewDecision` is empty by design. The merge evidence
+is recorded in two places: the required CI checks on the pull-request head, and
+the Paperclip task ids in the pull-request body.
+
+### Required CI gate
+
+A pull request may merge only when **both** required checks are
+`completed/success` on the exact head SHA being merged:
+
+| Check | Workflow | What it proves |
+|---|---|---|
+| `Linux quality gates` | `.github/workflows/ci.yml` | fmt, clippy, Rust tests, fixture guards, typecheck, lint, frontend tests, build |
+| `Capability parity` | `.github/workflows/ci.yml` | `node scripts/parity-report.mjs --check` |
+
+`Windows Tauri shell (manual until packaging)` is skipped on pull requests by
+design and is not a required check. A change to the Tauri layer still needs the
+manual Windows check in the pull-request template.
+
+A `cancelled`, `failure`, `timed_out`, `neutral`, or `skipped` required check is
+**not** a pass. `ci.yml` uses `concurrency: cancel-in-progress`, so pushing a new
+commit cancels the older run: that is expected, and the gate is the newest head.
+Never merge an older head on the strength of an earlier run.
+
+Before merging, verify the exact head:
+
+```bash
+gh api repos/mak8427/Warhammer_mod_manager/commits/<head-sha>/check-runs \
+  --jq '.check_runs[] | select(.name == "Linux quality gates" or .name == "Capability parity") | [.name, .status, .conclusion]'
+```
+
+Both check names must read `completed success` (use the latest run per name when
+the push and pull-request events both produced one). If a required check is
+cancelled or fails on the final head, re-run it on that same SHA
+(`gh run rerun <run-id>`) or push a fix and use the new head; do not merge and do
+not re-run a different SHA.
+
+The post-merge push run on `main` is a monitoring check. If it fails, revert or
+fix immediately. If it is cancelled because a newer commit superseded it, the
+newer commit must have a green run, and the pull-request body records the
+cancellation and the superseding run.
+
+### Review evidence in the pull-request body
+
+Every pull-request body contains a `## Review evidence` section with the
+Paperclip approval ids, copied from the execution policy:
+
+- QA review: `WAR-<n>` (owner: Baltasar Gelt), approved, with the stage
+  decision id or review comment id;
+- tech-lead approval: `WAR-<n>` (owner: Katerina Zarina), approved, with the
+  stage decision id or approval comment id;
+- the author is not the approver (`reviewPolicy: not_creator`);
+- performance-sensitive change: the `WAR-<n>` sign-off with the before/after
+  numbers.
+
+The ids are the audit trail; a bare name is not evidence. The reviewer and the
+approver record their verdict on their own Paperclip task, and the merge task
+links both. This replaces GitHub review approvals until the company has a
+separate GitHub identity for QA and the tech lead.
+
+### Branch protection (owner action)
+
+The default branch has one active ruleset (`Portect brahc`, id `25486392`) that
+blocks deletion and non-fast-forward pushes. It does **not** require a pull
+request or status checks, so the CI gate above is enforced by process until
+Torgrim updates the ruleset. The required settings are:
+
+- target `~DEFAULT_BRANCH`; enforcement active; no bypass actors;
+- require a pull request before merging;
+- require the status checks `Linux quality gates` and `Capability parity`;
+- require branches to be up to date before merging;
+- keep the existing deletion and non-fast-forward rules.
+
+This is an owner action; it stays in `docs/STATUS.md` until it is done.
+
+### Historical record: PR #30 (`1cdd35f`)
+
+PR #30 (release-head parity index, WAR-73) merged as squash commit `1cdd35f` on
+2026-10-21 at 16:43Z.
+
+- Pre-merge gate: the pull-request head `ef8094e` had `Linux quality gates` and
+  `Capability parity` both `completed/success` (runs
+  [39636412756](https://github.com/mak8427/Warhammer_mod_manager/actions/runs/39636412756)
+  and
+  [39636419120](https://github.com/mak8427/Warhammer_mod_manager/actions/runs/39636419120)).
+  The required gate was met.
+- Post-merge push run
+  [39637359257](https://github.com/mak8427/Warhammer_mod_manager/actions/runs/39637359257)
+  on `1cdd35f`: `Capability parity` succeeded, `Linux quality gates` was
+  cancelled at 16:45:07Z because the next commit superseded it. `1cdd35f` has no
+  green `Linux quality gates` run of its own.
+- Superseding run: `3106dd5`, the direct child of `1cdd35f`, is green (run
+  [39637546916](https://github.com/mak8427/Warhammer_mod_manager/actions/runs/39637546916):
+  Linux and parity success). The only diff from `1cdd35f` is
+  `crates/wh3mm-app/Cargo.toml` and `Cargo.lock` for the WAR-101 Windows
+  feature; Linux does not build that Windows-only dependency. The green
+  `3106dd5` run therefore supersedes the cancelled Linux result for `1cdd35f`,
+  and no unverified content shipped.
+
+This is a one-time historical record, not a precedent. From WAR-127 onward the
+rule above applies: green on the exact pull-request head, review ids in the
+body, and a recorded explanation if a post-merge run is superseded.
+
 ## Build locally on Windows
 
 Prerequisites:
@@ -115,7 +221,8 @@ name, type, timestamp, and dependencies.
 
 It never publishes a release automatically. A human reviews the draft, edits the
 notes, and publishes it. Linux PR gates in `.github/workflows/ci.yml` are
-unchanged and stay required.
+unchanged and stay required by process (see **Merge provenance** above); GitHub
+enforces them only after the owner enables the required checks.
 
 To exercise the build without creating a tag or a release, run the workflow
 manually (`workflow_dispatch`) with the version input; that path uploads the
@@ -207,6 +314,9 @@ release task.
 - [x] WAR-107 (DSC-1 author surface cut and `PRODUCT_SCOPE` correction) is merged and QA-approved (`84b11c6`).
 - [x] Version matches in `tauri.conf.json`, `Cargo.toml`, and both `package.json` files.
 - [ ] `CHANGELOG.md` reflects the merged scope.
+- [ ] Every PR merged after WAR-127 has green `Linux quality gates` and
+      `Capability parity` runs on its exact head, and its body records the QA
+      and tech-lead Paperclip approval ids (`docs/RELEASE.md`, Merge provenance).
 - [ ] `node scripts/qa/verify-perf-gate.mjs` passes at the tag head and Genny4Real's v1.0 perf sign-off is recorded (WAR-98).
 - [ ] Tag workflow produced the NSIS installer, `SHA256SUMS.txt`, and a draft release.
 - [ ] WAR-12 audit signed off on that draft.
