@@ -18,7 +18,7 @@ when its acceptance checks are recorded here with command evidence.
 | M2 | Karl | Mod list, load order, tags, profiles | Done; merged as `c1a9cdd` (PR #6) |
 | M3 | Karl | Conflicts, Workshop, launch | Done; merged as `bb306d4` (PR #18) |
 | M4 | Katerina + Karl | TW:WH3 visual system, density, keyboard map, states | Not started |
-| M5 | Baltasar + Genny4Real | E2E, performance budgets, Windows installer, release | Not started |
+| M5 | Baltasar + Genny4Real | E2E, performance budgets, Windows installer, release | Release machinery in PR #25; Windows artifact and final parity follow merge and WAR-10 |
 
 ## M0 evidence (WAR-4)
 
@@ -133,6 +133,24 @@ until M5 packaging.
 | `pnpm lint` | pass |
 | `pnpm test` | pass, 58 tests at `bb306d4` |
 | `pnpm build` | pass |
+
+## v1.0 release limitations
+
+These are accepted for v1.0; the full manual scripts are in `docs/RELEASE.md`.
+
+| ID | Limitation | Manual check |
+|---|---|---|
+| WS-3 | Steam subscribe/unsubscribe/update is manual; the app has no custom Steam auth and never automates it. | Subscribe and unsubscribe in Steam, rescan, confirm the mod list follows; confirm the app never asks for Steam credentials. |
+| LA-1 | Launch through Steam is measured as a proxy, not an in-game load time. | Launch in the Windows QA pass and keep the number labelled "proxy". |
+| ML-4 | Persisted scroll position and the 20k-row guard are polish. | A reset scroll is accepted; the 20k fixture must show the guard, not freeze. |
+| SET-2 | Density, author, and thumbnail preferences persist best-effort. | Toggle each, restart, confirm persistence, and record any failure. |
+| DET-1 Linux roots | Flatpak/Snap/XDG discovery is best-effort; Windows registry and native root are fixture-tested on WAR-10. | Detect on Linux Flatpak/Snap or use the manual path; confirm Windows detection without a manual path. |
+
+The capability-parity index in `docs/PARITY.md` is generated from
+`docs/PARITY.yaml`; only WS-3, LA-1, ML-4, and SET-2 may remain `partial` there.
+At the release head, `node scripts/parity-report.mjs` must report 0 missing
+checks. Until WAR-10's blockers merge, SET-4 is expected to be the missing
+check, and no `v1.0.0` tag is created.
 
 ## Risks and open items
 

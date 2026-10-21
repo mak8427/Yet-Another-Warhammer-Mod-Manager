@@ -24,7 +24,7 @@ Prerequisites:
 
 | Tool | Version | Notes |
 |---|---|---|
-| Windows | 10 or 11, x64 | WebView2 runtime must be present |
+| Windows | 10 or 11, x64 | The installer's WebView2 bootstrapper downloads the runtime if it is missing; the first install needs network access |
 | Rust | 1.90+ (stable) | `rustup default stable`; MSVC build tools |
 | Node.js | 24.15+ | `node --version` |
 | pnpm | 12.14 | `corepack enable` then `corepack prepare pnpm@12.14.0 --activate` |
@@ -75,8 +75,9 @@ manual check in the QA pass below.
 1. Checks the tag against `tauri.conf.json` and fails on a mismatch.
 2. Runs `cargo test --workspace --locked` and installs the frontend.
 3. Builds NSIS and MSI on `windows-latest`.
-4. Uploads the installers as the `wh3mm-windows-<version>` run artifact.
-5. Creates a **draft** GitHub release with the installers attached.
+4. Writes `SHA256SUMS.txt` and uploads the installers plus that file as the
+   `wh3mm-windows-<version>` run artifact.
+5. Creates a **draft** GitHub release with the installers and checksums attached.
 
 It never publishes a release automatically. A human reviews the draft, edits the
 notes, and publishes it. Linux PR gates in `.github/workflows/ci.yml` are
@@ -118,11 +119,12 @@ number (from the About/app-info surface) and every result.
 7. **Launch.** With the game installed, launch through the app. The game starts
    with the saved load order; if the game is not installed, the button is
    disabled or gives a clear message.
-8. **Corrupt `used_mods.txt` recovery.** Close the app. Replace
-   `%APPDATA%\The Creative Assembly\Warhammer3\scripts\used_mods.txt` with
+8. **Corrupt `used_mods.txt` recovery.** Close the app. In the detected WH3 game
+   directory, replace `used_mods.txt` (next to `used_mods.txt.bak`) with
    garbage. Start the app: it must report the corrupt file and offer the backup,
-   not crash or silently overwrite the user's data. Restore from the `.bak` and
-   confirm the previous order returns.
+   not crash or silently overwrite the user's data. Use the app's Restore action
+   to recover `used_mods.txt.bak`, then confirm the previous order returns. Do
+   not restore by copying files while the app is running.
 9. **Uninstall.** Uninstall from Windows Settings. The Start-menu entry and
    program files are removed. User configuration under `%APPDATA%` may remain;
    note whether the user data is preserved (expected) and that no game files
@@ -151,10 +153,20 @@ release task.
 
 ## Pre-release checklist
 
-- [ ] M4 merged; `main` is green.
+- [ ] M4 merged (WAR-10), including SET-4, ML-3, CF-4, PRF-2, and DET-1; `main` is green.
 - [ ] WAR-12 audit signed off.
+- [ ] `node scripts/parity-report.mjs` reports **0 missing checks** at the release
+      head. Only WS-3, LA-1, ML-4, and SET-2 may remain `partial`; DET-1 Linux
+      roots is documented separately.
+- [ ] The generated `docs/PARITY.md` and `docs/STATUS.md` are committed at that
+      head; `docs/STATUS.md` names the five limitations with their manual checks.
+      Never hand-edit `docs/PARITY.md`.
 - [ ] Version matches in `tauri.conf.json`, `Cargo.toml`, and both `package.json` files.
 - [ ] `CHANGELOG.md` reflects the merged scope.
-- [ ] Tag workflow produced NSIS and MSI artifacts and a draft release.
+- [ ] Tag workflow produced NSIS and MSI artifacts, `SHA256SUMS.txt`, and a draft release.
 - [ ] Manual QA script passed on clean Windows 10 and 11 machines.
 - [ ] Installer SHA-256 published in the release notes.
+
+Until WAR-10's blockers merge, the parity generator is expected to report
+`SET-4` as missing. That is a pre-tag gate, not a reason to hold the release
+machinery PR; do not tag while any check is missing.
