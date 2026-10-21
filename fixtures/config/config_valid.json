@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "paths": {
+    "gamePathOverride": null
+  },
+  "ui": {
+    "density": "comfortable",
+    "showAuthors": true,
+    "showThumbnails": true,
+    "lastScrollTop": 0
+  },
+  "activeProfileId": "b0f4e7f0-3a55-4b8e-9d4a-8a2f6f4b1c21",
+  "profiles": [
+    {
+      "id": "b0f4e7f0-3a55-4b8e-9d4a-8a2f6f4b1c21",
+      "name": "Default",
+      "enabledModIds": [
+        "c:/steam/steamapps/workshop/content/1142710/2858184271/mod_a.pack",
+        "c:/steam/steamapps/common/Warhammer3/data/mod_b.pack"
+      ],
+      "createdAt": "2026-10-20T14:00:00Z",
+      "updatedAt": "2026-10-20T14:00:00Z"
+    }
+  ],
+  "tags": [
+    {
+      "id": "0d1f8e2a-4c7b-4f0e-8a3d-2b6c9e5f7a11",
+      "name": "Overhaul",
+      "color": "#c9a227"
+    }
+  ],
+  "modTags": {
+    "c:/steam/steamapps/workshop/content/1142710/2858184271/mod_a.pack": [
+      "0d1f8e2a-4c7b-4f0e-8a3d-2b6c9e5f7a11"
+    ]
+  }
+}

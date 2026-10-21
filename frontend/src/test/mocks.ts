@@ -46,6 +46,7 @@ export const EMPTY_LOAD_ORDER: LoadOrderReadReport = {
   present: true,
   corrupt: false,
   message: null,
+  unreadable: null,
   modNames: [],
   resolvedModIds: [],
   missingNames: [],

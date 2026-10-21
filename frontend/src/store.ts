@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import {
+  IpcError,
   ipc,
   toIpcError,
   type AppInfo,
@@ -7,7 +8,6 @@ import {
   type Density,
   type GameLocation,
   type IpcClient,
-  type IpcError,
   type LaunchOptions,
   type LaunchResult,
   type LoadOrderWriteReport,
@@ -467,16 +467,47 @@ export class AppStore {
     }
   }
 
-  async saveProfile(name: string, profileId?: string): Promise<boolean> {
-    const enabled = this.state.snapshot?.mods.filter((mod) => mod.isEnabled).map((mod) => mod.id) ?? []
-    this.set({ busy: 'Saving profile' })
+  async saveProfile(name: string): Promise<boolean> {
+    const enabled =
+      this.state.snapshot?.mods.filter((mod) => mod.isEnabled).map((mod) => mod.id) ?? []
+    return this.persistProfile(name, enabled, undefined, 'Profile saved')
+  }
+
+  async renameProfile(profileId: string, name: string): Promise<boolean> {
+    const target = this.state.profiles?.profiles.find((profile) => profile.id === profileId)
+    if (!target) {
+      this.set({
+        error: new IpcError({
+          code: 'not_found',
+          message: 'The profile no longer exists',
+          details: profileId,
+          retryable: false,
+        }),
+      })
+      return false
+    }
+    return this.persistProfile(name, [...target.enabledModIds], profileId, 'Profile renamed')
+  }
+
+  private async persistProfile(
+    name: string,
+    enabled: string[],
+    profileId: string | undefined,
+    successMessage: string,
+  ): Promise<boolean> {
+    this.set({ busy: profileId ? 'Renaming profile' : 'Saving profile' })
     try {
       await this.client.saveProfile(name, enabled, profileId)
       const [snapshot, profiles] = await Promise.all([
         this.client.listMods(),
         this.client.listProfiles(),
       ])
-      this.set({ snapshot, profiles, busy: null, notice: { kind: 'success', message: 'Profile saved' } })
+      this.set({
+        snapshot,
+        profiles,
+        busy: null,
+        notice: { kind: 'success', message: successMessage },
+      })
       return true
     } catch (cause) {
       this.set({ busy: null, error: toIpcError(cause) })

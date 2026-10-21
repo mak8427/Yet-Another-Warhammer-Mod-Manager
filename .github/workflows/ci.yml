@@ -1,10 +1,16 @@
 name: CI
 
 on:
+  # The QA gate (docs/QA_PLAN.md) must see every pushed branch and every PR.
   push:
-    branches: [main]
+    branches: ['**']
   pull_request:
   workflow_dispatch:
+    inputs:
+      run_windows:
+        description: 'Run the Windows Tauri build check'
+        type: boolean
+        default: false
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -25,6 +31,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Reference fetch script tests
+        run: bash scripts/tests/fetch-reference.test.sh
+
       - uses: pnpm/action-setup@v4
         with:
           run_install: false
@@ -39,6 +48,13 @@ jobs:
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
+
+      - name: QA fixture integrity
+        run: node scripts/qa/generate-fixtures.mjs --verify
+
+      - name: QA generator guard tests
+        timeout-minutes: 5
+        run: node --test scripts/qa/*.test.mjs
 
       - name: Rust format
         run: cargo fmt --all --check
@@ -67,10 +83,12 @@ jobs:
   windows-tauri:
     name: Windows Tauri shell (manual until packaging)
     # The shell is Windows-only by design (ADR-001). This job is manual in M0;
-    # M5 promotes it to push/tag builds with an installer artifact.
-    if: github.event_name == 'workflow_dispatch'
+    # M5 promotes it to push/tag builds with an installer artifact. Run it from
+    # workflow_dispatch with run_windows enabled. No rust-cache here: its
+    # post-step upload has hung the job.
+    if: github.event_name == 'workflow_dispatch' && inputs.run_windows
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -84,8 +102,6 @@ jobs:
           cache: pnpm
 
       - uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile

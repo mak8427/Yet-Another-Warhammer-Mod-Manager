@@ -181,6 +181,37 @@ fn corrupt_used_mods_refuses_write_and_restore_recovers_the_backup() {
 }
 
 #[test]
+fn unreadable_used_mods_keeps_the_session_alive_and_blocks_writes() {
+    let dir = TempDir::new("session-unreadable");
+    let game = game_fixture(&dir, &["a.pack"]);
+    // A directory at the file's path fails `fs::read` on every platform.
+    fs::create_dir(game.join("used_mods.txt")).unwrap();
+
+    let mut session = Session::initialize(options(&dir, Some(&game))).unwrap();
+    let snapshot = session.snapshot();
+    assert_eq!(snapshot.mods.len(), 1);
+    assert!(snapshot.load_order.unreadable.is_some());
+    assert!(!snapshot.load_order.corrupt);
+    assert!(
+        session
+            .warnings
+            .iter()
+            .any(|warning| warning.contains("used_mods.txt could not be read")),
+        "{:?}",
+        session.warnings
+    );
+
+    let id = snapshot.mods[0].id.clone();
+    session.set_mods_enabled(&[id], true).unwrap();
+    let preview = session.preview_load_order().unwrap();
+    assert!(!preview.can_write);
+    assert!(preview.hard_blocked);
+    let error = session.write_load_order(false, false).unwrap_err();
+    assert_eq!(error.code, ErrorCode::ConfigCorrupt);
+    assert!(game.join("used_mods.txt").is_dir());
+}
+
+#[test]
 fn profiles_create_switch_duplicate_and_delete() {
     let dir = TempDir::new("session-profiles");
     let game = game_fixture(&dir, &["a.pack", "b.pack"]);

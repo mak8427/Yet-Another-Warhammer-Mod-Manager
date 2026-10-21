@@ -8,7 +8,8 @@ interface ProfilesScreenProps {
   profiles: ProfilesState
   busy: boolean
   onApply: (profileId: string) => void
-  onSave: (name: string, profileId?: string) => Promise<boolean>
+  onCreate: (name: string) => Promise<boolean>
+  onRename: (profileId: string, name: string) => Promise<boolean>
   onDuplicate: (profileId: string, name: string) => Promise<boolean>
   onDelete: (profileId: string) => Promise<boolean>
 }
@@ -18,7 +19,7 @@ interface DialogState {
   profile?: Profile
 }
 
-export function ProfilesScreen({ profiles, busy, onApply, onSave, onDuplicate, onDelete }: ProfilesScreenProps) {
+export function ProfilesScreen({ profiles, busy, onApply, onCreate, onRename, onDuplicate, onDelete }: ProfilesScreenProps) {
   const [dialog, setDialog] = useState<DialogState | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Profile | null>(null)
 
@@ -113,8 +114,8 @@ export function ProfilesScreen({ profiles, busy, onApply, onSave, onDuplicate, o
           busy={busy}
           onClose={() => setDialog(null)}
           onSubmit={(name) => {
-            if (dialog.mode === 'create') return onSave(name)
-            if (dialog.mode === 'rename' && dialog.profile) return onSave(name, dialog.profile.id)
+            if (dialog.mode === 'create') return onCreate(name)
+            if (dialog.mode === 'rename' && dialog.profile) return onRename(dialog.profile.id, name)
             if (dialog.mode === 'duplicate' && dialog.profile) return onDuplicate(dialog.profile.id, name)
             return Promise.resolve(false)
           }}

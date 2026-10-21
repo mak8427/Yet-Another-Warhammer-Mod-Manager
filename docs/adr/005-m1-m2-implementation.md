@@ -93,9 +93,11 @@ Changed payloads:
   manual override and returns to auto-detection.
 - `LoadOrderWriteReport` gains `unmanagedDirectives`, `wouldDropUnmanaged`,
   `existingModCount`, `resultingModCount`, `canWrite`, and `blockedReason`.
-- `LoadOrderReadReport` is `{ path, present, corrupt, message, modNames,
-  resolvedModIds, missingNames, duplicates, unmanagedDirectives,
-  backupAvailable }`.
+- `LoadOrderReadReport` is `{ path, present, corrupt, message, unreadable,
+  modNames, resolvedModIds, missingNames, duplicates, unmanagedDirectives,
+  backupAvailable }`. `unreadable` carries a read failure (permissions,
+  sharing violation); startup stays alive and all writes are hard-blocked
+  until the file can be read.
 - `Timings` is `{ startupMs, detectionMs, scanMs, loadOrderMs, totalMs }`.
 
 `write_load_order` takes `{ allowEmpty, confirmUnmanagedLoss }` exactly as

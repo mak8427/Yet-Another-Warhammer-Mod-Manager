@@ -6,6 +6,7 @@ import { store } from './store'
 import {
   APP_INFO,
   CONFLICT_REPORT,
+  PROFILE_CAMPAIGN,
   PROFILES,
   TAGS,
   UI,
@@ -135,6 +136,31 @@ describe('App', () => {
       expect(ipc.applyProfile).toHaveBeenCalledWith('profile-campaign')
     })
     expect(await screen.findByText(/2 of 2 enabled/)).toBeInTheDocument()
+  })
+
+  it('renames a non-active profile without replacing its enabled set', async () => {
+    mockReady()
+    vi.mocked(ipc.saveProfile).mockResolvedValue({ ...PROFILE_CAMPAIGN, name: 'Campaign renamed' })
+    render(<App />)
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    fireEvent.click(screen.getByRole('button', { name: /^Profiles/ }))
+    const renameButtons = await screen.findAllByRole('button', { name: 'Rename' })
+    fireEvent.click(renameButtons[1])
+
+    const dialog = await screen.findByRole('dialog', { name: 'Rename profile' })
+    fireEvent.change(within(dialog).getByLabelText('Profile name'), {
+      target: { value: 'Campaign renamed' },
+    })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Rename' }))
+
+    await waitFor(() => {
+      expect(ipc.saveProfile).toHaveBeenCalledWith(
+        'Campaign renamed',
+        PROFILE_CAMPAIGN.enabledModIds,
+        'profile-campaign',
+      )
+    })
   })
 
   it('opens the load-order preview before allowing a write', async () => {

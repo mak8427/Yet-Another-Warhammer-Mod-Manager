@@ -148,19 +148,24 @@ impl LoadOrderFile {
 }
 
 /// Reads `used_mods.txt` without changing anything.
-pub fn read_file(path: &Path) -> Result<LoadOrderFile, AppError> {
+///
+/// A read failure (sharing violation, permissions, a directory in place of the
+/// file) is reported through [`LoadOrderFile::unreadable`] instead of failing:
+/// startup must stay alive so the user can fix the file, and writes are blocked
+/// from that flag by [`plan_write`].
+pub fn read_file(path: &Path) -> LoadOrderFile {
     let backup_available = backup_path(path).is_file();
     match fs::read(path) {
         Ok(bytes) => match parse_used_mods(&bytes) {
-            Ok(parsed) => Ok(LoadOrderFile {
+            Ok(parsed) => LoadOrderFile {
                 path: path.to_path_buf(),
                 present: true,
                 corrupt_message: parsed.corrupt_message(),
                 parsed,
                 backup_available,
                 unreadable: None,
-            }),
-            Err(error) => Ok(LoadOrderFile {
+            },
+            Err(error) => LoadOrderFile {
                 path: path.to_path_buf(),
                 present: true,
                 parsed: ParsedUsedMods::default(),
@@ -171,21 +176,27 @@ pub fn read_file(path: &Path) -> Result<LoadOrderFile, AppError> {
                 )),
                 backup_available,
                 unreadable: None,
-            }),
+            },
         },
-        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(LoadOrderFile {
+        Err(error) if error.kind() == io::ErrorKind::NotFound => LoadOrderFile {
             path: path.to_path_buf(),
             present: false,
             parsed: ParsedUsedMods::default(),
             corrupt_message: None,
             backup_available,
             unreadable: None,
-        }),
-        Err(error) => Err(AppError::io_path(
-            "Could not read used_mods.txt",
-            path,
-            &error,
-        )),
+        },
+        Err(error) => LoadOrderFile {
+            path: path.to_path_buf(),
+            present: true,
+            parsed: ParsedUsedMods::default(),
+            corrupt_message: None,
+            backup_available,
+            unreadable: Some(format!(
+                "Could not read {}: {error}",
+                path.to_string_lossy()
+            )),
+        },
     }
 }
 
@@ -224,7 +235,7 @@ pub fn plan_write(
     allow_empty: bool,
     confirm_unmanaged_loss: bool,
 ) -> Result<WritePlan, AppError> {
-    let existing = read_file(path)?;
+    let existing = read_file(path);
     let existing_mod_count = existing.parsed.mod_names.len();
     let unmanaged_directives = existing.parsed.unmanaged.clone();
     let would_drop_unmanaged = !unmanaged_directives.is_empty();
@@ -359,7 +370,7 @@ pub fn restore_backup(path: &Path) -> Result<LoadOrderFile, AppError> {
     }
     atomic_write_no_backup(path, &bytes)
         .map_err(|error| AppError::io_path("Could not restore used_mods.txt", path, &error))?;
-    read_file(path)
+    Ok(read_file(path))
 }
 
 #[cfg(test)]
@@ -420,7 +431,7 @@ mod tests {
             b"mod \"old.pack\";\n"
         );
 
-        let reread = read_file(&path).unwrap();
+        let reread = read_file(&path);
         assert_eq!(reread.parsed.mod_names, vec!["b.pack", "a.pack"]);
         assert!(!reread.is_corrupt());
     }
@@ -490,6 +501,35 @@ mod tests {
         assert_eq!(restored.parsed.mod_names, vec!["good.pack"]);
         assert_eq!(fs::read(&path).unwrap(), b"mod \"good.pack\";\n");
         assert!(backup_path(&path).is_file());
+    }
+
+    #[test]
+    fn unreadable_file_is_reported_and_blocks_every_write() {
+        let dir = TempDir::new("used-mods-unreadable");
+        let path = dir.path().join(USED_MODS_FILE);
+        // A directory at the file's path makes `fs::read` fail deterministically
+        // on every platform, without relying on chmod or file locks.
+        fs::create_dir(&path).unwrap();
+        fs::write(backup_path(&path), "mod \"good.pack\";\n").unwrap();
+
+        let file = read_file(&path);
+        assert!(file.present);
+        assert!(!file.is_corrupt());
+        assert!(file.unreadable.is_some());
+        assert!(file.backup_available);
+
+        let plan = plan_write(&path, &names(&[("1", "a.pack")]), &[], false, false).unwrap();
+        assert!(!plan.can_write);
+        assert!(plan.unreadable);
+        assert!(plan.hard_blocked);
+        assert!(plan
+            .blocked_reason
+            .as_deref()
+            .unwrap_or_default()
+            .contains("could not be read"));
+        let error = write_plan(&plan).unwrap_err();
+        assert_eq!(error.code, ErrorCode::ConfigCorrupt);
+        assert!(path.is_dir());
     }
 
     #[test]

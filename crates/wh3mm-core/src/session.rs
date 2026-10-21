@@ -102,7 +102,12 @@ impl Session {
             scan_duration = scan_started.elapsed();
 
             let read_started = Instant::now();
-            let file = load_order::read_file(&load_order::used_mods_path(&found.game_path))?;
+            let file = load_order::read_file(&load_order::used_mods_path(&found.game_path));
+            if let Some(reason) = &file.unreadable {
+                warnings.push(format!(
+                    "used_mods.txt could not be read; writes are blocked until it is readable: {reason}"
+                ));
+            }
             load_order_report = read_report(&file, &mods);
             load_order_duration = read_started.elapsed();
         }
@@ -224,15 +229,22 @@ impl Session {
 
         let read_started = Instant::now();
         let mut new_load_order = empty_load_order_report("");
+        let mut path_warnings = Vec::new();
+        let mut new_load_order_file = None;
         if let Some(location) = &new_location {
-            let file = load_order::read_file(&load_order::used_mods_path(&location.game_path))?;
+            let file = load_order::read_file(&load_order::used_mods_path(&location.game_path));
+            if let Some(reason) = &file.unreadable {
+                path_warnings.push(format!(
+                    "used_mods.txt could not be read; writes are blocked until it is readable: {reason}"
+                ));
+            }
             new_load_order = read_report(&file, &new_mods);
+            new_load_order_file = Some(file);
         }
         let read_duration = read_started.elapsed();
 
         if self.config_status == ConfigStatus::Created {
-            if let Some(location) = &new_location {
-                let file = load_order::read_file(&load_order::used_mods_path(&location.game_path))?;
+            if let Some(file) = &new_load_order_file {
                 let by_name = mods_by_lower_name(&new_mods);
                 let mut imported = Vec::new();
                 for name in &file.parsed.mod_names {
@@ -259,6 +271,7 @@ impl Session {
         self.load_order = new_load_order;
         self.enabled_ids = self.config.active_profile().enabled_mod_ids.clone();
         self.config_status = ConfigStatus::Loaded;
+        self.warnings.extend(path_warnings);
         if self.log_timings {
             log_timing("pack_scan_path_change", scan_duration);
             log_timing("mod_list_load_path_change", read_duration);
@@ -553,7 +566,7 @@ impl Session {
 
     pub fn read_load_order(&mut self) -> Result<LoadOrderReadReport, AppError> {
         let location = self.require_game_location()?;
-        let file = load_order::read_file(&load_order::used_mods_path(&location.game_path))?;
+        let file = load_order::read_file(&load_order::used_mods_path(&location.game_path));
         self.load_order = read_report(&file, &self.mods);
         Ok(self.load_order.clone())
     }
@@ -598,7 +611,7 @@ impl Session {
 
     fn refresh_load_order_after_write(&mut self) -> Result<(), AppError> {
         let location = self.require_game_location()?;
-        let file = load_order::read_file(&load_order::used_mods_path(&location.game_path))?;
+        let file = load_order::read_file(&load_order::used_mods_path(&location.game_path));
         self.load_order = read_report(&file, &self.mods);
         Ok(())
     }
@@ -754,6 +767,7 @@ fn empty_load_order_report(path: &str) -> LoadOrderReadReport {
         present: false,
         corrupt: false,
         message: None,
+        unreadable: None,
         mod_names: Vec::new(),
         resolved_mod_ids: Vec::new(),
         missing_names: Vec::new(),
@@ -778,6 +792,7 @@ fn read_report(file: &LoadOrderFile, mods: &[DiscoveredMod]) -> LoadOrderReadRep
         present: file.present,
         corrupt: file.is_corrupt(),
         message: file.corrupt_message.clone(),
+        unreadable: file.unreadable.clone(),
         mod_names: file.parsed.mod_names.clone(),
         resolved_mod_ids: resolved,
         missing_names: missing,
