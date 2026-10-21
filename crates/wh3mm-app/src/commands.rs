@@ -6,7 +6,7 @@ use wh3mm_core::conflicts::ConflictReport;
 use wh3mm_core::error::AppError;
 use wh3mm_core::ipc::{
     AppInfo, GameLocation, LoadOrderReadReport, LoadOrderWriteReport, ModListSnapshot, Profile,
-    ProfilesState, Tag, UiPreferences,
+    ProfilesState, ResetDefaultsReport, Tag, UiPreferences,
 };
 use wh3mm_core::launch::{LaunchOptions, LaunchResult};
 use wh3mm_core::session::{Session, SessionOptions};
@@ -152,6 +152,14 @@ impl Manager {
         preferences: UiPreferences,
     ) -> Result<UiPreferences, AppError> {
         self.with_mut(|session| session.update_ui_preferences(preferences))
+    }
+
+    pub fn reset_to_defaults(
+        &self,
+        confirm: bool,
+        confirm_unmanaged_loss: bool,
+    ) -> Result<ResetDefaultsReport, AppError> {
+        self.with_mut(|session| session.reset_to_defaults(confirm, confirm_unmanaged_loss))
     }
 
     pub fn read_load_order(&self) -> Result<LoadOrderReadReport, AppError> {
@@ -360,6 +368,15 @@ mod tauri_commands {
         preferences: UiPreferences,
     ) -> Result<UiPreferences, AppError> {
         state.update_ui_preferences(preferences)
+    }
+
+    #[tauri::command]
+    pub fn reset_to_defaults(
+        state: tauri::State<'_, Manager>,
+        confirm: bool,
+        confirm_unmanaged_loss: bool,
+    ) -> Result<ResetDefaultsReport, AppError> {
+        state.reset_to_defaults(confirm, confirm_unmanaged_loss)
     }
 
     #[tauri::command]

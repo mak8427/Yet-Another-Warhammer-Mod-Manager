@@ -137,13 +137,30 @@ export interface Tag {
   color: string
 }
 
-export type Density = 'comfortable' | 'compact'
+export type Density = 'compact' | 'comfortable' | 'roomy'
 
 export interface UiPreferences {
   density: Density
   showAuthors: boolean
   showThumbnails: boolean
   lastScrollTop: number
+}
+
+export type ResetLoadOrderStatus =
+  | 'written'
+  | 'noGamePath'
+  | 'failed'
+  | 'unmanagedDirectives'
+
+export interface ResetLoadOrderReport {
+  status: ResetLoadOrderStatus
+  message: string | null
+  unmanagedDirectives: string[]
+  requiresUnmanagedConfirmation: boolean
+}
+
+export interface ResetDefaultsReport {
+  loadOrder: ResetLoadOrderReport
 }
 
 export interface FileConflict {
@@ -298,6 +315,7 @@ export type CommandName =
   | 'set_mod_tags'
   | 'get_ui_preferences'
   | 'update_ui_preferences'
+  | 'reset_to_defaults'
   | 'read_load_order'
   | 'preview_load_order'
   | 'write_load_order'
@@ -396,6 +414,13 @@ export async function updateUiPreferences(preferences: UiPreferences): Promise<U
   return invokeCommand<UiPreferences>('update_ui_preferences', { preferences })
 }
 
+export async function resetToDefaults(
+  confirm: boolean,
+  confirmUnmanagedLoss = false,
+): Promise<ResetDefaultsReport> {
+  return invokeCommand<ResetDefaultsReport>('reset_to_defaults', { confirm, confirmUnmanagedLoss })
+}
+
 export async function readLoadOrder(): Promise<LoadOrderReadReport> {
   return invokeCommand<LoadOrderReadReport>('read_load_order')
 }
@@ -478,6 +503,7 @@ export const ipc = {
   setModTags,
   getUiPreferences,
   updateUiPreferences,
+  resetToDefaults,
   readLoadOrder,
   previewLoadOrder,
   writeLoadOrder,
