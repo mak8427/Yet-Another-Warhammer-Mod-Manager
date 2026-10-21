@@ -5,11 +5,25 @@ snapshot:
   previous_index: 87.25
   previous_label: "WAR-3 parity document rev 2 (2026-10-21T11:25Z), reported as 87.3%"
   drop_reason: >-
-    Net change -1.375 vs the WAR-3 snapshot: CF-3 (disabled dependency) +1.500,
-    SET-4 (reset to defaults) -0.625, DSC-1 (author) -1.250, WS-2 (Workshop open)
-    -1.000. The first WAR-68 pass reported 88.125 because DSC-1 and WS-2 were
-    over-claimed; QA corrected both to partial.
+    Net change +4.500 vs the WAR-3 87.250 snapshot at release head `0e051204`:
+    CF-3 (disabled dependency) +1.500, CF-4 (duplicate warning) +1.500, ML-3
+    (sort) +1.875, PRF-2 (profile order) +1.250, SET-4 (reset) +0.625, DSC-1
+    (author) -1.250, WS-2 (Workshop open) -1.000. The first WAR-68 pass reported
+    88.125 because DSC-1 and WS-2 were over-claimed; QA corrected both to partial.
   history:
+    - date: "2026-10-21"
+      index: 91.75
+      reason: >-
+        Final release-head pass after M4/WAR-10 merged (`0e051204`). SET-4,
+        ML-3, CF-4, and PRF-2 moved to done with the merged code and tests;
+        DET-1 stays partial for the documented Flatpak/Snap/XDG Linux roots.
+        +4.500 vs the WAR-3 baseline; 0 missing checks.
+    - date: "2026-10-21"
+      index: 87.125
+      reason: >-
+        Intermediate pass at `0e051204`: SET-4 moved from missing to done with
+        implementation and test evidence (+1.250). The remaining M4 blocker
+        statuses were updated in the next entry.
     - date: "2026-10-21"
       index: 88.125
       reason: >-
@@ -37,10 +51,18 @@ snapshot:
     QA audits PR evidence; the script can only validate its shape.
 
 corrections:
+  - id: set-4-implemented
+    claim: "SET-4 (reset to defaults) is missing."
+    verified: "WAR-10 merged to `0e051204` with the reset command (`crates/wh3mm-app/src/commands.rs`), the Settings confirmation flow (`frontend/src/components/settings/SettingsScreen.tsx`), and the session/config reset path. Tests: `reset_to_defaults_keeps_profiles_and_tags_and_writes_an_empty_order` and the other `reset_to_defaults_*` cases in `crates/wh3mm-core/tests/session_flow.rs`; the store path is asserted in `frontend/src/store.test.ts`."
+    effect: "Settings 2.5 -> 3.5; contributes +1.250; index 85.875 -> 87.125. The older set-4-reset-defaults entry records the pre-WAR-10 state."
+  - id: m4-blocker-parity
+    claim: "ML-3, CF-4, PRF-2, and DET-1 are still partial after WAR-10."
+    verified: "WAR-10 merged to `0e051204`. ML-3 has the sort control (`ModList.tsx`) and `sorts deterministically with an id tie-break in every non-drag mode`; CF-4 has duplicate rows and `renders duplicate pack names and shows none for a clean report`; PRF-2 has `applying_a_profile_restores_the_saved_order_exactly`; DET-1 has the injectable Windows/Unix candidate tests in `paths.rs`. All four tests pass on the merged tree."
+    effect: "ML-3 +1.875, CF-4 +1.500, PRF-2 +1.250; index 87.125 -> 91.750. DET-1 stays partial for the documented Flatpak/Snap/XDG limitation. DSC-1 (author) and WS-2 (Workshop open) remain partial and are not WAR-79 ship blockers; WAR-104 ruling B resolves them via WAR-106/WAR-107, and both block the WAR-99 `v1.0.0` tag."
   - id: discovery-author-missing
     claim: "DSC-1 (header including author) was done."
     verified: "The pack author is hardcoded None in crates/wh3mm-core/src/pack.rs:165 and crates/wh3mm-core/src/mod_index.rs:254; the cited test asserts header.author == None. No code path assigns a parsed author."
-    effect: "Discovery 4.0 -> 3.5; contributes -1.250 to the index. DSC-1 is partial until an author source exists."
+    effect: "Discovery 4.0 -> 3.5; contributes -1.250 to the index. WAR-104 ruling B cuts the author requirement, so WAR-107 re-scores DSC-1 against the corrected PRODUCT_SCOPE criterion (name, type, timestamp, dependencies)."
   - id: workshop-open-untested
     claim: "WS-2 (open a Workshop item through Steam) was done."
     verified: "The cited test asserts only the Subscribe and Update URL strings. WorkshopAction::Open is never called by a test and spawn_steam_url (workshop.rs:294) has no test; the UI test clicks Unsubscribe only."
@@ -93,10 +115,14 @@ capabilities:
         evidence:
           - path: crates/wh3mm-core/src/paths.rs
             contains: "pub fn default_steam_root_candidates"
+          - path: crates/wh3mm-core/src/paths.rs
+            test: windows_steam_candidates_keep_order_and_dedupe
+          - path: crates/wh3mm-core/src/paths.rs
+            test: unix_steam_candidates_keep_native_order_and_dedupe
         need: >-
-          An automated or recorded manual check that the Windows registry, Flatpak, Snap,
-          and XDG candidate lists resolve on a real installation. No test covers the
-          platform-specific candidate list.
+          Windows registry and the native Steam root are fixture-tested. Flatpak, Snap,
+          and XDG discovery is best-effort and has no real-install check, so DET-1 stays
+          partial for the documented Linux limitation.
       - id: DET-2
         title: Parse modern and legacy libraryfolders.vdf, including relative paths
         status: done
@@ -201,15 +227,16 @@ capabilities:
             test: toggles_and_reorder_persist_across_reload
       - id: ML-3
         title: Search, sort, and tag/category filtering
-        status: partial
+        status: done
         evidence:
           - path: frontend/src/App.test.tsx
             test: filters the list from the search box
           - path: frontend/src/store.test.ts
             test: filters by search, author, and tags
-        need: >-
-          A sort control (name, author, or enabled state) and its test. Search and tag
-          filtering exist; sort was not ported from the legacy modSortingHelpers.
+          - path: frontend/src/store.test.ts
+            test: sorts deterministically with an id tie-break in every non-drag mode
+          - path: frontend/src/components/mod-list/ModList.tsx
+            contains: "onSort('name')"
       - id: ML-4
         title: Virtualized rows and persisted scroll
         status: partial
@@ -294,15 +321,14 @@ capabilities:
             test: renames a non-active profile with its saved set, not the visible one
       - id: PRF-2
         title: Restore both the enabled set and its saved order
-        status: partial
+        status: done
         evidence:
           - path: crates/wh3mm-core/src/config.rs
             test: duplicate_profile_copies_the_enabled_order
           - path: crates/wh3mm-core/src/session.rs
             contains: "pub fn apply_profile"
-        need: >-
-          An assertion that apply_profile restores the saved order, not only the
-          enabled count. The stored order is tested; the apply path is not.
+          - path: crates/wh3mm-core/tests/session_flow.rs
+            test: applying_a_profile_restores_the_saved_order_exactly
       - id: PRF-3
         title: Default profile on first run and first-run import of used_mods.txt
         status: done
@@ -350,15 +376,14 @@ capabilities:
             test: disabled_local_dependency_is_not_treated_as_a_base_game_pack
       - id: CF-4
         title: Detect duplicate pack names and surface the warning
-        status: partial
+        status: done
         evidence:
           - path: crates/wh3mm-core/src/mod_index.rs
             test: deduplicates_pack_names_with_data_winning_over_workshop
           - path: frontend/src/components/conflicts/ConflictScreen.tsx
             contains: "duplicatePackNames"
-        need: >-
-          A session or frontend assertion that a duplicate pack name produces the
-          warning row. Detection is tested; the warning path is not.
+          - path: frontend/src/components/conflicts/ConflictScreen.test.tsx
+            test: renders duplicate pack names and shows none for a clean report
 
   - id: workshop
     title: Workshop
@@ -482,8 +507,16 @@ capabilities:
             contains: "store.restoreLoadOrder"
       - id: SET-4
         title: Reset settings and load order to documented defaults
-        status: missing
-        note: "No reset-to-defaults command, screen, or test exists."
+        status: done
+        evidence:
+          - path: crates/wh3mm-core/tests/session_flow.rs
+            test: reset_to_defaults_keeps_profiles_and_tags_and_writes_an_empty_order
+          - path: crates/wh3mm-core/tests/session_flow.rs
+            test: reset_to_defaults_asks_before_dropping_unmanaged_directives
+          - path: frontend/src/store.test.ts
+            test: re-detects the game after a reset so the source returns to automatic
+          - path: frontend/src/components/settings/SettingsScreen.tsx
+            contains: "store.resetToDefaults"
 
   - id: safety
     title: Safety
