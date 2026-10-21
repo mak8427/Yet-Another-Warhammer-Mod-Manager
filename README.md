@@ -129,7 +129,7 @@ pnpm test
 # Production build -> frontend/dist
 pnpm build
 
-# Release-time performance gate (needs docs/perf/comparison.json; see docs/QA_PLAN.md §7)
+# Release-time performance gate (reads docs/perf/{legacy-baseline,new-app}.json; see docs/QA_PLAN.md §7)
 node scripts/qa/verify-perf-gate.mjs
 ```
 

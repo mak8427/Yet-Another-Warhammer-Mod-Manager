@@ -1,7 +1,7 @@
 # QA Plan — WH3 Mod Manager v1.0
 
 - Owner: Baltasar Gelt (QA)
-- Status: **active — M1/M2 automation complete; release rows blocked** (§10)
+- Status: **active — M1/M2 and the performance gate are verified; conflict and release rows pending** (§10)
 - Scope source: `docs/PRODUCT_SCOPE.md`, ADR-002 (IPC), ADR-003 (data), ADR-004 (testing)
 - Last updated: 2026-10-21
 
@@ -34,7 +34,7 @@ pnpm lint
 pnpm test
 pnpm build
 
-# Release-time performance gate (requires docs/perf/comparison.json; see §7)
+# Release-time performance gate (reads docs/perf/{legacy-baseline,new-app}.json; see §7)
 node scripts/qa/verify-perf-gate.mjs
 ```
 
@@ -92,7 +92,7 @@ owner named), `BLOCKED` (cannot be proven until another issue lands).
 | A1 | `cargo fmt --check` passes | `cargo fmt --all --check` on the QA branch | PASS — 2026-10-21 |
 | A2 | `cargo clippy -- -D warnings` passes | `cargo clippy --workspace --all-targets --locked -- -D warnings` | PASS — 2026-10-21 |
 | A3 | `cargo test` passes for the workspace | `cargo test --workspace --locked` | PASS — 97 passed, 0 failed, 0 ignored (WAR-47 regression un-ignored) |
-| A4 | `pnpm typecheck`, `lint`, `test`, `build` pass | frontend gate + `node --test scripts/qa/*.test.mjs` | PASS — 42 Vitest tests / 6 files; 24 Node tests |
+| A4 | `pnpm typecheck`, `lint`, `test`, `build` pass | frontend gate + `node --test scripts/qa/*.test.mjs` | PASS — 50 Vitest tests / 7 files; 36 Node tests |
 
 No test is ignored or quarantined. The WAR-47 regression is un-ignored and
 passes; the defect it covered is closed in §8.
@@ -116,9 +116,9 @@ in the same PR.
 | R9 | Profile round-trip: create/save/apply/duplicate/delete; rename keeps the target's set | `session_flow.rs::profiles_create_switch_duplicate_and_delete`, `frontend/src/store.test.ts::renames a non-active profile with its saved set, not the visible one` | PASS |
 | R10 | Config corrupt + valid `.bak` recovery; **future schema never overwritten** | `config_fixtures.rs::corrupt_primary_recovers_from_a_valid_backup_and_says_so`, `::future_schema_is_refused_and_never_overwritten`, `::double_corrupt_config_leaves_both_files_untouched`, `::future_schema_with_a_stale_backup_must_still_not_overwrite` | PASS — WAR-47 fixed by PR #15 (`76dd0b9`); future `config.json` and stale v1 `.bak` both stay byte-identical |
 | R11 | Deleting the last profile refused; deleting the active profile activates a sibling | `config.rs` unit tests `::deleting_the_last_profile_is_refused`, `::deleting_the_active_profile_activates_a_sibling` | PASS |
-| R12 | Conflict winner calculation (last line wins) | `conflicts.rs::last_enabled_pack_wins_each_path` (to be added) | BLOCKED — WAR-9 |
-| R13 | Missing dependency warning | `conflicts.rs::reports_missing_dependencies` (to be added) | BLOCKED — WAR-9 |
-| R14 | Duplicate pack names warned, IDs stay distinct | `conflicts.rs::reports_duplicate_pack_names` (to be added) | BLOCKED — WAR-9 |
+| R12 | Conflict winner calculation (last line wins) | `conflicts_fixtures.rs::last_enabled_pack_wins_each_path` (to be added) | BLOCKED — WAR-65 (PR #18 open) |
+| R13 | Missing dependency warning, including a disabled local provider | `conflicts_fixtures.rs::reports_missing_and_disabled_dependencies` (to be added) | BLOCKED — WAR-65 (WAR-64 fixed on the branch) |
+| R14 | Duplicate pack names warned, IDs stay distinct | `conflicts_fixtures.rs::reports_duplicate_pack_names` (to be added) | BLOCKED — WAR-65 (PR #18 open) |
 | R15 | Fault injection: ≥ 3 deliberate faults, no panic, no data loss | `fault_injection.rs` FI-01/03/05/06/07/08/10 (7 tests) | PASS |
 | R16 | 500-mod scale: scan, enable all, reverse order, save profile, write 500 lines | `session_flow.rs::loads_500_mods_toggles_reorders_saves_profile_and_writes_500_lines` | PASS |
 | R17 | Fixture bytes match the documented variants | `qa_fixtures.rs` (7 tests) | PASS |
@@ -142,7 +142,7 @@ and this row must be widened.
 | F6 | Profile switch restores enabled set and order | `App.test.tsx::switches profiles and applies the returned enabled set`, `store.test.ts::applies profiles and keeps the active id in the snapshot` | PASS |
 | F7 | Error states render `IpcError` and malformed rejections | `App.test.tsx::shows a structured error screen when the workspace cannot load`, `ipc.test.ts::rejects malformed error payloads`, `LoadOrderBanner.test.tsx` (5 tests) | PASS |
 | F8 | Pre-write report and corrupt/unreadable warnings before a destructive change | `App.test.tsx::opens the load-order preview before allowing a write`, `LoadOrderBanner.test.tsx::reports an unreadable used_mods.txt…`, `::enables explicit backup restore only when a backup exists` | PASS |
-| F9 | Cut features absent from navigation and routes | `navigation.test.tsx::only_v1_sections_are_reachable` (to be added) | BLOCKED — WAR-8/WAR-9 |
+| F9 | Cut features absent from navigation and routes | `navigation.test.tsx::only_v1_sections_are_reachable` (to be added) | BLOCKED — M4/WAR-12 audit |
 
 ### 3.4 Manual and packaging
 
@@ -156,12 +156,15 @@ and this row must be widened.
 
 | ID | Criterion | Proving evidence | Owner | Status |
 | --- | --- | --- | --- | --- |
-| P1 | `docs/PERF.md` method is reproducible | `docs/perf/comparison.json` + `node scripts/qa/verify-perf-gate.mjs` | WAR-7 | BLOCKED — file and PERF.md are not on `main` |
-| P2 | Legacy baseline is valid: same machine, same fixture, release builds | Gate checks `hostId`, `fixtureDigest`, `build: "release"`, ≥ 5 samples | WAR-19 | BLOCKED (host decision open, PR #4) |
-| P3 | Every primary metric strictly faster than legacy | Gate fails on any non-strict metric; 2× headline is a warning | WAR-7 | BLOCKED (no new-app A/B yet) |
+| P1 | `docs/PERF.md` method is reproducible | `node scripts/qa/verify-perf-gate.mjs` validates `docs/perf/legacy-baseline.json` + `docs/perf/new-app.json`, recomputes every median from samples, checks the committed raw-run logs, and requires the `New app vs legacy` section and fixture digest in `docs/PERF.md` | WAR-7 | **PASS** — 2026-10-21, `main` `f08fd1f` |
+| P2 | Legacy baseline is valid: same machine, same fixture, release builds | Same `runnerOs`, `runnerImage`, `osRelease`, CPU and RAM on both sides; fixture sha256 `1de7de62…` on both; legacy release asset 2.29.0 with sha256; new release binary with sha256; 12 samples per metric (11 for the legacy launch proxy) | WAR-19 | **PASS** |
+| P3 | Every primary metric strictly faster than legacy | Recomputed medians: cold 21.7×, 500-mod list 30.3×, header scan 23.0×, load order 21.8×, profile switch 27.6×, launch proxy 219×; every row strictly faster | WAR-7 | **PASS** |
 
 A missing or invalid perf comparison blocks the v1.0 gate. See §7 for the exact
-validity rules, the JSON contract, and the current state.
+validity rules, the measured scope, and the current gate output. The measured
+scope is the core pipeline: WebView/paint, DOM dispatch and a real game launch
+are explicitly excluded and labelled in `docs/PERF.md`; the launch row is a
+documented proxy on both sides.
 
 ---
 
@@ -233,66 +236,88 @@ hook; the gate accepts it only with FI-03 covering the pre-rename failure.
 
 ## 7. Performance gate (CEO directive)
 
-The gate is machine-checked against `docs/perf/comparison.json` (schema
-`wh3mm.perf.comparison.v1`) and explained for humans in `docs/PERF.md`.
+The gate reads the two raw reports the performance work ships and recomputes
+the comparison from their samples:
+
+- `docs/perf/legacy-baseline.json` (`wh3mm.perf.legacy-baseline.v1`, WAR-19)
+- `docs/perf/new-app.json` (`wh3mm.perf.new-app.v1`, WAR-46)
+- `docs/PERF.md` — the human-readable method, scope, and gate table
+
+`docs/perf/comparison.json` (`wh3mm.perf.comparison.v1`) is still accepted with
+`--file` for compatibility, but it is never the default evidence: the
+comparison block is a claim that the validator checks against the raw samples.
 
 ```bash
-node scripts/qa/verify-perf-gate.mjs            # exit 1 = gate fails or file missing
+node scripts/qa/verify-perf-gate.mjs            # exit 1 = gate fails or evidence missing
 node scripts/qa/verify-perf-gate.mjs --json     # machine-readable verdict
 node --test scripts/qa/verify-perf-gate.test.mjs
 ```
 
-### 7.1 Validity rules
+### 7.1 Validity rules (all mechanically checked)
 
-- [ ] **PERF-V1 — Method:** both sides record version, commit, build type, raw
-      output path, `hostId`, and the same `fixtureDigest`; ≥ 5 samples per
-      metric; medians within the sample range.
-- [ ] **PERF-V2 — Same machine:** `environment.sameHost === true` and
-      `legacy.hostId === newApp.hostId === environment.hostId`; OS, CPU, RAM,
-      and date are present.
-- [ ] **PERF-V3 — Same fixture:** `fixture.modCount >= 500` and both runs carry
-      the same 64-character SHA-256 `fixtureDigest`.
-- [ ] **PERF-V4 — Release builds:** `legacy.build === "release"` and
-      `newApp.build === "release"`.
-- [ ] **PERF-V5 — Reproducible:** the raw output files exist and a rerun on the
-      same host reproduces each median within the stated variance.
+- **PERF-V1 — Method and samples:** both reports carry a capture timestamp,
+  ≥ 5 samples per metric, `n` matching the sample count, and medians that
+  match the median recomputed from the samples (0.5 ms tolerance for declared
+  rounding). Interaction summaries report ≥ 5 verified runs.
+- **PERF-V2 — Same machine:** `runnerOs`, `runnerImage`, `osRelease`, CPU, and
+  total RAM match; the new report's `comparison.hostMatches` is true.
+- **PERF-V3 — Same fixture:** `fixturePacks >= 500` and the same 64-character
+  SHA-256 `fixtureSha256` on both sides.
+- **PERF-V4 — Release builds:** the legacy side is the official Windows release
+  (`appPath` + `appSha256`); the new side's `binPath` is a `release` build with
+  `binSha256`.
+- **PERF-V5 — Reproducible:** the committed raw-run directories exist for both
+  sides, `docs/PERF.md` contains the `New app vs legacy` section and the
+  fixture digest, and the documented commands regenerate the fixture.
 
-The validator enforces V1–V4 mechanically and checks raw-output existence for
-V5; the human reviewer checks the rerun variance in `docs/PERF.md`.
+Every comparison row must be `proxy: true` only for the launch handoff, and a
+legacy adjustment is allowed only for `modListPopulatedMs` (the legacy app's
+fixed 5,000 ms Steam workshop wait), with a non-empty explanation.
 
 ### 7.2 Metrics and pass rule
 
-| Metric key | Legacy source | New-app source | Pass rule |
-| --- | --- | --- | --- |
-| `coldStartToInteractive` | `[startup] … React mounted` | startup instrumentation | new < legacy (2× target) |
-| `modLoad500` | enumeration + header scan | scan duration | new < legacy (2× target) |
-| `loadOrderApply` | write timing | write timing | new < legacy |
-| `profileSwitch` | preset switch | apply-profile timing | new < legacy |
-| `launchHandoff` | write + Steam handoff | launch handoff | new < legacy |
+| Raw key | Gate label | Legacy source | New-app source | Pass rule |
+| --- | --- | --- | --- | --- |
+| `coldStartMs` | `coldStartToInteractive` | `[startup] … React mounted` | process start → `Session::initialize` returns | new < legacy, and ≥ 2× |
+| `modListPopulatedMs` | `modLoad500` | enumeration (minus the documented 5 s Steam wait) | first `ModListSnapshot` | new < legacy, and ≥ 2× |
+| `headerScanMs` | `headerScan500` | header-cache write marker | session scan timing | new < legacy |
+| `loadOrderPersistMs` | `loadOrderApply` | CDP click → config write | core `set_load_order` | new < legacy |
+| `presetSwitchMs` | `profileSwitch` | Enter key → config write | core `apply_profile` | new < legacy |
+| `gameLaunchHandoffMs` | `launchHandoff` | proxy: click → stub marker | proxy: write + stub start | new < legacy; `proxy: true` on both sides |
 
 **Any metric that is equal to or slower than legacy fails the gate.** A missing
-metric also fails: an unproven number is not an exemption. Missing the 2×
-headline target on `coldStartToInteractive` or `modLoad500` is a warning, not a
-failure, because the CEO acceptance is "strictly faster" for every metric.
+metric also fails: an unproven number is not an exemption. The interaction rows
+measure the core command, not DOM dispatch; the launch row is a proxy on both
+sides. Those limits are printed in `docs/PERF.md` and do not turn a pass into a
+claim about end-to-end frame timing or a real game launch.
 
-### 7.3 Current state — **BLOCKED**
+### 7.3 Current state — **PASS** (2026-10-21, `main` `f08fd1f`)
 
-`docs/PERF.md` is **not on `main`**: it lives on `perf/legacy-baseline` (PR #4,
-WAR-19, in review) and records a first-pass legacy baseline only. `docs/perf/`
-does not exist on `main`, and no `comparison.json` exists. WAR-7's benchmark
-branch (PR #8) is closed and conflicting. Therefore:
+`node scripts/qa/verify-perf-gate.mjs` exits 0 and prints:
 
-- P1/P3 cannot pass (no new-app numbers, no comparison file).
-- P2 is partially met for legacy (5 cold runs, release asset 2.29.0, commit
-  `07fcf3e`, fixture digest `1de7de62…`) but lacks the new-app side.
-- `node scripts/qa/verify-perf-gate.mjs` correctly reports `BLOCKED` and exits 1.
+| Metric | Legacy (adjusted) | New app | Ratio |
+| --- | --- | --- | --- |
+| Cold start | 1321.5 ms | 60.885 ms | **21.7×** |
+| 500-mod list | 1861.5 ms | 61.511 ms | **30.3×** |
+| PFH5 header scan | 989.5 ms | 43 ms | **23.0×** |
+| Load-order persist | 278.5 ms | 12.75 ms | **21.8×** |
+| Profile switch | 297.5 ms | 10.78 ms | **27.6×** |
+| Launch handoff (proxy) | 6163 ms | 28.145 ms | **219×** |
 
-No guessed numbers will be accepted. The Windows host for the final A/B is an
-open decision on WAR-19.
+Evidence: legacy 12-run report `docs/perf/legacy-baseline.json` + logs, new-app
+12-run report `docs/perf/new-app.json` + logs from
+[run 39587134072](https://github.com/mak8427/Warhammer_mod_manager/actions/runs/39587134072),
+same `windows-latest` image `20261018.275.1`, same fixture sha256
+`1de7de625da9ee53d1101a764d07d5ccbb61975932816c8b43574b648d0ab73a`.
+
+The validator has negative tests for host/fixture mismatch, debug builds,
+< 5 runs, a declared median that disagrees with its samples, a dishonest ratio,
+an undocumented adjustment, and an unlabelled proxy. A PASS is therefore a
+checked claim, not a pasted table.
 
 ---
 
-## 8. Defects and severity
+## 8. Defects and severity## 8. Defects and severity
 
 Every defect is a child issue assigned to the owning engineer, with the
 template in `docs/BUG_REPORT_TEMPLATE.md`. QA does not rewrite the feature.
@@ -308,7 +333,7 @@ A flaky test is a defect: quarantine with an issue and a deadline, not a silent
 retry or `skip` (ADR-004). A release-blocking regression is reported on the PR
 and the task with the run URL, failing test, and expected vs actual.
 
-**Open defects:** none at S1/S2. WAR-47 (S2, config downgrade overwrite) is closed by PR #15 (`76dd0b9`) and its un-ignored regression.
+**Open defects:** WAR-64 (S2, disabled local dependency) is fixed on `feat/m3-conflicts-workshop-launch` (PR #20 merged into that branch) but is **not on `main`** until PR #18 merges; the release gate treats it as open until then. WAR-47 (S2) is closed by PR #15 (`76dd0b9`).
 
 ---
 
@@ -324,8 +349,10 @@ and the task with the run URL, failing test, and expected vs actual.
 | 2026-10-21 | `c1a9cdd` + QA branch | `node scripts/qa/generate-fixtures.mjs --verify` | PASS — 33 fixtures + 500-mod index verified |
 | 2026-10-21 | `c1a9cdd` + QA branch | `node scripts/qa/verify-perf-gate.mjs` | BLOCKED — no `docs/perf/comparison.json` (expected) |
 | 2026-10-21 | WAR-56 head (`test/qa-harness` + `main` @ `76dd0b9`) | `cargo fmt --all --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, `cargo test --workspace --locked` | PASS — 97 passed, 0 failed, 0 ignored |
-| 2026-10-21 | WAR-56 head (`test/qa-harness` + `main` @ `76dd0b9`) | `pnpm typecheck`, `lint`, `test`, `build`; `node scripts/qa/generate-fixtures.mjs --verify`; `node --test scripts/qa/*.test.mjs` | PASS — 42 Vitest tests / 6 files; 33 fixtures + 500-mod index; 24 Node tests |
-| 2026-10-21 | WAR-56 head (`test/qa-harness` + `main` @ `76dd0b9`) | `node scripts/qa/verify-perf-gate.mjs` | BLOCKED — no `docs/perf/comparison.json` (expected; WAR-7/WAR-19 still open) |
+| 2026-10-21 | WAR-56 head (`test/qa-harness` + `main` @ `76dd0b9`) | `pnpm typecheck`, `lint`, `test`, `build`; `node scripts/qa/generate-fixtures.mjs --verify`; `node --test scripts/qa/*.test.mjs` | PASS — 42 Vitest tests / 6 files; 33 fixtures + 500-mod index; 36 Node tests |
+| 2026-10-21 | `70b45d1` (PR #16 merged) | full gate | PASS — 97 Rust / 42 Vitest / 24 Node; 33 fixtures + 500-mod index; perf gate BLOCKED before WAR-46 |
+| 2026-10-21 | `f08fd1f` (WAR-46 merged) | full gate | PASS — 97 Rust / 50 Vitest / **36 Node**; 33 fixtures + 500-mod index |
+| 2026-10-21 | `f08fd1f` | `node scripts/qa/verify-perf-gate.mjs` | **PASS** — 6/6 metrics strictly faster (21.7× … 219×), recomputed from the raw samples |
 | 2026-10-21 | fixture set | legacy `parsePFH5Header`/`parsePFH5Index` (commit `07fcf3e`) | 6/6 valid packs parse; 7/7 malformed packs rejected |
 
 The counts above are the regression baseline: if a later run has fewer tests,
@@ -339,11 +366,12 @@ the gate fails until the decrease is explained and approved.
 | --- | --- | --- | --- |
 | G1 | Product suites could not be written before M1/M2. **Resolved.** | WAR-5 merged as `c1a9cdd`; R1–R11/R15–R17 and F1–F8 now run against the real APIs | Closed |
 | G2 | WAR-6 names `appworkshop_3247630.acf`; WH3's Steam app id is 1142710 | `reference/.../supportedGames.ts` (`wh3: "1142710"`), `docs/PRODUCT_SCOPE.md` §1 | Fixtures use 1142710; brief owner to correct |
-| G3 | Perf gate cannot be verified: `docs/PERF.md` and `docs/perf/` are not on `main`, no comparison JSON, WAR-7 PR #8 closed/conflicting | §7.3; PR #4; WAR-19 in review | WAR-7/WAR-19; P1–P3 stay BLOCKED and block v1.0 |
+| G3 | Perf gate could not be verified before the raw reports landed. **Resolved.** | `docs/PERF.md`, `docs/perf/legacy-baseline.json`, and `docs/perf/new-app.json` are on `main` (`f08fd1f`); the gate passes 6/6 with recomputed medians | Closed — P1–P3 PASS |
 | G4 | Windows shell and packaging are manual (`workflow_dispatch`) until M5 | `.github/workflows/ci.yml` | WAR-11 promotes them; M1/M2 stay manual |
-| G5 | Conflict winner, dependency warning, and duplicate-name proof are missing | `conflicts.rs` does not exist on `main`; WAR-9 PR #12 is closed and conflicting, issue `in_review` | R12–R14 stay BLOCKED until M3 lands |
+| G5 | Conflict winner, dependency warning, and duplicate-name proof are missing | `conflicts.rs` is not on `main`; M3 PR #18 is open and WAR-65 is blocked. WAR-64 (disabled local dependency) is fixed on that branch (PR #20) but not yet on `main` | R12–R14 and the R4 index note stay BLOCKED until WAR-65 merges |
+| G9 | The conflict acceptance suite is the only unimplemented WAR-6 deliverable | This plan's §3.2 rows R12–R14; PR #18 open | Add after WAR-65; then re-run the gate and close WAR-6 |
 | G6 | Future config is overwritten by a stale v1 backup. **Resolved.** | WAR-47 fixed by PR #15 (`76dd0b9`); `config_fixtures.rs::future_schema_with_a_stale_backup_must_still_not_overwrite` is un-ignored and asserts both `config.json` and `config.json.bak` are byte-identical | Closed |
-| G7 | No navigation/cut-feature audit yet | F9 blocked on WAR-8 (PR #10 open) and WAR-9 | WAR-8/WAR-9; M3 stays BLOCKED |
+| G7 | No navigation/cut-feature audit yet | UI direction docs merged at `32945a2`, but F9's navigation test and the cut-feature audit are still missing | WAR-8/WAR-10/WAR-12; M3 stays BLOCKED |
 | G8 | Manual Windows script has not been executed | Needs Windows + Steam + WH3 | QA + CEO before v1.0; M1 stays PENDING |
 
 Escalate blockers to Katerina Zarina, scope conflicts to Torgrim, fixes to Karl
