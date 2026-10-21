@@ -8,7 +8,11 @@
  * Modes
  *   --write                 regenerate the committed fixtures under `fixtures/`
  *   --verify                re-hash every committed data fixture against manifest.json
- *   --scale DIR [--count N] write an N-pack synthetic WH3 layout (not committed)
+ *   --scale DIR [--count N] [--force]
+ *                           write an N-pack synthetic WH3 layout (not committed);
+ *                           refuses repo/home/ancestor targets and non-empty
+ *                           directories unless they are previous --scale output
+ *                           or --force is given
  *
  * The PFH5 layout follows the compatibility reference in the legacy manager
  * (`src/packFileHandler.ts` and `src/utility/packFileIndex.ts`):
@@ -33,11 +37,13 @@
  *   node scripts/qa/generate-fixtures.mjs --write
  *   node scripts/qa/generate-fixtures.mjs --verify
  *   node scripts/qa/generate-fixtures.mjs --scale /tmp/wh3-scale-500 --count 500
+ *   node scripts/qa/generate-fixtures.mjs --scale /tmp/wh3-scale-500 --count 500 --force
  */
 import { createHash } from 'node:crypto'
 import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { checkScaleTarget } from './fixture-target.mjs'
 
 const HERE = nodePath.dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = nodePath.resolve(HERE, '..', '..')
@@ -842,12 +848,19 @@ async function main() {
   }
   if (hasFlag('scale')) {
     const directory = argValue('scale', null)
-    if (!directory) fail('--scale needs an output directory')
+    if (!directory || directory.startsWith('--')) fail('--scale needs an output directory')
+    const target = checkScaleTarget(nodePath.resolve(directory), {
+      repoRoot: REPO_ROOT,
+      force: hasFlag('force'),
+    })
+    if (!target.ok) fail(target.reason)
     const count = Number(argValue('count', '500'))
-    await writeScale(nodePath.resolve(directory), count)
+    await writeScale(target.path, count)
     return
   }
-  console.log('usage: node scripts/qa/generate-fixtures.mjs [--write|--verify|--scale DIR [--count N]]')
+  console.log(
+    'usage: node scripts/qa/generate-fixtures.mjs [--write|--verify|--scale DIR [--count N] [--force]]',
+  )
   process.exitCode = 1
 }
 

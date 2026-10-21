@@ -82,6 +82,16 @@ For Rust scale tests, generate a real 500-pack tree outside the repo:
 node scripts/qa/generate-fixtures.mjs --scale /tmp/wh3-scale-500 --count 500
 ```
 
+The target is validated before anything is deleted. The repository root, any
+path inside the repository, ancestors of the repository, the home directory and
+its ancestors are always refused. A non-empty directory that is not a previous
+`--scale` output is refused unless `--force` is passed; symlinks are resolved
+first. `--force` only overrides that last rule, never the protected paths:
+
+```bash
+node scripts/qa/generate-fixtures.mjs --scale /tmp/wh3-scale-500 --count 500 --force
+```
+
 The output contains `data/`, `content/1142710/<id>/`, a vanilla `data.pack` and
 `manifest.txt`, and `fixture-manifest.json` with a stable digest over every
 pack. Never commit the generated tree.
