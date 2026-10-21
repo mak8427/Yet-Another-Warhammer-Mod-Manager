@@ -246,6 +246,10 @@ Measured on the Linux dev host, jsdom, Node 26.11.1, i9-13900K (median of 7 samp
 | 5,000 | 2.85–3.42 ms | 1.78–2.07 ms | 0.95–2.19 ms | 36 / 9 |
 | 20,000 | 1.85–2.04 ms | 1.47–1.66 ms | 0.90–0.99 ms | 36 / 9 |
 
+First CI run (`ubuntu-24.04`, shared 2 vCPU, run 39572436256): 5k initial 14.5 ms / scroll 7.11 ms /
+reorder 3.98 ms; 20k 6.33 / 4.64 / 3.23 ms; mounted 36 / 9. Slower than the dev host, still under
+the 20 ms budget, and the reason the CI job has no timing gate.
+
 **These are upper-bound-ish jsdom costs for a synthetic row**, not paint or scroll latency and not
 the real M2 row (which will carry toggles, thumbnails, and tags). They prove the window is bounded
 and give a regression floor. The row count, not the dataset size, drives the work.
