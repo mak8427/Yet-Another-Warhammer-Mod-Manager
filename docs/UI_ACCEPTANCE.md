@@ -399,14 +399,14 @@ These apply to every screen and every milestone.
 
 | Check | Command / evidence | Result |
 |---|---|---|
-| `pnpm typecheck` | | |
-| `pnpm lint` | | |
-| `pnpm test` | | |
-| `pnpm build` | | |
-| `tokens.test.ts` | | |
-| 20k virtualization measurement | | |
-| Keyboard-only run | | |
-| Screenshot set | | |
+| `pnpm typecheck` | `pnpm typecheck` | pass |
+| `pnpm lint` | `pnpm lint` | pass |
+| `pnpm test` | `pnpm test` — 9 files / 64 tests | pass |
+| `pnpm build` | `pnpm build` | pass |
+| `tokens.test.ts` | included in `pnpm test` | pass |
+| 20k virtualization measurement | `ModList.test.tsx` bounds 20,000 mods to ≤30 mounted rows; browser capture measured 44–50 mounted rows for 23–29 visible rows | pass |
+| Keyboard-only run | shortcuts unit-tested (`Ctrl+1..5`, `Ctrl+F`, `Ctrl+A`, `Escape`, `Alt+Arrow`); full 1024×720 trace pending QA | partial |
+| Screenshot set | `docs/screenshots/WAR-10/` — 29 PNGs at 1920×1080 and 1366×768, plus compact/roomy and selection states; see `docs/M4_EVIDENCE.md` | pass |
 
 ## Sign-off
 
