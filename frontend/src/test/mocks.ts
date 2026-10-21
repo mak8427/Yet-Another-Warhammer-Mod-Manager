@@ -1,8 +1,11 @@
 import { vi } from 'vitest'
 import type {
   AppInfo,
+  ConflictReport,
   GameLocation,
   IpcClient,
+  LaunchOptions,
+  LaunchResult,
   LoadOrderReadReport,
   LoadOrderWriteReport,
   ModListSnapshot,
@@ -11,6 +14,7 @@ import type {
   ProfilesState,
   Tag,
   UiPreferences,
+  WorkshopItem,
 } from '../lib/ipc'
 
 export const APP_INFO: AppInfo = {
@@ -108,6 +112,77 @@ export const TAGS: Tag[] = [
   { id: 'tag-visual', name: 'Visual', color: '#6F8F4A' },
 ]
 
+export const EMPTY_CONFLICTS: ConflictReport = {
+  conflicts: [],
+  missingDependencies: [],
+  duplicatePackNames: [],
+  disabledDependencies: [],
+  shadowedBaseTables: [],
+  shadowedBaseTableCount: 0,
+  modSummaries: [],
+  warnings: [],
+}
+
+export const CONFLICT_REPORT: ConflictReport = {
+  conflicts: [
+    {
+      path: 'db/units_tables/units',
+      winnerModId: 'mod-b',
+      loserModIds: ['mod-a'],
+    },
+  ],
+  missingDependencies: [{ modId: 'mod-a', missing: ['missing.pack'] }],
+  duplicatePackNames: [],
+  disabledDependencies: [],
+  shadowedBaseTables: [],
+  shadowedBaseTableCount: 0,
+  modSummaries: [
+    {
+      modId: 'mod-a',
+      name: 'alpha.pack',
+      overrides: 0,
+      overriddenOn: 1,
+      baseTableOverrides: 0,
+      fileCount: 2,
+    },
+    {
+      modId: 'mod-b',
+      name: 'beta.pack',
+      overrides: 1,
+      overriddenOn: 0,
+      baseTableOverrides: 0,
+      fileCount: 2,
+    },
+  ],
+  warnings: [],
+}
+
+export const WORKSHOP_ITEMS: WorkshopItem[] = [
+  {
+    workshopId: '111',
+    title: 'Installed Mod',
+    state: 'installed',
+    updatedAt: '2023-11-14T22:13:20Z',
+  },
+  {
+    workshopId: '222',
+    title: 'Pending Mod',
+    state: 'update_pending',
+    updatedAt: '2023-11-14T22:15:00Z',
+  },
+]
+
+export const LAUNCH_OPTIONS: LaunchOptions = {
+  skipIntro: false,
+  scriptLogging: false,
+}
+
+export const LAUNCH_RESULT: LaunchResult = {
+  launched: true,
+  method: 'steam',
+  message: 'Warhammer III launch requested through Steam.',
+}
+
 export const WRITE_REPORT: LoadOrderWriteReport = {
   path: 'C:/Steam/steamapps/common/Total War WARHAMMER III/used_mods.txt',
   backupPath: null,
@@ -148,6 +223,17 @@ export function makeClient(overrides: Partial<IpcClient> = {}): IpcClient {
     previewLoadOrder: vi.fn(async () => WRITE_REPORT),
     writeLoadOrder: vi.fn(async () => WRITE_REPORT),
     restoreLoadOrder: vi.fn(async () => EMPTY_LOAD_ORDER),
+    getConflicts: vi.fn(async () => EMPTY_CONFLICTS),
+    listWorkshopItems: vi.fn(async () => WORKSHOP_ITEMS),
+    workshopAction: vi.fn(async (action, workshopId) => ({
+      action,
+      workshopId,
+      opened: true,
+      message: 'Steam opened the Workshop page.',
+    })),
+    getLaunchOptions: vi.fn(async () => LAUNCH_OPTIONS),
+    setLaunchOptions: vi.fn(async (options) => options),
+    launchGame: vi.fn(async () => LAUNCH_RESULT),
   }
   return { ...base, ...overrides }
 }
