@@ -67,9 +67,9 @@ test('PARITY.yaml is a complete 10 x 4 scorecard with weights summing to 100', (
 
 test('the verified index and oracle coverage match the committed snapshot', () => {
   const result = evaluate(loadConfig())
-  assert.equal(Number(result.index.toFixed(3)), 85.875)
-  assert.equal(result.done, 29)
-  assert.equal(result.partial, 10)
+  assert.equal(Number(result.index.toFixed(3)), 86.875)
+  assert.equal(result.done, 30)
+  assert.equal(result.partial, 9)
   assert.equal(result.missing, 1)
   assert.equal(result.checks, 40)
   assert.equal(result.oracle.mapped, 29)

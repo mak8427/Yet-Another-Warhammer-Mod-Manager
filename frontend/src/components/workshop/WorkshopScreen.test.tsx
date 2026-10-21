@@ -27,6 +27,24 @@ describe('WorkshopScreen', () => {
     expect(rows.length).toBeGreaterThan(1)
   })
 
+  it('dispatches open for the selected workshop item', () => {
+    const onAction = vi.fn()
+    render(
+      <WorkshopScreen
+        items={WORKSHOP_ITEMS}
+        loading={false}
+        busy={false}
+        error={null}
+        onRefresh={() => {}}
+        onDismissError={() => {}}
+        onAction={onAction}
+      />,
+    )
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Open page' })[0])
+    expect(onAction).toHaveBeenCalledWith('open', '111')
+  })
+
   it('mounts only the virtual window at 500 subscriptions', () => {
     const items = Array.from({ length: 500 }, (_, index) => ({
       workshopId: String(index),
