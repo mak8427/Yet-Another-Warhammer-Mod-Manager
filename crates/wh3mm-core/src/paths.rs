@@ -188,27 +188,56 @@ impl<'a> VdfParser<'a> {
 ///
 /// Supports both the modern `"0" { "path" "..." }` shape and the legacy
 /// `"1" "D:\\SteamLibrary"` shape. Relative paths are resolved against `base`.
+///
+/// Only direct children of `libraryfolders` are library slots. Each slot's
+/// `apps` table (app id -> size) is metadata and must never be read as a path.
 pub fn library_paths_from_vdf(text: &str, base: &Path) -> Result<Vec<PathBuf>, AppError> {
     let root = parse_vdf(text)?;
     let mut paths = Vec::new();
 
-    fn visit(value: &VdfValue, base: &Path, paths: &mut Vec<PathBuf>) {
-        match value {
-            VdfValue::Object(values) => {
-                for (key, child) in values {
-                    if key.eq_ignore_ascii_case("path") || key.chars().all(|c| c.is_ascii_digit()) {
-                        if let Some(path) = child.as_str() {
-                            push_path(paths, path, base);
-                        }
-                    }
-                    visit(child, base, paths);
+    fn push_slot(child: &VdfValue, base: &Path, paths: &mut Vec<PathBuf>) {
+        match child {
+            VdfValue::String(raw) => push_path(paths, raw, base),
+            VdfValue::Object(entry) => {
+                if let Some(raw) = entry
+                    .iter()
+                    .find(|(key, _)| key.eq_ignore_ascii_case("path"))
+                    .and_then(|(_, value)| value.as_str())
+                {
+                    push_path(paths, raw, base);
                 }
             }
-            VdfValue::String(_) => {}
         }
     }
 
-    visit(&root, base, &mut paths);
+    fn collect_slots(value: &VdfValue, base: &Path, paths: &mut Vec<PathBuf>) {
+        let VdfValue::Object(values) = value else {
+            return;
+        };
+        for (key, child) in values {
+            if !key.is_empty() && key.chars().all(|c| c.is_ascii_digit()) {
+                push_slot(child, base, paths);
+            }
+        }
+    }
+
+    let VdfValue::Object(values) = &root else {
+        return Ok(paths);
+    };
+    let has_container = values
+        .iter()
+        .any(|(key, _)| key.eq_ignore_ascii_case("libraryfolders"));
+    if has_container {
+        for (key, child) in values {
+            if key.eq_ignore_ascii_case("libraryfolders") {
+                collect_slots(child, base, &mut paths);
+            }
+        }
+    } else {
+        // Legacy files occasionally put the numeric slots at the document root.
+        collect_slots(&root, base, &mut paths);
+    }
+
     let mut seen = HashSet::new();
     paths.retain(|path| seen.insert(path_key(path)));
     Ok(paths)
@@ -698,6 +727,30 @@ mod tests {
         );
         let paths = library_paths_from_vdf(&text, base).unwrap();
         assert_eq!(paths, vec![first, second, missing]);
+    }
+
+    #[test]
+    fn ignores_app_tables_inside_library_slots() {
+        let dir = crate::test_support::TempDir::new("vdf-apps");
+        let base = dir.path();
+        let library = base.join("SteamLibrary");
+        let text = format!(
+            r#""libraryfolders"
+{{
+    "0"
+    {{
+        "path" "{}"
+        "apps"
+        {{
+            "228980" "9876543210"
+            "1142710" "1234567890"
+        }}
+    }}
+}}"#,
+            escape_vdf_path(&library)
+        );
+        let paths = library_paths_from_vdf(&text, base).unwrap();
+        assert_eq!(paths, vec![library]);
     }
 
     #[test]
