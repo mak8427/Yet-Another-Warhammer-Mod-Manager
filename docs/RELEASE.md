@@ -58,11 +58,11 @@ gh api "repos/mak8427/Warhammer_mod_manager/commits/<head-sha>/check-runs?per_pa
 ```
 
 Both check names must read `completed success` on the newest run per name. When
-the push and pull-request events both produced a run, the `started_at` and
-`completed_at` timestamps identify the latest one; an older run on the same SHA
-does not count. If a required check is cancelled or fails on the final head,
-re-run it on that same SHA (`gh run rerun <run-id>`) or push a fix and use the
-new head; do not merge and do not re-run a different SHA.
+the push and pull-request events both produced a run, the newest `started_at` is
+the run that counts; `completed_at` only shows how long it took. An older run on
+the same SHA does not count. If a required check is cancelled or fails on the
+final head, re-run it on that same SHA (`gh run rerun <run-id>`) or push a fix
+and use the new head; do not merge and do not re-run a different SHA.
 
 The post-merge push run on `main` is a monitoring check. If it fails, revert or
 fix immediately. If it is cancelled because a newer commit superseded it, the
