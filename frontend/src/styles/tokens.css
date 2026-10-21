@@ -1,7 +1,7 @@
 /*
  * WH3 Mod Manager — design tokens (single source).
  *
- * Contract: ADR-005 and docs/UI_DIRECTION.md.
+ * Contract: ADR-006 and docs/UI_DIRECTION.md.
  * Components consume semantic tokens only. Raw palette values live here and
  * nowhere else. Do not add component selectors to this file.
  */

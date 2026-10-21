@@ -4,7 +4,7 @@
 - Date: 2026-10-20
 - Owner: Katerina Zarina
 - Supersedes: none
-- Amended by: ADR-005 (design tokens live in `frontend/src/styles/tokens.css`)
+- Amended by: ADR-006 (design tokens live in `frontend/src/styles/tokens.css`)
 - Product contract: `docs/PRODUCT_SCOPE.md`
 
 ## Context

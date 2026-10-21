@@ -1,4 +1,4 @@
-# ADR-005 — UI token source, density roles, and faction accents
+# ADR-006 — UI token source, density roles, and faction accents
 
 - Status: accepted
 - Date: 2026-10-21
@@ -59,6 +59,19 @@ small, contrast-checked palette, and tag identity must not depend on colour.
   icon shapes.
 - Stored tag colours outside the palette map to the nearest slot for the 2px
   rule; tag text remains a semantic text colour.
+
+### Migration bridge for the pre-token M2 shell
+
+- The WAR-5 shell predates this ADR and references thirteen legacy palette
+  variables (`--ink-*`, `--parchment*`, `--gold*`, `--brass-line`, `--blood*`,
+  `--green`). So that `main` stays visually intact after this branch merges,
+  `tokens.css` defines them as deprecated aliases to semantic tokens.
+- The pre-token shell block in `theme.css` is marked `legacy-m2:start` /
+  `legacy-m2:end`. The anti-pattern test checks everything outside that block,
+  so new styles remain bound by the no-gradient/no-glow rule.
+- M4 (WAR-10) migrates the shell to semantic tokens and deletes both the alias
+  block and the legacy section. The aliases are not part of the public token
+  contract.
 
 ### Enforcement
 

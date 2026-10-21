@@ -5,7 +5,7 @@
 - Date: 2026-10-21
 - Product contract: `docs/PRODUCT_SCOPE.md`
 - Architecture: `docs/adr/001-architecture.md`, `docs/adr/002-ipc-contract.md`,
-  `docs/adr/003-data-model.md`, `docs/adr/005-ui-tokens-and-density.md`
+  `docs/adr/003-data-model.md`, `docs/adr/006-ui-tokens-and-density.md`
 - Token source: `frontend/src/styles/tokens.css`
 - Screen checklist: `docs/UI_ACCEPTANCE.md`
 - Legacy reference (read-only): `docs/DESIGN.md` in
@@ -735,7 +735,7 @@ The following are review failures:
 - Every new component state must map to an existing semantic token. If it
   cannot, propose a token change in review; do not invent a local value.
 - Token changes that alter meaning or contrast require an update to this
-  document, `docs/UI_ACCEPTANCE.md`, ADR-005 when the contract changes, and a
+  document, `docs/UI_ACCEPTANCE.md`, ADR-006 when the contract changes, and a
   passing `tokens.test.ts`.
 - `frontend/src/styles/tokens.test.ts` enforces token presence, contrast,
   density order, and the no-gradient/no-external-asset rules. It is part of the
