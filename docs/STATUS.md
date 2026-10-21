@@ -97,10 +97,11 @@ missing the `icons/icon.ico` that `tauri-build` requires; `2070b7f` fixes it.
 | `pnpm test` | pass, 37 tests |
 | `pnpm build` | pass |
 
-The tech lead re-ran these gates at `7c61fa3`, the code-identical head merged
-as `c1a9cdd`, and CI passed again on `main` at the merge commit. Windows shell
-compile remains covered by the manual `workflow_dispatch` job until M5
-packaging.
+The tech lead re-ran these gates at `7c61fa3`, the M1/M2 head merged as
+`c1a9cdd`; the squash merge also carries `373537c` (CI and reference-script
+changes). Product code (`crates/`, `frontend/`, manifests) is identical, and CI
+passed again on `main` at the merge commit. Windows shell compile remains
+covered by the manual `workflow_dispatch` job until M5 packaging.
 
 ## Risks and open items
 
