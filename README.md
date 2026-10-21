@@ -96,6 +96,9 @@ cargo test --workspace --locked
 # Verify the committed synthetic fixtures against their manifest
 node scripts/qa/generate-fixtures.mjs --verify
 
+# QA script tests (fixture guard + performance-gate validator)
+node --test scripts/qa/*.test.mjs
+
 # The same lint gates CI enforces
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
@@ -125,6 +128,9 @@ pnpm test
 
 # Production build -> frontend/dist
 pnpm build
+
+# Release-time performance gate (needs docs/perf/comparison.json; see docs/QA_PLAN.md §7)
+node scripts/qa/verify-perf-gate.mjs
 ```
 
 `pnpm build` runs `tsc --noEmit && vite build`; it does not compile Rust.
