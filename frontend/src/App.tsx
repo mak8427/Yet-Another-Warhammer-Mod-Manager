@@ -48,6 +48,11 @@ export function App() {
     [state.conflicts],
   )
 
+  const workshopStates = useMemo(
+    () => new Map((state.workshop ?? []).map((item) => [item.workshopId, item.state])),
+    [state.workshop],
+  )
+
   const setSelected = (enabled: boolean) => {
     void store.setModsEnabled(state.selection, enabled)
   }
@@ -191,6 +196,7 @@ export function App() {
                     tags={state.tags}
                     selection={state.selection}
                     conflictSummaries={conflictSummaries}
+                    workshopStates={workshopStates}
                     density={state.ui.density}
                     showAuthors={state.ui.showAuthors}
                     showThumbnails={state.ui.showThumbnails}

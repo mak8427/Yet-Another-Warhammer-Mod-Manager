@@ -54,6 +54,8 @@ pack that provides it and refresh again; the same dependency becomes
    The state must reflect the ACF file.
 7. Rename or move the ACF file and refresh: the screen must show a
    `steam_not_found` error with the checked paths, not an empty list.
+8. Return to **Load order**: each Workshop mod row shows the same state as the
+   Workshop screen (`INST`, `SUB`, or `UPD`), alongside the `WS` badge.
 
 ## 4. Launch
 
