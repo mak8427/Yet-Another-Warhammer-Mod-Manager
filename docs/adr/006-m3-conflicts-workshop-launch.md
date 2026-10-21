@@ -1,6 +1,7 @@
 # ADR-006 — M3 conflict, Workshop, and launch decisions
 
-- Status: proposed
+- Status: accepted
+- Approved: Katerina Zarina, 2026-10-21
 - Date: 2026-10-21
 - Owner: Karl Franz
 - Depends on: ADR-002, ADR-003, ADR-005
@@ -57,15 +58,28 @@ M1/M2 data model.
     not mention.
 - Titles come from the ACF when present; otherwise the local pack stem is used.
   Timestamps are converted from Steam Unix seconds to ISO-8601 UTC.
+- Open, Subscribe, Unsubscribe, and Update all open the same
+  `steam://url/CommunityFilePage/<id>` action through the Steam executable;
+  the UI labels them as actions that open Steam, never as confirmed
+  subscription changes.
 - Steam actions open `steam://url/CommunityFilePage/<id>` through the Steam
   executable (`steam.sh`/`steam` on Linux, `steam.exe` on Windows, then `PATH`).
-  The Steam browser protocol has no documented subscribe/unsubscribe endpoint,
-  and this app does not use a custom Steamworks integration. The result is
-  therefore `opened: true`, not "subscribed": the user finishes the action in
-  Steam and the UI re-reads ACF state. An update action follows the same rule.
+  Open, Subscribe, Unsubscribe, and Update all open this same CommunityFilePage
+  URL. The Steam browser protocol has no documented subscribe/unsubscribe
+  endpoint, and this app does not use a custom Steamworks integration. The
+  result is therefore `opened: true`, not "subscribed": the user finishes the
+  action in Steam and the UI re-reads ACF state. An update action follows the
+  same rule and the UI must not present any of these actions as confirmed.
 - A missing Steam executable or ACF is a `steam_not_found` error with the paths
   that were checked. There is no claim that a subscription changed before the
   next metadata read confirms it.
+
+## Process ownership
+
+- Steam process spawning for launch and Workshop actions lives in
+  `wh3mm-core` (`launch.rs`, `workshop.rs`) behind `Session`, so the behaviour is
+  testable headlessly. `wh3mm-app` remains the Tauri command shell. This
+  corrects the module map in ADR-001.
 
 ## Launch
 
@@ -91,6 +105,12 @@ M1/M2 data model.
 - `launch_game` saves the options before applying tweaks so the choice survives
   a failed launch attempt. The result says the launch was **requested**; it does
   not claim the game reached the main menu.
+
+## Placement in the crate map
+
+Steam process spawning for launch and Workshop actions lives in
+`wh3mm-core` behind `Session`, so it can be tested headlessly; `wh3mm-app`
+remains the Tauri command shell. This corrects ADR-001's earlier module map.
 
 ## Consequences
 
