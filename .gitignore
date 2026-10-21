@@ -2,6 +2,7 @@ target/
 node_modules/
 reference/
 dist/
+crates/wh3mm-app/gen/
 coverage/
 .vite/
 *.tsbuildinfo

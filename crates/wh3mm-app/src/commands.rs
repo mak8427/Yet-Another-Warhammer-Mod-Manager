@@ -223,9 +223,9 @@ impl Manager {
 /// Returns identity and build information for the running application.
 ///
 /// This is the M0 round-trip proof: the React shell invokes `app_info` and
-/// renders the result. On Windows the `tauri::command` attribute turns this
-/// into an IPC handler; elsewhere it stays a plain function for tests.
-#[cfg_attr(windows, tauri::command)]
+/// renders the result. On desktop targets the `tauri::command` attribute turns
+/// this into an IPC handler; elsewhere it stays a plain function for tests.
+#[cfg_attr(any(windows, target_os = "linux"), tauri::command)]
 pub fn app_info() -> AppInfo {
     AppInfo {
         name: "WH3 Mod Manager".to_string(),
@@ -241,17 +241,18 @@ pub fn app_info() -> AppInfo {
 /// session command can reach the filesystem or wait on the session mutex that a
 /// scan or write holds.
 ///
-/// The Tauri shell is Windows-only; Linux tests compile the same seam against
-/// Tokio so CI can test the off-main-thread contract.
-#[cfg(any(windows, test))]
+/// The desktop shell uses Tauri's runtime; tests compile the same seam against
+/// Tokio so the off-main-thread contract runs without a Tauri runtime or a
+/// display.
+#[cfg(any(windows, target_os = "linux", test))]
 async fn run_blocking<T, F>(work: F) -> Result<T, AppError>
 where
     F: FnOnce() -> Result<T, AppError> + Send + 'static,
     T: Send + 'static,
 {
-    #[cfg(windows)]
+    #[cfg(not(test))]
     let joined = tauri::async_runtime::spawn_blocking(work).await;
-    #[cfg(not(windows))]
+    #[cfg(test)]
     let joined = tokio::task::spawn_blocking(work).await;
 
     joined.map_err(|error| {
@@ -259,9 +260,9 @@ where
     })?
 }
 
-/// Tauri command wrappers. They stay Windows-only so Linux CI can exercise the
-/// full core and the Manager methods without linking a WebView.
-#[cfg(windows)]
+/// Tauri command wrappers for the desktop shell. Tests exercise the core and
+/// the Manager methods directly, without a Tauri runtime or a WebView.
+#[cfg(any(windows, target_os = "linux"))]
 mod tauri_commands {
     use super::*;
     use tauri::Manager as _;
@@ -486,7 +487,7 @@ mod tauri_commands {
     }
 }
 
-#[cfg(windows)]
+#[cfg(any(windows, target_os = "linux"))]
 pub use tauri_commands::*;
 
 #[cfg(test)]

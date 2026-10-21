@@ -1,12 +1,12 @@
 //! Tauri 2 shell.
 //!
-//! The shell is compiled only on Windows so Linux CI can run the full domain
-//! test suite without WebKitGTK. `commands` stays platform-neutral so command
-//! logic remains unit-testable everywhere.
+//! The shell is compiled on Windows and Linux. `commands` stays
+//! platform-neutral so command logic remains unit-testable everywhere; the
+//! core crate never depends on Tauri or a WebView.
 
 pub mod commands;
 
-#[cfg(windows)]
+#[cfg(any(windows, target_os = "linux"))]
 pub fn run() -> tauri::Result<()> {
     use tauri::Manager as _;
 
@@ -51,7 +51,7 @@ pub fn run() -> tauri::Result<()> {
         .run(tauri::generate_context!())
 }
 
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "linux")))]
 pub fn run() -> Result<(), String> {
-    Err("the Tauri desktop shell is Windows-only until M5 packaging".to_string())
+    Err("the Tauri desktop shell is supported on Windows and Linux".to_string())
 }
