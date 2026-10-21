@@ -17,7 +17,7 @@ type Filter = 'all' | 'conflicts' | 'missing' | 'duplicates'
 interface Row {
   id: string
   path: string
-  winner: string
+  winner: string | null
   losers: string[]
   type: string
   detail: string
@@ -30,6 +30,10 @@ const FILTERS: Array<{ id: Filter; label: string }> = [
   { id: 'missing', label: 'Missing dependencies' },
   { id: 'duplicates', label: 'Duplicate names' },
 ]
+
+function countLabel(count: number, singular: string, plural: string): string {
+  return `${count} ${count === 1 ? singular : plural}`
+}
 
 export function ConflictScreen({
   report,
@@ -62,7 +66,7 @@ export function ConflictScreen({
       ...report.missingDependencies.map((entry) => ({
         id: `missing:${entry.modId}:${entry.missing.join(',')}`,
         path: `${names.get(entry.modId) ?? entry.modId} → ${entry.missing.join(', ')}`,
-        winner: 'Missing',
+        winner: null,
         losers: entry.missing,
         type: 'Missing dependency',
         detail: `${names.get(entry.modId) ?? entry.modId} requires ${entry.missing.join(', ')}`,
@@ -70,7 +74,7 @@ export function ConflictScreen({
       ...report.disabledDependencies.map((entry) => ({
         id: `disabled:${entry.modId}:${entry.dependency}`,
         path: `${names.get(entry.modId) ?? entry.modId} → ${entry.dependency}`,
-        winner: 'Disabled',
+        winner: null,
         losers: [entry.dependency],
         type: 'Disabled dependency',
         detail: `${names.get(entry.modId) ?? entry.modId} requires ${
@@ -81,7 +85,7 @@ export function ConflictScreen({
     const duplicates: Row[] = report.duplicatePackNames.map((entry) => ({
       id: `duplicate:${entry.name}`,
       path: entry.name,
-      winner: 'Duplicate',
+      winner: null,
       losers: entry.modIds.map((id) => names.get(id) ?? id),
       type: 'Duplicate name',
       detail: `${entry.name} is carried by ${entry.modIds.length} packs`,
@@ -95,7 +99,11 @@ export function ConflictScreen({
   const selected = rows.find((row) => row.id === selectedId) ?? null
   const enabledCount = report?.modSummaries.length ?? 0
   const summary = report
-    ? `${report.conflicts.length} shared paths · ${report.missingDependencies.length} missing · ${report.duplicatePackNames.length} duplicate names`
+    ? `${countLabel(report.conflicts.length, 'shared path', 'shared paths')} · ${countLabel(
+        report.missingDependencies.length,
+        'missing dependency',
+        'missing dependencies',
+      )} · ${countLabel(report.duplicatePackNames.length, 'duplicate name', 'duplicate names')}`
     : 'Reading enabled pack indexes'
 
   const toggle = (id: string) => {
@@ -212,7 +220,7 @@ export function ConflictScreen({
               </div>
               <div>
                 <dt>Winner</dt>
-                <dd>{selected.winner}</dd>
+                <dd>{selected.winner ?? '—'}</dd>
               </div>
               <div>
                 <dt>Losers</dt>
@@ -293,12 +301,18 @@ function FragmentRow({
           {middleEllipsis(row.path, 88)}
         </td>
         <td>
-          <span className="winner-cell">
-            <span aria-hidden="true">✓</span> Wins
-          </span>
-          <span className="conflict-winner-name truncate" title={row.winner}>
-            {row.winner}
-          </span>
+          {row.winner ? (
+            <>
+              <span className="winner-cell">
+                <span aria-hidden="true">✓</span> Wins
+              </span>
+              <span className="conflict-winner-name truncate" title={row.winner}>
+                {row.winner}
+              </span>
+            </>
+          ) : (
+            <span className="muted">—</span>
+          )}
         </td>
         <td className="align-right mono">{row.losers.length}</td>
         <td>{row.type}</td>

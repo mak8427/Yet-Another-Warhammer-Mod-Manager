@@ -22,7 +22,11 @@ describe('ConflictScreen', () => {
     expect(within(fileTable).getByText('beta.pack')).toBeInTheDocument()
     expect(screen.getByText(/missing\.pack/)).toBeInTheDocument()
     expect(screen.getAllByText('beta.pack').length).toBeGreaterThan(0)
-    expect(screen.getByText(/1 shared paths/)).toBeInTheDocument()
+    expect(screen.getByText(/1 shared path · 1 missing dependency · 0 duplicate names/)).toBeInTheDocument()
+    const missingRow = screen.getByText(/missing\.pack/).closest('tr')
+    expect(missingRow).not.toBeNull()
+    expect(within(missingRow as HTMLTableRowElement).getByText('—')).toBeInTheDocument()
+    expect(screen.queryByText('Wins Missing')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Expand losers' }))
     expect(within(fileTable).getByText('Loses: alpha.pack')).toBeInTheDocument()

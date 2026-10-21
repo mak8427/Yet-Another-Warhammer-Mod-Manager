@@ -47,6 +47,6 @@ describe('WorkshopScreen', () => {
     )
 
     expect(screen.getByRole('alert')).toHaveTextContent('Steam Workshop metadata was not found')
-    expect(screen.getByText(/No Workshop subscriptions found/)).toBeInTheDocument()
+    expect(screen.queryByText(/No Workshop subscriptions found/)).not.toBeInTheDocument()
   })
 })

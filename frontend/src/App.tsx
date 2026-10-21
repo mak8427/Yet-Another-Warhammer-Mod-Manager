@@ -22,10 +22,12 @@ const SECTION_KEYS: Record<string, 'mods' | 'profiles' | 'conflicts' | 'workshop
   '5': 'settings',
 }
 
+const FOCUS_REGIONS = ['rail', 'toolbar', 'list', 'inspector']
+
 function focusRegion(direction: 1 | -1): void {
-  const regions = Array.from(document.querySelectorAll<HTMLElement>('[data-region]')).filter(
-    (element) => element.offsetParent !== null,
-  )
+  const regions = FOCUS_REGIONS.flatMap((name) =>
+    Array.from(document.querySelectorAll<HTMLElement>(`[data-region="${name}"]`)),
+  ).filter((element) => element.offsetParent !== null)
   if (regions.length === 0) return
   const active = document.activeElement as HTMLElement | null
   const current = active?.closest<HTMLElement>('[data-region]')
@@ -120,19 +122,32 @@ export function App() {
       />
 
       {state.status === 'loading' && (
-        <main className="main-pane" aria-busy="true">
-          <div className="screen-bar">
-            <div className="screen-title">
-              <h2 className="skeleton-title">Mods</h2>
+        <div className="workspace">
+          <SectionRail
+            view={state.view}
+            modCount={0}
+            enabledCount={0}
+            profileCount={0}
+            conflictCount={0}
+            workshopCount={0}
+            loading
+            onSelect={(view) => store.setView(view)}
+          />
+          <main className="main-pane" aria-busy="true" data-region="main">
+            <div className="screen-bar">
+              <div className="screen-title">
+                <h2 className="skeleton-title">Mods</h2>
+              </div>
             </div>
-          </div>
-          <div className="loading-list" aria-hidden="true">
-            {Array.from({ length: 12 }, (_, index) => (
-              <div key={index} className="loading-row" />
-            ))}
-          </div>
-          <p className="sr-only">{state.busy ?? 'Starting'}…</p>
-        </main>
+            <div className="mod-list-header loading-header" aria-hidden="true" />
+            <div className="loading-list" aria-hidden="true">
+              {Array.from({ length: 12 }, (_, index) => (
+                <div key={index} className="loading-row" />
+              ))}
+            </div>
+            <p className="sr-only">{state.busy ?? 'Starting'}…</p>
+          </main>
+        </div>
       )}
 
       {state.status === 'no-game' && (

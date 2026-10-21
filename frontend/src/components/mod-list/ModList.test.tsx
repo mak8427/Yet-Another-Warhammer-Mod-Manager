@@ -13,8 +13,8 @@ const MODS = Array.from({ length: 500 }, (_, index) => {
   })
 })
 
-function renderList(overrides: Partial<Parameters<typeof ModList>[0]> = {}) {
-  const props: Parameters<typeof ModList>[0] = {
+function makeProps(overrides: Partial<Parameters<typeof ModList>[0]> = {}): Parameters<typeof ModList>[0] {
+  return {
     mods: MODS,
     tags: [],
     selection: [],
@@ -39,8 +39,22 @@ function renderList(overrides: Partial<Parameters<typeof ModList>[0]> = {}) {
     onScrollTop: vi.fn(),
     ...overrides,
   }
+}
+
+function renderList(overrides: Partial<Parameters<typeof ModList>[0]> = {}) {
+  const props = makeProps(overrides)
   render(<ModList {...props} />)
   return props
+}
+
+function renderListView(overrides: Partial<Parameters<typeof ModList>[0]> = {}) {
+  const props = makeProps(overrides)
+  const view = render(<ModList {...props} />)
+  return {
+    props,
+    rerender: (next: Partial<Parameters<typeof ModList>[0]>) =>
+      view.rerender(<ModList {...props} {...next} />),
+  }
 }
 
 describe('ModList', () => {
@@ -95,5 +109,27 @@ describe('ModList', () => {
   it('renders an empty state when the filter has no matches', () => {
     renderList({ mods: [] })
     expect(screen.getByText('No mods match this filter')).toBeInTheDocument()
+  })
+
+  it('keeps the first visible row and selection when density changes', () => {
+    const { rerender } = renderListView({ selection: ['mod-10'] })
+    const listbox = screen.getByRole('listbox', { name: 'Mods' })
+    fireEvent.scroll(listbox, { target: { scrollTop: 32 * 10 } })
+
+    rerender({ density: 'roomy' })
+
+    expect(listbox.scrollTop).toBe(48 * 10)
+    expect(screen.getByRole('option', { name: /mod_010/ })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('bounds the mounted rows for 20,000 mods', () => {
+    const many = Array.from({ length: 20000 }, (_, index) =>
+      makeMod({ id: `mod-${index}`, name: `mod_${index}.pack` }),
+    )
+    renderList({ mods: many })
+
+    const rows = screen.getAllByRole('option')
+    expect(rows.length).toBeLessThanOrEqual(30)
+    expect(rows.length).toBeGreaterThan(0)
   })
 })

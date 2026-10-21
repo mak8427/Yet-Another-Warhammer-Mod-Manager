@@ -38,6 +38,7 @@ export function WorkshopScreen({
 }: WorkshopScreenProps) {
   const rows = items ?? []
   const pending = rows.filter((item) => item.state === 'update_pending').length
+  const unavailable = Boolean(error) && !loading && rows.length === 0
 
   return (
     <section className="workshop-screen" aria-labelledby="workshop-heading">
@@ -61,16 +62,18 @@ export function WorkshopScreen({
       {error && <ErrorBanner error={error} onDismiss={onDismissError} onRetry={onRefresh} />}
 
       {rows.length === 0 ? (
-        <EmptyState
-          title={loading ? 'Reading Steam subscriptions' : 'No Workshop subscriptions found'}
-          action={
-            <button type="button" className="btn" onClick={onRefresh} disabled={loading}>
-              Retry
-            </button>
-          }
-        >
-          Subscribe to items in Steam, then refresh. The manager never asks for Steam credentials.
-        </EmptyState>
+        unavailable ? null : (
+          <EmptyState
+            title={loading ? 'Reading Steam subscriptions' : 'No Workshop subscriptions found'}
+            action={
+              <button type="button" className="btn" onClick={onRefresh} disabled={loading}>
+                Retry
+              </button>
+            }
+          >
+            Subscribe to items in Steam, then refresh. The manager never asks for Steam credentials.
+          </EmptyState>
+        )
       ) : (
         <div className="table-wrap">
           <table className="data-table workshop-table">

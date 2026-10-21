@@ -10,6 +10,7 @@ import {
   PROFILES,
   TAGS,
   UI,
+  WRITE_REPORT,
   makeMod,
   makeSnapshot,
 } from './test/mocks'
@@ -242,6 +243,37 @@ describe('App', () => {
       expect(ipc.updateUiPreferences).toHaveBeenCalledWith(expect.objectContaining({ density: 'roomy' }))
     })
     expect(document.documentElement.dataset.density).toBe('roomy')
+  })
+
+  it('switches sections with Ctrl+1..5 and focuses search with Ctrl+F', async () => {
+    mockReady()
+    render(<App />)
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    fireEvent.keyDown(window, { key: '3', ctrlKey: true })
+    expect(await screen.findByRole('heading', { name: 'Conflicts' })).toBeInTheDocument()
+
+    fireEvent.keyDown(window, { key: '1', ctrlKey: true })
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    fireEvent.keyDown(window, { key: 'f', ctrlKey: true })
+    expect(screen.getByLabelText('Search mods')).toHaveFocus()
+  })
+
+  it('focuses Cancel and marks the write action dangerous when directives are dropped', async () => {
+    mockReady()
+    vi.mocked(ipc.previewLoadOrder).mockResolvedValue({
+      ...WRITE_REPORT,
+      unmanagedDirectives: ['mod "legacy.pack";'],
+      wouldDropUnmanaged: true,
+      requiresUnmanagedConfirmation: true,
+    })
+    render(<App />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Apply load order' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Write used_mods.txt' })
+    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toHaveFocus()
+    expect(within(dialog).getByRole('button', { name: /Write 2 mods/ })).toHaveClass('btn-danger')
   })
 
   it('shows a structured error screen when the workspace cannot load', async () => {

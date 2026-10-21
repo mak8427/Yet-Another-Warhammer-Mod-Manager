@@ -8,6 +8,7 @@ interface SectionRailProps {
   profileCount: number
   conflictCount: number
   workshopCount: number
+  loading?: boolean
   onSelect: (view: View) => void
 }
 
@@ -34,6 +35,7 @@ export function SectionRail({
   profileCount,
   conflictCount,
   workshopCount,
+  loading = false,
   onSelect,
 }: SectionRailProps) {
   const groups: Array<{ label: string; items: RailItem[] }> = [
@@ -102,7 +104,7 @@ export function SectionRail({
               >
                 <span className="rail-icon">{item.icon}</span>
                 <span className="rail-label">{item.label}</span>
-                {item.count !== undefined && (
+                {!loading && item.count !== undefined && (
                   <span className="rail-count" aria-hidden="true">
                     {item.view === 'mods' ? `${enabledCount}/${item.count}` : item.count}
                   </span>
