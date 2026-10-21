@@ -76,6 +76,8 @@ pub struct LoadOrderReadReport {
     pub present: bool,
     pub corrupt: bool,
     pub message: Option<String>,
+    /// Set when the file exists but could not be read; writes stay blocked.
+    pub unreadable: Option<String>,
     /// Every managed name found in the file, in file order (deduplicated).
     pub mod_names: Vec<String>,
     /// Names that resolve to a discovered mod, by id, in file order.

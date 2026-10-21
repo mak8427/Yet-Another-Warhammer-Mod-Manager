@@ -35,6 +35,7 @@ const SNAPSHOT: ModListSnapshot = {
     present: false,
     corrupt: false,
     message: null,
+    unreadable: null,
     modNames: [],
     resolvedModIds: [],
     missingNames: [],

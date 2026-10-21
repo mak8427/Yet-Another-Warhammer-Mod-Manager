@@ -76,6 +76,7 @@ export interface LoadOrderReadReport {
   present: boolean
   corrupt: boolean
   message: string | null
+  unreadable: string | null
   modNames: string[]
   resolvedModIds: string[]
   missingNames: string[]

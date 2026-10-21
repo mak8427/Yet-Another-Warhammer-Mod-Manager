@@ -100,6 +100,7 @@ fn mod_list_snapshot_uses_the_m1_m2_wire_shape() {
             present: true,
             corrupt: false,
             message: None,
+            unreadable: None,
             mod_names: vec!["mod.pack".into()],
             resolved_mod_ids: vec!["C:/game/data/mod.pack".into()],
             missing_names: vec![],

@@ -8,6 +8,35 @@ interface LoadOrderBannerProps {
 }
 
 export function LoadOrderBanner({ loadOrder, busy, onRestore, onOpenWrite }: LoadOrderBannerProps) {
+  if (loadOrder.unreadable) {
+    return (
+      <div className="banner banner-error" role="alert">
+        <div className="banner-body">
+          <strong>used_mods.txt cannot be read</strong>
+          <span>{loadOrder.unreadable}</span>
+          <span className="muted">
+            The mod manager stays open, but writing stays blocked until the file can be read.
+          </span>
+          <code className="banner-details">{loadOrder.path}</code>
+        </div>
+        <div className="banner-actions">
+          <button
+            type="button"
+            className="btn btn-small"
+            onClick={onRestore}
+            disabled={busy || !loadOrder.backupAvailable}
+            title={loadOrder.backupAvailable ? 'Restore used_mods.txt.bak' : 'No backup is available'}
+          >
+            Restore backup
+          </button>
+          <button type="button" className="btn btn-small btn-ghost" onClick={onOpenWrite} disabled={busy}>
+            Review write
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   if (loadOrder.corrupt) {
     return (
       <div className="banner banner-error" role="alert">
