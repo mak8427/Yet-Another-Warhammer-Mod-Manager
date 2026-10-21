@@ -2,7 +2,8 @@
 
 - Status: accepted
 - Date: 2026-10-20
-- Amended: 2026-10-21 (fixture location; see "Fixtures — amendment")
+- Amended: 2026-10-21 (fixture location; see "Fixtures — amendment");
+  2026-10-22 (Linux desktop shell; ADR-007)
 - Owner: Katerina Zarina
 - Depends on: ADR-001, ADR-002, ADR-003
 
@@ -24,7 +25,7 @@ tests on Linux plus a small number of Windows checks for the shell and packaging
 | App command tests | `crates/wh3mm-app/src/commands/**` | `cargo test` | Linux + Windows | Command logic without a Tauri runtime |
 | IPC contract tests | `crates/wh3mm-core/tests/ipc_contract.rs` + `frontend/src/lib/ipc.test.ts` | `cargo test`, Vitest | Linux | Serialized names, error envelope, wrapper normalization |
 | Frontend unit/component | `frontend/src/**/*.test.ts(x)` | Vitest + Testing Library (jsdom) | Linux | Rendering, interaction contracts, error states, store logic |
-| Tauri shell compile | `crates/wh3mm-app` | `cargo build -p wh3mm-app` | Windows (manual CI) | `generate_context!`, command registration, capabilities |
+| Tauri shell compile | `crates/wh3mm-app` | `cargo build -p wh3mm-app` | Linux + Windows | `generate_context!`, command registration, capabilities |
 | E2E | Tauri WebDriver or equivalent | TBD in M5 | Windows | Install detection, reorder, profile switch, launch, corrupt-file recovery |
 | Performance | `benches/` + scripted fixtures | TBD by Genny4Real in M5 | Windows | 50-200 mod list load, filter, reorder, write latency |
 
@@ -33,21 +34,22 @@ tests on Linux plus a small number of Windows checks for the shell and packaging
 CI (`.github/workflows/ci.yml`) runs, in order:
 
 ```
+pnpm install --frozen-lockfile
+pnpm build
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
-pnpm install --frozen-lockfile
 pnpm typecheck
 pnpm lint
 pnpm test
-pnpm build
+cargo build -p wh3mm-app --release
 ```
 
-Linux must not install or link WebKitGTK. `tauri` and `tauri-build` are
-Windows-target-only dependencies (ADR-001), so the core and app crates compile
-without them. The Windows-only shell is compiled by the manual Windows job,
-which runs `pnpm build` first because Tauri embeds `frontend/dist` at compile
-time.
+The Linux job installs WebKitGTK 4.1/GTK3 and builds the desktop shell
+(ADR-007). It runs `pnpm build` first because Tauri embeds `frontend/dist` at
+compile time. `wh3mm-core` stays free of WebView dependencies, so
+`cargo test -p wh3mm-core` remains the fast headless target. The Windows shell
+is still compiled by the manual Windows job.
 
 ### Fixtures
 
@@ -134,7 +136,8 @@ listed in `fixtures/manifest.json` and checked by
 ## Consequences
 
 - The critical domain surface is fully testable on Linux without a desktop
-  stack, which keeps CI fast and cheap.
-- Windows-only shell regressions are caught by the manual job in M0 and by
+  stack, which keeps core work fast and cheap; the full workspace gate also
+  compiles the Linux shell.
+- Windows-specific shell regressions are caught by the manual job in M0 and by
   required packaging CI from M5.
 - Fixtures are deterministic and redistributable, so tests stay portable.

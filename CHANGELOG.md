@@ -39,6 +39,10 @@ See `docs/RELEASE.md`.
   configuration at version 1.0.0, a `v*` tag workflow that builds the
   installer, uploads the artifact, and opens a draft release, and this release
   guide plus changelog.
+- **Linux desktop shell** (ADR-007): the Tauri shell now builds and runs on
+  Linux against native Steam and Proton. The Linux CI job installs WebKitGTK
+  4.1/GTK3, builds the shell, and uploads the `wh3mm-linux-x64` binary artifact.
+  Flatpak/Snap launch and Linux installer packaging remain out of scope.
 
 ### Removed
 

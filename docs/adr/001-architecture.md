@@ -4,7 +4,8 @@
 - Date: 2026-10-20
 - Owner: Katerina Zarina
 - Supersedes: none
-- Amended by: ADR-006 (design tokens live in `frontend/src/styles/tokens.css`)
+- Amended by: ADR-006 (design tokens live in `frontend/src/styles/tokens.css`);
+  ADR-007 (Linux desktop shell)
 - Product contract: `docs/PRODUCT_SCOPE.md`
 
 ## Context
@@ -30,7 +31,7 @@ crates/wh3mm-core/             pure domain logic, no Tauri/WebView deps
 crates/wh3mm-app/              Tauri 2 command layer + `wh3mm` binary
 frontend/                      React + TypeScript + Vite UI (pnpm workspace)
 docs/adr/                      architecture decisions
-.github/workflows/ci.yml       Linux quality gates + manual Windows shell build
+.github/workflows/ci.yml       Linux quality gates + Linux shell build + manual Windows shell build
 ```
 
 `pnpm-workspace.yaml` contains only `frontend`. The root `package.json` is a
@@ -96,6 +97,16 @@ receives opaque `modId`s and talks only through `frontend/src/lib/ipc.ts`.
   `pnpm build` before `cargo build -p wh3mm-app` because `generate_context!`
   embeds `frontend/dist` at compile time.
 - Cross-compiling the Windows shell from Linux is out of scope for M0.
+
+#### Amendment 2026-10-22 (ADR-007)
+
+Linux is now a supported desktop target for native Steam and Proton. The Tauri
+dependency and command cfg is `any(windows, target_os = "linux")`; macOS keeps
+the unsupported fallback. Linux CI installs WebKitGTK 4.1/GTK3, builds the
+frontend before the workspace cargo gates because `generate_context!` embeds
+`frontend/dist`, and produces the `wh3mm-linux-x64` binary artifact.
+`wh3mm-core` remains WebView-free; `cargo test -p wh3mm-core` stays usable
+without a desktop stack.
 
 ### Frontend state and navigation
 
@@ -165,11 +176,11 @@ received main-process events. The replacement is:
 
 ## Consequences
 
-- Domain code stays testable headlessly; the Windows-only shell is a thin,
-  replaceable layer.
+- Domain code stays testable headlessly; the desktop shell is a thin,
+  replaceable layer on Windows and Linux.
 - M1-M3 must add modules/commands according to this map; a new top-level
   directory or a UI-owned filesystem call requires a new ADR.
-- The Linux clippy gate does not type-check Windows-only Tauri code. The manual
-  Windows workflow and M5 packaging CI close that gap.
+- The Linux clippy gate type-checks the Linux Tauri shell. Windows-specific
+  paths remain covered by the manual Windows workflow and M5 packaging CI.
 - The legacy UI is ported incrementally, not lifted wholesale; visual review is
   required at M4.
