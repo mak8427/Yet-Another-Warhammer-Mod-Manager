@@ -1,0 +1,19 @@
+"libraryfolders"
+{
+	"0"
+	{
+		"path"		"/home/steam/.local/share/Steam"
+		"apps"
+		{
+			"1142710"		"73400320000"
+		}
+	}
+	"1"
+	{
+		"path"		"/home/steam/.var/app/com.valvesoftware.Steam/.local/share/Steam"
+		"apps"
+		{
+			"228980"		"0"
+		}
+	}
+}

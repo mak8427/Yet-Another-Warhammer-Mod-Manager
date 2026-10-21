@@ -1,0 +1,5 @@
+mod "mod_a.pack";
+mod "Mod_A.pack";
+mod "MOD_A.PACK";
+mod "mod_b.pack";
+mod "mod_b.pack";

@@ -1,0 +1,4 @@
+add_working_directory "C:\\Games\\Steam\\steamapps\\common\\Warhammer3\\data";
+mod "mod_a.pack";
+add_working_directory "C:\\Games\\Steam\\steamapps\\workshop\\content\\1142710";
+mod "mod_b.pack";
