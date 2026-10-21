@@ -6,20 +6,20 @@
       "bytes": 57
     },
     "config/config_future_version.json": {
-      "sha256": "ea31f75dba426b4a021d064040711aaace9b71172936d5756e89b534490dc65d",
-      "bytes": 901
+      "sha256": "3a86a2161d3ef7c2821294c3c3390bad2485b9e213e19d4f209c475f2d5fe237",
+      "bytes": 924
     },
     "config/config_truncated.json": {
       "sha256": "f40bcbc032db34576f6c2551e8452ac0c1e72566ceef64e4802805136d010492",
       "bytes": 27
     },
     "config/config_unknown_fields.json": {
-      "sha256": "6006446f79253fd841796d160a838747c8b644165b25824a76cee4915e87f4e3",
-      "bytes": 1040
+      "sha256": "0c47918ab4c370d48baf3cee84987a3483f0a5877f85918948d81216e57809ef",
+      "bytes": 1063
     },
     "config/config_valid.json": {
-      "sha256": "edb2e7484edd8fba5ea745401c7e7004f492ac892c26830f90935f5797d22c26",
-      "bytes": 901
+      "sha256": "6424550cb68bbb5b24bdc2c10e66e7e64e6f67a84595fe768ae6ac7207088427",
+      "bytes": 924
     },
     "load_order/used_mods_bom.txt": {
       "sha256": "4d80bea6235b7b3709b99f0556f5091165350d301750b0f03b00fb8c7d4b5578",

@@ -553,6 +553,7 @@ const CONFIG_VALID = {
       '0d1f8e2a-4c7b-4f0e-8a3d-2b6c9e5f7a11',
     ],
   },
+  launchOptions: {},
 }
 
 const CONFIG_FUTURE = { ...CONFIG_VALID, schemaVersion: 2 }
