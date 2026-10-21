@@ -153,7 +153,7 @@ These apply to every screen and every milestone.
   Evidence: `shots/` has 1920×1080 and 1366×768 pairs for S01–S11, plus compact/roomy mod-list shots; manifest in `shots/README.md`.
 - `[x]` G-18 `pnpm typecheck`, `pnpm lint`, `pnpm test`, and `pnpm build` pass
   on the implementation branch.
-  Evidence: At this head: `pnpm typecheck`, `pnpm lint`, `pnpm test` (9 files / 70 tests), `pnpm build`, `cargo fmt --all --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, `cargo test --workspace --locked` all pass.
+  Evidence: At this head: `pnpm typecheck`, `pnpm lint`, `pnpm test` (9 files / 72 tests), `pnpm build`, `cargo fmt --all --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, `cargo test --workspace --locked` all pass.
 
 ## Truncation and tooltips
 
@@ -521,7 +521,7 @@ These apply to every screen and every milestone.
 |---|---|---|
 | `pnpm typecheck` | `pnpm typecheck` | pass |
 | `pnpm lint` | `pnpm lint` | pass |
-| `pnpm test` | `pnpm test` — 9 files / 70 tests | pass |
+| `pnpm test` | `pnpm test` — 9 files / 72 tests | pass |
 | `pnpm build` | `pnpm build` | pass |
 | `tokens.test.ts` | included in `pnpm test` | pass |
 | 20k virtualization measurement | `ModList.test.tsx` bounds 20,000 mods to ≤30 mounted rows; browser capture measured 44–50 mounted rows for 23–29 visible rows | pass |

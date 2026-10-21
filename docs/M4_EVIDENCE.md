@@ -10,11 +10,12 @@ that directory's README).
 |---|---|---|
 | Types | `pnpm typecheck` | pass |
 | Lint | `pnpm lint` | pass |
-| Frontend tests | `pnpm test` | 9 files / 70 tests pass |
+| Frontend tests | `pnpm test` | 9 files / 72 tests pass |
 | Build | `pnpm build` | pass |
 | Rust format | `cargo fmt --all --check` | pass |
 | Rust lint | `cargo clippy --workspace --all-targets --locked -- -D warnings` | pass |
-| Rust tests | `cargo test --workspace --locked` | pass |
+| Rust tests | `cargo test --workspace --locked` | 134 passed |
+| Parity gate | `node --test scripts/parity-report.test.mjs && node scripts/parity-report.mjs --check` | pass |
 | Screenshot capture | `pnpm build && node scripts/qa/screenshots-m4.mjs` | 29 PNGs + measurements |
 
 ## Density and virtualization
