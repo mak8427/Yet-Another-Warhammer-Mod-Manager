@@ -1,0 +1,937 @@
+schema: wh3mm.parity.v1
+snapshot:
+  date: "2026-10-21"
+  product_scope: docs/PRODUCT_SCOPE.md
+  previous_index: 87.25
+  previous_label: "WAR-3 parity document rev 2 (2026-10-21T11:25Z), reported as 87.3%"
+  drop_reason: >-
+    Net change -1.375 vs the WAR-3 snapshot: CF-3 (disabled dependency) +1.500,
+    SET-4 (reset to defaults) -0.625, DSC-1 (author) -1.250, WS-2 (Workshop open)
+    -1.000. The first WAR-68 pass reported 88.125 because DSC-1 and WS-2 were
+    over-claimed; QA corrected both to partial.
+  history:
+    - date: "2026-10-21"
+      index: 88.125
+      reason: >-
+        Superseded first WAR-68 pass. DSC-1 and WS-2 were over-claimed as done;
+        QA review corrected them and the verified index to 85.875.
+    - date: "2026-10-21"
+      index: 85.875
+      reason: >-
+        First QA-verified index. Net -1.375 from the WAR-3 87.250 snapshot:
+        CF-3 +1.500, SET-4 -0.625, DSC-1 -1.250, and WS-2 -1.000. DSC-1 is
+        partial because the pack author is hardcoded None; WS-2 is partial
+        because WorkshopAction::Open and spawn_steam_url are untested.
+  scoring: >-
+    Each capability has four binary checks. A check scores 1.0 when it is done, 0.5 when
+    it is partial, and 0.0 when it is missing. The capability score is the mean of its
+    four checks. The index is sum(weight * capability_score / 4), so a perfect score is
+    100. A done check needs a resolvable evidence pointer; an untested claim is partial.
+    Capability parity is measured against docs/PRODUCT_SCOPE.md, not against every
+    legacy screen. Cut features score zero by definition.
+  evidence_policy: >-
+    Path evidence must exist in this tree and, when a test name is given, that name must
+    occur in the file. PR evidence must carry a GitHub URL, a head SHA, and QA state;
+    done PR evidence must be QA-approved at that head or merged. A PR path is accepted
+    for an open PR because this is a capability score, not a release-readiness score.
+    QA audits PR evidence; the script can only validate its shape.
+
+corrections:
+  - id: discovery-author-missing
+    claim: "DSC-1 (header including author) was done."
+    verified: "The pack author is hardcoded None in crates/wh3mm-core/src/pack.rs:165 and crates/wh3mm-core/src/mod_index.rs:254; the cited test asserts header.author == None. No code path assigns a parsed author."
+    effect: "Discovery 4.0 -> 3.5; contributes -1.250 to the index. DSC-1 is partial until an author source exists."
+  - id: workshop-open-untested
+    claim: "WS-2 (open a Workshop item through Steam) was done."
+    verified: "The cited test asserts only the Subscribe and Update URL strings. WorkshopAction::Open is never called by a test and spawn_steam_url (workshop.rs:294) has no test; the UI test clicks Unsubscribe only."
+    effect: "Workshop 3.5 -> 3.0; contributes -1.000 to the index. WS-2 is partial until Open is tested or manually verified on Windows."
+  - id: set-4-reset-defaults
+    claim: "Reset-to-defaults was Partial."
+    verified: "Missing: no reset command, screen, or test exists."
+    effect: "Settings 3.0 -> 2.5; contributes -0.625 to the index."
+  - id: detection-partial-reason
+    claim: "The remaining detection gap is real Windows install detection plus manual override."
+    verified: "Manual override and no-game recovery are tested. The untested part is the platform root candidate list (Windows registry, Flatpak, Snap, XDG)."
+    effect: "Score unchanged at 3.5; partial reason corrected."
+  - id: profiles-partial-reason
+    claim: "Rename cannot overwrite a non-active profile; the UI path is unverified."
+    verified: "The UI path is tested in frontend/src/App.test.tsx and store.test.ts. The remaining gap is an assertion that applying a profile restores its saved order, not just its count."
+    effect: "Score unchanged at 3.5; partial reason corrected."
+  - id: mod-list-partials
+    claim: "Search, sort, and tag filtering are implemented in logic; the remaining gap is final UI sign-off."
+    verified: "Search and tag filtering are implemented and tested. Sort is not implemented. Virtualization is tested at 500 rows; the 20k guard and persisted-scroll proof are not on this branch."
+    effect: "Score unchanged at 3.0; partial reasons corrected."
+  - id: conflicts-partials
+    claim: "Conflict analysis is Partial, including the disabled-dependency fix in review."
+    verified: "PR #18 was QA-approved at b6696e5 and merged as bb306d4; the WAR-64 fix and its test are on main. The duplicate-name warning path still has no session/frontend assertion, so CF-4 stays Partial."
+    effect: "Conflicts 3.0 -> 3.5; contributes +1.500 to the index."
+  - id: test-counts
+    claim: "92 Rust tests and 45 frontend assertions in 8 files."
+    verified: "The snapshot counted the M3 branch. The current tree, with M3 and the UI tokens merged, has 120 Rust tests and 58 frontend assertions in 10 files; docs/PARITY.md prints the exact counts. Test counts are informational and are not scored."
+    effect: "No index effect; counts are generated from the current tree."
+  - id: oracle-set-rebuilt
+    claim: "The 39-file oracle map covered the relevant legacy tests."
+    verified: "The first map padded six cut load-order-rules files (71 assertions) and omitted modSortingHelpers, modRowSorting, modSources and other in-scope files. The set is rebuilt from docs/PRODUCT_SCOPE.md: 29 files and 204 assertions, with membership pinned in scripts/parity-report.test.mjs."
+    effect: "No index effect; oracle total 39 -> 29 and assertions 272 -> 204. Cut-feature files are excluded instead of counted not-applicable."
+  - id: ported-dispositions
+    claim: "compatScope and compatIndexedAlgorithms were ported."
+    verified: "compatScope tests request-scoped pack selection, which v1 does not have; compatIndexedAlgorithms tests pairwise database-table key collisions, which v1 does not compute. Both are now rewritten with precise reasons. Every remaining ported entry points at a test that asserts the same legacy behaviour."
+    effect: "No index effect; dispositions corrected to 2 ported / 26 rewritten / 1 not-applicable."
+  - id: oracle-count
+    claim: "39 relevant legacy files / 2,437 legacy tests."
+    verified: "The pinned tree has 292 recursive *.test.ts(x) files, 194 of them at test/ top level. 2,437 lines begin with it( or test(; the raw 2,447 it/test matches include 10 RegExp.test() calls, which are not assertions. The selected 29-file subset contains 204 assertion lines."
+    effect: "No index effect; oracle assertions are 204 for the selected subset, not 2,437 or 2,447."
+
+capabilities:
+  - id: detection
+    title: Game & Steam detection
+    weight: 12
+    checks:
+      - id: DET-1
+        title: Default Steam roots cover Windows registry, native Linux, Flatpak, Snap, and XDG
+        status: partial
+        evidence:
+          - path: crates/wh3mm-core/src/paths.rs
+            contains: "pub fn default_steam_root_candidates"
+        need: >-
+          An automated or recorded manual check that the Windows registry, Flatpak, Snap,
+          and XDG candidate lists resolve on a real installation. No test covers the
+          platform-specific candidate list.
+      - id: DET-2
+        title: Parse modern and legacy libraryfolders.vdf, including relative paths
+        status: done
+        evidence:
+          - path: crates/wh3mm-core/src/paths.rs
+            test: parses_modern_library_folders
+          - path: crates/wh3mm-core/src/paths.rs
+            test: parses_legacy_library_folders
+          - path: crates/wh3mm-core/src/paths.rs
+            test: relative_paths_resolve_against_the_vdf_base
+          - path: crates/wh3mm-core/tests/detection.rs
+            test: vdf_fixture_parses_modern_and_legacy_paths
+      - id: DET-3
+        title: Detect WH3 in a secondary library with data, Workshop content, and a Proton prefix
+        status: done
+        evidence:
+          - path: crates/wh3mm-core/tests/detection.rs
+            test: detects_a_game_in_a_secondary_library_with_workshop_and_proton_prefix
+          - path: crates/wh3mm-core/tests/detection.rs
+            test: discovers_two_libraries_and_reports_the_missing_one
+      - id: DET-4
+        title: Manual game folder override and no-game recovery
+        status: done
+        evidence:
+          - path: crates/wh3mm-core/src/paths.rs
+            test: manual_location_requires_a_data_directory
+          - path: crates/wh3mm-core/tests/session_flow.rs
+            test: no_game_session_returns_typed_error_and_recovers_when_a_path_is_set
+          - path: frontend/src/App.test.tsx
+            test: starts with the explicit game-not-found state and a manual path form
+
+  - id: discovery
+    title: Mod discovery
+    weight: 10
+    checks:
+      - id: DSC-1
+        title: Parse the PFH5 header, including name, type, author, timestamp, and dependencies
+        status: partial
+        evidence:
+          - path: crates/wh3mm-core/src/pack.rs
+            test: parses_valid_header_and_unicode_dependencies
+          - path: crates/wh3mm-core/src/pack.rs
+            test: movie_mask_is_reported
+          - path: crates/wh3mm-core/tests/pack_fixtures.rs
+            test: parses_every_valid_fixture_through_the_product_parser
+        need: >-
+          A source for the pack author and a test that asserts a parsed value. The
+          header parser hardcodes author: None (pack.rs:165) and the index does the
+          same (mod_index.rs:254); the cited header test asserts None.
+      - id: DSC-2
+        title: Reject malformed and truncated packs without panicking or hiding valid packs
+        status: done
+        evidence:
+          - path: crates/wh3mm-core/tests/pack_fixtures.rs
+            test: rejects_every_header_level_defect_with_a_typed_error
+          - path: crates/wh3mm-core/tests/pack_fixtures.rs
+            test: no_fixture_panics_the_header_parser
+          - path: crates/wh3mm-core/tests/fault_injection.rs
+            test: fi01_malformed_pack_does_not_abort_scan
+      - id: DSC-3
+        title: Scan local and Workshop packs, deduplicate names, and find thumbnails
+        status: done
+        evidence:
+          - path: crates/wh3mm-core/src/mod_index.rs
+            test: scans_local_and_workshop_mods_with_thumbnails
+          - path: crates/wh3mm-core/src/mod_index.rs
+            test: deduplicates_pack_names_with_data_winning_over_workshop
+          - path: crates/wh3mm-core/src/mod_index.rs
+            test: stable_ids_are_separator_normalized_and_absolute
+      - id: DSC-4
+        title: Fixture-backed 500-mod scan is deterministic and complete
+        status: done
+        evidence:
+          - path: crates/wh3mm-core/tests/qa_fixtures.rs
+            test: scale_index_has_500_unique_mods_across_both_sources
+          - path: crates/wh3mm-core/tests/session_flow.rs
+            test: loads_500_mods_toggles_reorders_saves_profile_and_writes_500_lines
+
+  - id: mod-list
+    title: Mod list
+    weight: 15
+    checks:
+      - id: ML-1
+        title: Enable and disable mods, individually and through a multi-selection
+        status: done
+        evidence:
+          - path: frontend/src/App.test.tsx
+            test: toggles a mod and sends the boolean inverted from the row state
+          - path: frontend/src/store.test.ts
+            test: toggles a mod through the backend and refreshes the profile counts
+          - path: frontend/src/components/mod-list/ModList.test.tsx
+            test: selects with ctrl-click and moves with Alt+Arrow
+      - id: ML-2
+        title: Reorder by drag and move to top, bottom, up, or down; persist the result
+        status: done
+        evidence:
+          - path: frontend/src/store.test.ts
+            test: moves the selected enabled mods and sends the complete order
+          - path: frontend/src/store.test.ts
+            test: drops dragged enabled rows before the target row
+          - path: crates/wh3mm-core/tests/session_flow.rs
+            test: toggles_and_reorder_persist_across_reload
+      - id: ML-3
+        title: Search, sort, and tag/category filtering
+        status: partial
+        evidence:
+          - path: frontend/src/App.test.tsx
+            test: filters the list from the search box
+          - path: frontend/src/store.test.ts
+            test: filters by search, author, and tags
+        need: >-
+          A sort control (name, author, or enabled state) and its test. Search and tag
+          filtering exist; sort was not ported from the legacy modSortingHelpers.
+      - id: ML-4
+        title: Virtualized rows and persisted scroll
+        status: partial
+        evidence:
+          - path: frontend/src/lib/virtual.test.ts
+            test: mounts only the viewport plus overscan
+          - path: frontend/src/components/mod-list/ModList.test.tsx
+            test: mounts only the virtualized window, not all 500 rows
+          - path: frontend/src/store.ts
+            contains: "noteScroll"
+        need: >-
+          A required test that a saved lastScrollTop is restored after reload and a
+          20k-row guard. This tree covers 500 rows; the 20k guard is on the
+          perf/benchmarks-harness branch, not here.
+
+  - id: load-order
+    title: Load order write
+    weight: 15
+    checks:
+      - id: LO-1
+        title: Read used_mods.txt compatibly (BOM, CRLF, duplicates, Unicode, unmanaged lines)
+        status: done
+        evidence:
+          - path: crates/wh3mm-core/src/load_order.rs
+            test: parses_bom_crlf_duplicates_unicode_and_unmanaged_lines
+          - path: crates/wh3mm-core/tests/load_order_fixtures.rs
+            test: parses_every_committed_variant_exactly_as_documented
+      - id: LO-2
+        title: Atomic write with a byte-exact .bak and byte-stable output
+        status: done
+        evidence:
+          - path: crates/wh3mm-core/src/load_order.rs
+            test: write_round_trip_is_byte_stable_and_creates_backup
+          - path: crates/wh3mm-core/tests/load_order_fixtures.rs
+            test: successful_write_creates_a_byte_exact_backup_and_restore_brings_it_back
+      - id: LO-3
+        title: Preview destructive writes and require explicit confirmation
+        status: done
+        evidence:
+          - path: crates/wh3mm-core/src/load_order.rs
+            test: refuses_to_drop_unmanaged_directives_without_confirmation
+          - path: crates/wh3mm-core/src/load_order.rs
+            test: refuses_empty_write_over_existing_mods
+          - path: crates/wh3mm-core/tests/ipc_contract.rs
+            test: write_report_exposes_confirmation_requirements
+          - path: frontend/src/components/load-order/LoadOrderBanner.test.tsx
+            test: warns about unresolved names, duplicates, and unmanaged directives
+      - id: LO-4
+        title: Corrupt or unreadable files are reported and recovered only on request
+        status: done
+        evidence:
+          - path: crates/wh3mm-core/src/load_order.rs
+            test: corrupt_file_is_refused_and_backup_can_be_restored
+          - path: crates/wh3mm-core/src/load_order.rs
+            test: unreadable_file_is_reported_and_blocks_every_write
+          - path: crates/wh3mm-core/tests/fault_injection.rs
+            test: fi06_corrupt_load_order_requires_explicit_restore
+          - path: crates/wh3mm-core/tests/fault_injection.rs
+            test: fi03_read_only_directory_preserves_the_load_order
+          - path: frontend/src/components/load-order/LoadOrderBanner.test.tsx
+            test: enables explicit backup restore only when a backup exists
+
+  - id: profiles
+    title: Profiles
+    weight: 10
+    checks:
+      - id: PRF-1
+        title: Create, save, rename, duplicate, and delete profiles
+        status: done
+        evidence:
+          - path: crates/wh3mm-core/src/config.rs
+            test: first_run_creates_a_default_profile
+          - path: crates/wh3mm-core/src/config.rs
+            test: duplicate_profile_copies_the_enabled_order
+          - path: crates/wh3mm-core/src/config.rs
+            test: deleting_the_active_profile_activates_a_sibling
+          - path: crates/wh3mm-core/tests/session_flow.rs
+            test: profiles_create_switch_duplicate_and_delete
+          - path: frontend/src/App.test.tsx
+            test: renames a non-active profile without replacing its enabled set
+          - path: frontend/src/store.test.ts
+            test: renames a non-active profile with its saved set, not the visible one
+      - id: PRF-2
+        title: Restore both the enabled set and its saved order
+        status: partial
+        evidence:
+          - path: crates/wh3mm-core/src/config.rs
+            test: duplicate_profile_copies_the_enabled_order
+          - path: crates/wh3mm-core/src/session.rs
+            contains: "pub fn apply_profile"
+        need: >-
+          An assertion that apply_profile restores the saved order, not only the
+          enabled count. The stored order is tested; the apply path is not.
+      - id: PRF-3
+        title: Default profile on first run and first-run import of used_mods.txt
+        status: done
+        evidence:
+          - path: crates/wh3mm-core/src/config.rs
+            test: first_run_creates_a_default_profile
+          - path: crates/wh3mm-core/tests/session_flow.rs
+            test: manual_first_run_imports_used_mods_in_file_order
+      - id: PRF-4
+        title: Unique profile names, safe rename of a non-active profile, and last-profile protection
+        status: done
+        evidence:
+          - path: crates/wh3mm-core/src/config.rs
+            test: profile_names_are_unique_case_insensitively
+          - path: crates/wh3mm-core/src/config.rs
+            test: deleting_the_last_profile_is_refused
+          - path: frontend/src/App.test.tsx
+            test: renames a non-active profile without replacing its enabled set
+          - path: frontend/src/store.test.ts
+            test: renames a non-active profile with its saved set, not the visible one
+
+  - id: conflicts
+    title: Conflicts
+    weight: 12
+    checks:
+      - id: CF-1
+        title: Compare enabled pack file indexes and name the bottom-of-order winner
+        status: done
+        evidence:
+          - path: crates/wh3mm-core/src/conflicts.rs
+            test: three_overlapping_mods_use_the_bottom_of_the_order_as_winner
+          - path: frontend/src/components/conflicts/ConflictScreen.test.tsx
+            test: renders the winner, loser, dependency, and per-mod summary
+      - id: CF-2
+        title: Warn on missing dependencies
+        status: done
+        evidence:
+          - path: crates/wh3mm-core/src/conflicts.rs
+            test: detects_missing_and_disabled_dependencies
+      - id: CF-3
+        title: Report a disabled local dependency correctly instead of treating it as base-game
+        status: done
+        evidence:
+          - path: crates/wh3mm-core/src/conflicts.rs
+            test: disabled_local_dependency_is_not_treated_as_a_base_game_pack
+      - id: CF-4
+        title: Detect duplicate pack names and surface the warning
+        status: partial
+        evidence:
+          - path: crates/wh3mm-core/src/mod_index.rs
+            test: deduplicates_pack_names_with_data_winning_over_workshop
+          - path: frontend/src/components/conflicts/ConflictScreen.tsx
+            contains: "duplicatePackNames"
+        need: >-
+          A session or frontend assertion that a duplicate pack name produces the
+          warning row. Detection is tested; the warning path is not.
+
+  - id: workshop
+    title: Workshop
+    weight: 8
+    checks:
+      - id: WS-1
+        title: List subscriptions and map installed, update-pending, and subscribed states
+        status: done
+        evidence:
+          - path: crates/wh3mm-core/src/workshop.rs
+            test: parses_installed_update_pending_and_subscribed_states
+      - id: WS-2
+        title: Open a Workshop item page through the Steam client
+        status: partial
+        evidence:
+          - path: crates/wh3mm-core/src/workshop.rs
+            test: workshop_actions_use_the_steam_client_url
+          - path: crates/wh3mm-core/src/workshop.rs
+            contains: "WorkshopAction::Open"
+          - path: crates/wh3mm-core/src/workshop.rs
+            contains: "fn spawn_steam_url"
+        need: >-
+          A test that WorkshopAction::Open spawns Steam with the item URL, or a
+          recorded manual Windows open. The cited test covers Subscribe and Update
+          URL strings only; Open and spawn_steam_url have no test.
+      - id: WS-3
+        title: Subscribe, unsubscribe, and update through the Steam client without custom auth
+        status: partial
+        evidence:
+          - path: crates/wh3mm-core/src/workshop.rs
+            test: workshop_actions_use_the_steam_client_url
+        need: >-
+          A recorded manual Windows run of subscribe, unsubscribe, and update through
+          Steam. CI proves URL construction, not the Steam client action.
+      - id: WS-4
+        title: Workshop screen lists subscriptions and renders the Steam-unavailable error
+        status: done
+        evidence:
+          - path: frontend/src/components/workshop/WorkshopScreen.test.tsx
+            test: renders subscriptions and dispatches a Steam action
+          - path: frontend/src/components/workshop/WorkshopScreen.test.tsx
+            test: shows the Steam-unavailable error state
+
+  - id: launch
+    title: Launch
+    weight: 8
+    checks:
+      - id: LA-1
+        title: Launch WH3 through Steam with the correct app id
+        status: partial
+        evidence:
+          - path: crates/wh3mm-core/src/launch.rs
+            test: launch_command_uses_the_steam_app_id_and_carries_options
+        need: >-
+          A recorded manual Windows launch of TW:WH3 through Steam. CI proves the
+          command, not the real launch.
+      - id: LA-2
+        title: Skip-intro and script-logging options write and remove their tweaks safely
+        status: done
+        evidence:
+          - path: crates/wh3mm-core/src/launch.rs
+            test: skip_intro_pack_contains_all_intro_movies
+          - path: crates/wh3mm-core/src/launch.rs
+            test: tweaks_are_written_and_removed_with_the_option
+          - path: crates/wh3mm-core/src/launch.rs
+            test: user_owned_script_logging_marker_is_not_deleted
+      - id: LA-3
+        title: Detect a running game process and refuse to launch while it is running
+        status: done
+        evidence:
+          - path: crates/wh3mm-core/src/launch.rs
+            test: process_matching_is_case_insensitive
+          - path: crates/wh3mm-core/src/launch.rs
+            contains: "if is_game_running()?"
+      - id: LA-4
+        title: Persist launch options per profile and expose them on the launch screen
+        status: done
+        evidence:
+          - path: crates/wh3mm-core/src/launch.rs
+            test: launch_options_round_trip_per_profile
+          - path: frontend/src/components/launch/LaunchScreen.test.tsx
+            test: changes a launch option and requests a launch
+
+  - id: settings
+    title: Settings
+    weight: 5
+    checks:
+      - id: SET-1
+        title: Paths are configurable and a manual game path recovers a no-game session
+        status: done
+        evidence:
+          - path: crates/wh3mm-core/tests/session_flow.rs
+            test: no_game_session_returns_typed_error_and_recovers_when_a_path_is_set
+          - path: crates/wh3mm-core/src/session.rs
+            contains: "game_path_override"
+          - path: crates/wh3mm-core/src/config.rs
+            contains: "pub game_path_override"
+      - id: SET-2
+        title: Density, author, and thumbnail preferences are applied and persisted
+        status: partial
+        evidence:
+          - path: crates/wh3mm-core/src/config.rs
+            test: round_trips_profiles_tags_and_ui_preferences
+          - path: crates/wh3mm-core/tests/session_flow.rs
+            test: ui_preferences_round_trip
+          - path: frontend/src/components/mod-list/ModToolbar.tsx
+            contains: "onShowAuthors"
+        need: >-
+          An end-to-end test of the density, author, and thumbnail toggles in the UI
+          and their application on the next boot. The persistence layer is tested; the
+          toggle path is not.
+      - id: SET-3
+        title: Back up on write and restore the load order from the UI, gated on a present backup
+        status: done
+        evidence:
+          - path: crates/wh3mm-core/tests/load_order_fixtures.rs
+            test: successful_write_creates_a_byte_exact_backup_and_restore_brings_it_back
+          - path: frontend/src/components/load-order/LoadOrderBanner.test.tsx
+            test: enables explicit backup restore only when a backup exists
+          - path: frontend/src/App.tsx
+            contains: "store.restoreLoadOrder"
+      - id: SET-4
+        title: Reset settings and load order to documented defaults
+        status: missing
+        note: "No reset-to-defaults command, screen, or test exists."
+
+  - id: safety
+    title: Safety
+    weight: 5
+    checks:
+      - id: SAF-1
+        title: Config and load-order writes are atomic and keep a backup
+        status: done
+        evidence:
+          - path: crates/wh3mm-core/src/atomic.rs
+            contains: "pub fn atomic_write_with_backup"
+          - path: crates/wh3mm-core/tests/load_order_fixtures.rs
+            test: successful_write_creates_a_byte_exact_backup_and_restore_brings_it_back
+          - path: crates/wh3mm-core/tests/config_fixtures.rs
+            test: corrupt_primary_recovers_from_a_valid_backup_and_says_so
+      - id: SAF-2
+        title: Corrupt config and load-order files are recovered explicitly, never overwritten silently
+        status: done
+        evidence:
+          - path: crates/wh3mm-core/tests/config_fixtures.rs
+            test: double_corrupt_config_leaves_both_files_untouched
+          - path: crates/wh3mm-core/tests/config_fixtures.rs
+            test: future_schema_is_refused_and_never_overwritten
+          - path: crates/wh3mm-core/tests/fault_injection.rs
+            test: fi05_double_corrupt_config_is_never_overwritten
+          - path: crates/wh3mm-core/tests/fault_injection.rs
+            test: fi10_interrupted_write_is_not_restored_silently
+      - id: SAF-3
+        title: The IPC error model is typed and stable on the wire
+        status: done
+        evidence:
+          - path: crates/wh3mm-core/tests/ipc_contract.rs
+            test: app_error_wire_shape_is_stable
+          - path: crates/wh3mm-core/tests/ipc_contract.rs
+            test: app_error_always_serializes_details_key
+          - path: crates/wh3mm-core/tests/ipc_contract.rs
+            test: error_codes_use_snake_case_on_the_wire
+      - id: SAF-4
+        title: Destructive writes require explicit intent and cannot silently drop data
+        status: done
+        evidence:
+          - path: crates/wh3mm-core/tests/fault_injection.rs
+            test: fi07_unmanaged_loss_requires_confirmation
+          - path: crates/wh3mm-core/tests/fault_injection.rs
+            test: fi08_empty_write_requires_intent
+          - path: crates/wh3mm-core/tests/fault_injection.rs
+            test: fi03_read_only_directory_preserves_the_load_order
+
+cut_scan:
+  roots:
+    - frontend/src
+    - crates/wh3mm-app/src
+    - crates/wh3mm-core/src/ipc.rs
+  exclude_suffixes:
+    - .test.ts
+    - .test.tsx
+    - .spec.ts
+    - .spec.tsx
+  features:
+    - id: unit-viewer
+      label: Unit viewer
+      patterns: ['unit[ _-]?viewer']
+    - id: unit-painter
+      label: Unit painter
+      patterns: ['unit[ _-]?painter']
+    - id: node-graph
+      label: Node graph editor
+      patterns: ['node[ _-]?graph']
+    - id: tech-tree
+      label: Tech tree
+      patterns: ['tech[ _-]?tree']
+    - id: skill-tree
+      label: Skill tree
+      patterns: ['skill[ _-]?tree']
+    - id: db-clone
+      label: DB clone
+      patterns: ['db[ _-]?clone']
+    - id: esf-map
+      label: ESF map renderer
+      patterns: ['esf[ _-]?map']
+    - id: campaign-map
+      label: Campaign map renderer
+      patterns: ['campaign[ _-]?map']
+    - id: pack-editor
+      label: Pack file editor
+      patterns: ['pack[ _-]?(file[ _-]?)?editor', 'rpfm', 'native[ _-]?patch']
+    - id: compression-analysis
+      label: Compression analysis
+      patterns: ['compression[ _-]?analysis']
+    - id: model-viewer
+      label: 3D or texture viewer
+      patterns: ['model[ _-]?viewer', 'texture[ _-]?preview', 'ktx2']
+    - id: three-js
+      label: Three.js asset host
+      patterns: ['three\.js', 'threejs', "from ['\"]three['\"]"]
+    - id: code-editor
+      label: Code or localisation editor
+      patterns: ['code[ _-]?mirror', 'locali[sz]ation[ _-]?editor']
+    - id: legacy-shell
+      label: Electron or legacy frontend stack
+      patterns: ['electron', 'webpack', 'flowbite', 'joyride', 'redux', 'react-router']
+    - id: non-wh3-games
+      label: Non-WH3 game support
+      patterns:
+        - 'warhammer[ _-]?2'
+        - '\bwh2\b'
+        - 'three[ _-]?kingdoms'
+        - '\btroy\b'
+        - '\bpharaoh\b'
+        - '\battila\b'
+        - 'rome[ _-]?ii'
+        - 'shogun[ _-]?2'
+        - '\bnapoleon\b'
+        - 'thrones[ _-]?of[ _-]?britannia'
+    - id: telemetry-accounts
+      label: Telemetry, accounts, or auto-update
+      patterns: ['telemetry', 'auto[ _-]?update', 'account[ _-]?system', 'steam[ _-]?login']
+
+oracle:
+  source_repo: https://github.com/Shazbot/WH3-Mod-Manager
+  pinned_ref: 07fcf3ea1428fe3aa88282ba7aed44d9947ef103
+  test_root: reference/WH3-Mod-Manager/test
+  total: 29
+  legacy_assertions: 204
+  inclusion: >-
+    A legacy file is in the oracle when its primary subject is one of the ten v1.0
+    capabilities in docs/PRODUCT_SCOPE.md. Files devoted to cut features are
+    excluded rather than counted not-applicable. rewritten means the behaviour was
+    reimplemented for the Rust/Tauri architecture; not-applicable means the legacy
+    mechanism has no v1 counterpart and the gap is named here.
+  assertion_method: >-
+    assertions counts lines that begin with it( or test( in the pinned checkout.
+    Raw it(/test( matches also catch RegExp.test() calls, so they are not used for
+    the total.
+  files:
+    - path: test/steamPaths.node.test.ts
+      capability: detection
+      assertions: 3
+      disposition: rewritten
+      reason: >-
+        VDF parsing, secondary-library discovery, and relative paths are covered by
+        the new detection tests. The legacy Flatpak/Snap root candidate list is not
+        tested; DET-1 stays partial for that reason.
+      evidence:
+        - path: crates/wh3mm-core/tests/detection.rs
+          test: vdf_fixture_parses_modern_and_legacy_paths
+        - path: crates/wh3mm-core/tests/detection.rs
+          test: discovers_two_libraries_and_reports_the_missing_one
+    - path: test/packFileHeader.node.test.ts
+      capability: discovery
+      assertions: 9
+      disposition: rewritten
+      reason: >-
+        The PFH5 header and dependency table are parsed by the Rust parser. The
+        legacy startpos and load-order-rules scan belongs to cut pack tooling, not
+        v1 discovery.
+      evidence:
+        - path: crates/wh3mm-core/tests/pack_fixtures.rs
+          test: parses_every_valid_fixture_through_the_product_parser
+        - path: crates/wh3mm-core/src/pack.rs
+          test: parses_valid_header_and_unicode_dependencies
+    - path: test/packHeaderStartup.node.test.ts
+      capability: discovery
+      assertions: 3
+      disposition: rewritten
+      reason: >-
+        Startup reads pack headers directly in Rust; the legacy shared cache and
+        concurrency helper were removed. The scan path is covered by the mod-index
+        test.
+      evidence:
+        - path: crates/wh3mm-core/src/mod_index.rs
+          test: scans_local_and_workshop_mods_with_thumbnails
+    - path: test/modSources.node.test.ts
+      capability: discovery
+      assertions: 10
+      disposition: rewritten
+      reason: >-
+        v1 has Data and Workshop sources only. Custom folders, Modding-folder
+        synchronization, and configurable source priority are cut; Data-wins
+        duplicate handling is ported.
+      evidence:
+        - path: crates/wh3mm-core/src/mod_index.rs
+          test: deduplicates_pack_names_with_data_winning_over_workshop
+    - path: test/appSlice.modSources.node.test.ts
+      capability: discovery
+      assertions: 5
+      disposition: rewritten
+      reason: >-
+        The renderer reconciliation reducer was replaced by the Rust mod index.
+        Duplicate winners and stable ids are covered by the index tests.
+      evidence:
+        - path: crates/wh3mm-core/src/mod_index.rs
+          test: deduplicates_pack_names_with_data_winning_over_workshop
+        - path: crates/wh3mm-core/src/mod_index.rs
+          test: stable_ids_are_separator_normalized_and_absolute
+    - path: test/appSlice.loadOrder.node.test.ts
+      capability: mod-list
+      assertions: 9
+      disposition: rewritten
+      reason: >-
+        Enable/disable, complete-order reorder, and reload persistence are ported.
+        Shared-mod import and the Workshop-ID fallback are not in v1.
+      evidence:
+        - path: crates/wh3mm-core/tests/session_flow.rs
+          test: toggles_and_reorder_persist_across_reload
+        - path: frontend/src/store.test.ts
+          test: moves the selected enabled mods and sends the complete order
+    - path: test/modSortingHelpers.node.test.ts
+      capability: mod-list
+      assertions: 24
+      disposition: rewritten
+      reason: >-
+        Substring search and tag filtering are ported. Regex search, natural
+        alphanumeric sort, title/author sort, and load-order-rule sort are not
+        ported; sort is the ML-3 gap, so this file is the oracle for that gap.
+      evidence:
+        - path: frontend/src/store.test.ts
+          test: filters by search, author, and tags
+        - path: frontend/src/App.test.tsx
+          test: filters the list from the search box
+    - path: test/modRowSorting.node.test.ts
+      capability: mod-list
+      assertions: 11
+      disposition: not-applicable
+      reason: >-
+        The legacy compact-column sort-step cycle has no v1 counterpart. v1 has no
+        sort control yet; the missing sort is recorded as ML-3's gap, not hidden by
+        this disposition.
+    - path: test/modRows.loadOrderScroll.dom.test.tsx
+      capability: mod-list
+      assertions: 2
+      disposition: rewritten
+      reason: >-
+        The virtualized window replaces legacy DOM row anchoring. Persisted-scroll
+        restore is still unproven and stays in ML-4.
+      evidence:
+        - path: frontend/src/lib/virtual.test.ts
+          test: moves the window as the user scrolls
+        - path: frontend/src/components/mod-list/ModList.test.tsx
+          test: mounts the scrolled-to rows and keeps the virtualization contract
+    - path: test/modListCategoryGrouping.node.test.ts
+      capability: mod-list
+      assertions: 9
+      disposition: rewritten
+      reason: >-
+        Legacy category headings were replaced by v1 tag filters. Grouping and
+        collapse are not in v1; tag filtering is covered by the store and App tests.
+      evidence:
+        - path: frontend/src/store.test.ts
+          test: filters by search, author, and tags
+        - path: frontend/src/App.test.tsx
+          test: renders the mod list, counts, tags, and the active profile after boot
+    - path: test/categories.node.test.ts
+      capability: mod-list
+      assertions: 4
+      disposition: rewritten
+      reason: >-
+        Tags replace legacy categories. Always-enabled category semantics and cached
+        unavailable-mod categories are not in v1; tag persistence and filtering are
+        covered by the config and store tests.
+      evidence:
+        - path: crates/wh3mm-core/src/config.rs
+          test: round_trips_profiles_tags_and_ui_preferences
+        - path: frontend/src/store.test.ts
+          test: filters by search, author, and tags
+    - path: test/categories.dom.test.tsx
+      capability: mod-list
+      assertions: 12
+      disposition: rewritten
+      reason: >-
+        The category screen was replaced by tag chips. Grouping, collapse, and
+        category checkboxes are not in v1; tag rendering and filtering are covered
+        by the App tests.
+      evidence:
+        - path: frontend/src/App.test.tsx
+          test: renders the mod list, counts, tags, and the active profile after boot
+        - path: frontend/src/App.test.tsx
+          test: filters the list from the search box
+    - path: test/modListGridTemplates.node.test.ts
+      capability: settings
+      assertions: 3
+      disposition: rewritten
+      reason: >-
+        Legacy compact and wide grid constants were replaced by density tokens. Row
+        heights and the default density are asserted by the token test.
+      evidence:
+        - path: frontend/src/styles/tokens.test.ts
+          test: keeps row heights ordered and comfortable as the default density
+    - path: test/usedMods.node.test.ts
+      capability: load-order
+      assertions: 6
+      disposition: ported
+      ported_to:
+        - path: crates/wh3mm-core/tests/load_order_fixtures.rs
+          test: parses_every_committed_variant_exactly_as_documented
+      note: "File order, BOM/CRLF, duplicates, Unicode, and unmanaged directives."
+    - path: test/appSlice.usedMods.node.test.ts
+      capability: load-order
+      assertions: 3
+      disposition: rewritten
+      reason: >-
+        First-run import is ported. The legacy user choice between automatic and
+        custom order was removed; v1 imports in file order.
+      evidence:
+        - path: crates/wh3mm-core/tests/session_flow.rs
+          test: manual_first_run_imports_used_mods_in_file_order
+    - path: test/appSlice.presets.node.test.ts
+      capability: profiles
+      assertions: 5
+      disposition: ported
+      ported_to:
+        - path: crates/wh3mm-core/src/config.rs
+          test: round_trips_profiles_tags_and_ui_preferences
+        - path: crates/wh3mm-core/tests/session_flow.rs
+          test: profiles_create_switch_duplicate_and_delete
+      note: "Enabled set and order are stored per profile and round-trip."
+    - path: test/presetsTab.dom.test.tsx
+      capability: profiles
+      assertions: 3
+      disposition: rewritten
+      reason: >-
+        The preset tab was rebuilt as the profile screen; the legacy
+        add-and-highlight workflow is not in v1. Rename of a non-active profile is
+        covered by the App test.
+      evidence:
+        - path: frontend/src/App.test.tsx
+          test: renames a non-active profile without replacing its enabled set
+    - path: test/config/presetEntries.node.test.ts
+      capability: profiles
+      assertions: 6
+      disposition: rewritten
+      reason: >-
+        Profiles store ordered mod ids; the legacy preset-entry resolution and
+        missing-mod skipping were replaced by the Rust profile load. Duplicate
+        copies the enabled order.
+      evidence:
+        - path: crates/wh3mm-core/src/config.rs
+          test: duplicate_profile_copies_the_enabled_order
+    - path: test/compatViewModels.node.test.ts
+      capability: conflicts
+      assertions: 6
+      disposition: rewritten
+      reason: >-
+        Legacy directional record and table-key view models were replaced by
+        file-index conflicts. Winner selection and the summary are covered by the
+        Rust and UI tests.
+      evidence:
+        - path: crates/wh3mm-core/src/conflicts.rs
+          test: three_overlapping_mods_use_the_bottom_of_the_order_as_winner
+        - path: frontend/src/components/conflicts/ConflictScreen.test.tsx
+          test: renders the winner, loser, dependency, and per-mod summary
+    - path: test/compatIndexedAlgorithms.node.test.ts
+      capability: conflicts
+      assertions: 3
+      disposition: rewritten
+      reason: >-
+        The pairwise file-collision pass is ported as one index read per pack.
+        Database-table key collisions and the legacy progress reporter are not
+        computed in v1.
+      evidence:
+        - path: crates/wh3mm-core/src/conflicts.rs
+          test: reads_the_pack_file_index_without_file_bodies
+        - path: crates/wh3mm-core/src/conflicts.rs
+          test: malformed_index_is_a_typed_pack_error
+    - path: test/compatPackReuse.node.test.ts
+      capability: conflicts
+      assertions: 3
+      disposition: rewritten
+      reason: >-
+        The legacy parsed-row reuse cache was removed. v1 reads each pack index on
+        demand; malformed indexes are typed errors.
+      evidence:
+        - path: crates/wh3mm-core/src/conflicts.rs
+          test: reads_the_pack_file_index_without_file_bodies
+    - path: test/compatScope.node.test.ts
+      capability: conflicts
+      assertions: 7
+      disposition: rewritten
+      reason: >-
+        v1 analyses the enabled order directly; request-scoped selectPacksToCheck
+        and disabled-pack exclusion have no v1 counterpart and no test locally.
+    - path: test/missingModDependencies.node.test.ts
+      capability: conflicts
+      assertions: 4
+      disposition: rewritten
+      reason: >-
+        Missing and disabled dependency detection is ported. The legacy ignore-list
+        workflow was cut.
+      evidence:
+        - path: crates/wh3mm-core/src/conflicts.rs
+          test: detects_missing_and_disabled_dependencies
+    - path: test/workshopSubscriptions.node.test.ts
+      capability: workshop
+      assertions: 3
+      disposition: rewritten
+      reason: >-
+        v1 reads installed, update-pending, and subscribed state from the Steam
+        manifests. The legacy per-item VDF subscription timestamps are not carried.
+      evidence:
+        - path: crates/wh3mm-core/src/workshop.rs
+          test: parses_installed_update_pending_and_subscribed_states
+    - path: test/gameLaunch.node.test.ts
+      capability: launch
+      assertions: 16
+      disposition: rewritten
+      reason: >-
+        v1 launches through the Steam client URL. The legacy direct/Flatpak/Snap
+        executable fallback chain and protontricks path were cut.
+      evidence:
+        - path: crates/wh3mm-core/src/launch.rs
+          test: launch_command_uses_the_steam_app_id_and_carries_options
+    - path: test/config/applyConfigSavePayload.node.test.ts
+      capability: settings
+      assertions: 5
+      disposition: rewritten
+      reason: >-
+        The renderer/main config merge was removed; Rust owns one atomic save. The
+        in-scope preferences round-trip through the new config.
+      evidence:
+        - path: crates/wh3mm-core/src/config.rs
+          test: round_trips_profiles_tags_and_ui_preferences
+    - path: test/config/buildAppConfig.node.test.ts
+      capability: settings
+      assertions: 5
+      disposition: rewritten
+      reason: >-
+        Multi-game slots were removed; v1 has one versioned schema and one save
+        path. A valid schema-v1 fixture loads without writes.
+      evidence:
+        - path: crates/wh3mm-core/tests/config_fixtures.rs
+          test: valid_schema_v1_fixture_loads_without_writes
+    - path: test/config/configSavePayload.node.test.ts
+      capability: settings
+      assertions: 9
+      disposition: rewritten
+      reason: >-
+        Viewer, skills, and unit-viewer fields are cut; the in-scope preferences are
+        covered by the new config round-trip.
+      evidence:
+        - path: crates/wh3mm-core/src/config.rs
+          test: round_trips_profiles_tags_and_ui_preferences
+    - path: test/config/migrateAppConfig.node.test.ts
+      capability: settings
+      assertions: 16
+      disposition: rewritten
+      reason: >-
+        The multi-game migration was replaced by a versioned v1 schema with
+        future-schema refusal and backup recovery.
+      evidence:
+        - path: crates/wh3mm-core/tests/config_fixtures.rs
+          test: future_schema_is_refused_and_never_overwritten

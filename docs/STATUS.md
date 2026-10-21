@@ -4,6 +4,7 @@
 - Updated: 2026-10-21
 - Product contract: `docs/PRODUCT_SCOPE.md`
 - Architecture: `docs/adr/001-architecture.md`
+- Capability parity scorecard: `docs/PARITY.md` (snapshot date and evidence in the file)
 
 This is the single progress report for the rebuild. A milestone is done only
 when its acceptance checks are recorded here with command evidence.
