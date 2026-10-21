@@ -232,20 +232,21 @@ JSON, and the raw logs.
 
 ---
 
-# WAR-7 — benchmarks, budgets, and guards (work in progress)
+# WAR-7 — benchmarks, budgets, and guards
 
-Status: harness and workloads in place; new-manager numbers are **pending** until WAR-5 exposes the
-parser/index APIs. No number in this section is a claim about the new app unless the row says
-**measured**.
+Status: core benchmarks, workloads, frontend guard, and non-blocking CI are in place and measured on
+the Linux dev host. The same-host Windows comparison is partially done: core paths are measured,
+cold-start-to-interactive and launch handoff still need a Windows shell/UI harness.
 
 ## Status at a glance
 
 | Deliverable | State | Where |
 | --- | --- | --- |
-| 1. Criterion benches: pack header, mod index, 500-pack conflicts, `used_mods.txt`, profile restore | **Gated** on WAR-5 APIs | `crates/wh3mm-core/benches/` (not created yet) |
+| 1. Criterion benches: pack header, mod index, `used_mods.txt`, profile restore | **Done, measured** | `crates/wh3mm-core/benches/hot_paths.rs` |
+| 1b. Conflict/index comparison for 500 enabled packs | **Gated on M3** (no conflict API on `main`) | add when the M3 API lands |
 | 2. Deterministic workloads for 100/500/2000 packs | **Done** | `scripts/perf/generate-suite.mjs` |
-| 3. Frontend render/scroll/reorder guard on 5k/20k rows | **Skeleton, measured** | `frontend/src/perf/`, `pnpm test:perf` |
-| 4. This file: baselines, budgets, limits | Scaffold; legacy numbers below are measured | `docs/PERF.md` |
+| 3. Frontend render/scroll/reorder guard on 5k/20k rows | **Done on the real `ModList`** | `frontend/src/perf/`, `pnpm test:perf` |
+| 4. This file: baselines, budgets, limits | **First baseline published** | `docs/PERF.md` |
 | 5. Non-blocking CI bench job | **Done** | `.github/workflows/perf-bench.yml` |
 
 ## Measurement host (CEO decision, plan rev 4)
@@ -256,22 +257,23 @@ parser/index APIs. No number in this section is a claim about the new app unless
   distribution, not by new hardware.
 - A physical Windows host is optional and only re-validates the launch-handoff metric; it must not
   block M2 or M5.
-- This supersedes the open host question at the end of the legacy section; that section is updated
-  by the WAR-19 PR, not here.
 
 ## How to read this file
 
 - **Measured** — produced by the command shown, on the machine shown.
 - **Upper bound** — produced in jsdom, so it is slower or less representative than a real paint;
   useful for catching regressions, not for quoting as interaction latency.
-- **Provisional** — a budget chosen from the legacy reference before the new app exists. It is a
-  target, not a pass/fail gate until a new-manager number exists.
+- **Provisional** — a budget chosen from the legacy reference. It stays a target until the same-host
+  new-app number exists.
 - **Pending** — no honest number yet. Do not substitute a guess.
+- **Not comparable** — the number is real, but it measures a smaller path than the legacy number
+  (for example core-only versus core + Electron + React). It still counts for a gate only when the
+  comparison row says so.
 
 ## Benchmark workloads (deliverable 2)
 
-The workloads reuse the fixture generator that QA (WAR-19 / PR #4) validated against the legacy
-parser, so the app, the legacy baseline, and QA measure the same bytes.
+The workloads reuse the fixture generator that QA and the legacy baseline validated against the
+legacy parser, so the app, the legacy baseline, and QA measure the same bytes.
 
 ```bash
 node scripts/perf/generate-suite.mjs                       # 100, 500, 2000 packs
@@ -288,13 +290,62 @@ Measured on the Linux dev host (2026-10-21), three runs:
 | Size | Packs | Content sha256 (first 12) | Generation | Same digest across runs |
 | --- | --- | --- | --- | --- |
 | 100 | 100 | `f74804664808` | — | yes |
-| 500 | 500 | `1de7de625da9` | — | yes (identical to WAR-19) |
+| 500 | 500 | `1de7de625da9` | — | yes (identical to the legacy baseline) |
 | 2000 | 2000 | `d147b4774c5f` | — | yes |
-| all three | 2600 | suite `d8896967d091` | 403–423 ms | yes |
+| all three | 2600 | suite `d8896967d091` | 403–431 ms | yes |
 
-The 500-pack digest is the same `1de7de62…` recorded in the legacy baseline, so the A/B and QA
-fixtures are provably the same tree. Malformed variants stay proportional per size; the 16
-cross-source duplicate files are fixed per suite by design.
+The 500-pack digest is the `1de7de62…` recorded in the legacy baseline, so the A/B and QA fixtures
+are provably the same tree. Malformed variants stay proportional per size; the 16 cross-source
+duplicate files are fixed per suite by design.
+
+## Rust Criterion benchmarks (deliverable 1)
+
+One command generates the fixtures and runs every bench in the optimized profile:
+
+```bash
+scripts/perf/bench.sh
+# equivalent:
+node scripts/perf/generate-suite.mjs
+cargo bench -p wh3mm-core --bench hot_paths --locked
+```
+
+`WH3MM_PERF_FIXTURE=/path/to/perf-fixture` points the benches at an existing tree. A missing tree is
+a hard error; a bench against an empty directory would be a lie.
+
+Measured 2026-10-21 on the Linux dev host: CachyOS 7.2.9-2, i9-13900K (32 threads), 125 GiB,
+`rustc 1.99.1`, Criterion 0.7, optimized bench profile. Two full runs, medians of 100 samples:
+
+| Bench | Run 1 | Run 2 | Run-to-run |
+| --- | --- | --- | --- |
+| `pack_header/parse_pure` (28-byte header + deps) | 22.4 ns | 22.4 ns | ~0% |
+| `pack_header/read_file` (open + stat + header) | 1.15 µs | 1.17 µs | +2% |
+| `pack_header/batch_500` (500 files, mixed valid/malformed) | 586 µs | 595 µs | +2% |
+| `mod_index/scan/100` | 573 µs | 559 µs | −2% |
+| `mod_index/scan/500` | 2.97 ms | 2.99 ms | +1% |
+| `mod_index/scan/2000` | 13.38 ms | 14.61 ms | +9% |
+| `used_mods/parse_500` | 51.8 µs | 50.9 µs | −2% |
+| `used_mods/plan_500` | 105 µs | 99.6 µs | −5% |
+| `used_mods/write_500` (atomic + `.bak` + fsync) | 122 µs | 118.5 µs | −3% |
+| `used_mods/restore_500` | 114 µs | 118 µs | +3% |
+| `session/startup_500` (config + scan + load-order read) | 2.93 ms | 2.99 ms | +2% |
+| `session/profile_switch_500` (core, includes config write) | 297 µs | 302 µs | +2% |
+| `session/profile_restore_config_500` | 106 µs | 111 µs | +5% |
+
+Criterion's 95% confidence intervals were within ±5% of the medians for every row. The 2000-pack
+scan is the only row above ±5% run-to-run (+9%); it is the noisiest and the one that will get a
+dedicated repeated run before any claim. Outliers (7–12% of samples) were high-side and are included
+in the medians, not trimmed.
+
+**Workload caveats that decide comparability:**
+
+- The new parser reads the 28-byte header and the dependency table. It does **not** read the
+  packed-file index. The legacy "header scan" builds its full index cache for every pack, so
+  `batch_500` is not the same work as the legacy 990 ms scan even though both are called a header
+  scan.
+- The fixture packs are 0.25–8 KB of payload. These numbers are header/index-bound and say nothing
+  about decompressing real mods.
+- `session/startup_500` is the core state machine only: config load, detection, scan, and
+  `used_mods.txt` read. It excludes the Tauri/WebView shell, React, and Steam Workshop metadata.
 
 ## Frontend render guard (deliverable 3)
 
@@ -303,30 +354,22 @@ pnpm test:perf
 WH3MM_PERF_OUT=/tmp/render-guard.json pnpm test:perf   # write the JSON report
 ```
 
-The guard builds 5,000 and 20,000 deterministic rows, mounts a windowed list, then measures the
-initial window render, a scroll rerender, and a reorder commit. The **hard assertions are
-structural**: the mounted DOM row count must stay `<= 64` (36 in practice) at the top and bottom of
-the list, and the bottom window must contain the last row and not the first. **No wall-clock
-threshold is asserted**; timings are printed and can be written as JSON.
+The guard runs the **real M2 `ModList`** (`frontend/src/components/mod-list/ModList.tsx`) over 5,000
+and 20,000 deterministic rows. It measures the initial window render, a scroll rerender driven by the
+same scroll event the browser fires, and a reorder commit. The **hard assertions are structural**:
+the mounted row count must stay `<= 48` (26 in practice), the bottom window must contain the last
+row and not the first, and the window must follow the scroll. **No wall-clock threshold is
+asserted**; timings are printed and can be written as JSON.
 
 Measured on the Linux dev host, jsdom, Node 26.11.1, i9-13900K (median of 7 samples, 3 runs):
 
 | Rows | Initial window render | Scroll rerender | Reorder commit | Mounted rows (top/bottom) |
 | --- | --- | --- | --- | --- |
-| 5,000 | 2.85–3.42 ms | 1.78–2.07 ms | 0.95–2.19 ms | 36 / 9 |
-| 20,000 | 1.85–2.04 ms | 1.47–1.66 ms | 0.90–0.99 ms | 36 / 9 |
+| 5,000 | 5.23–5.77 ms | 4.85–5.00 ms | 2.10–2.53 ms | 26 / 20 |
+| 20,000 | 5.16–5.64 ms | 3.58–3.98 ms | 1.56–1.68 ms | 26 / 20 |
 
-First CI run (`ubuntu-24.04`, shared 2 vCPU, run 39572436256): 5k initial 14.5 ms / scroll 7.11 ms /
-reorder 3.98 ms; 20k 6.33 / 4.64 / 3.23 ms; mounted 36 / 9. Slower than the dev host, still under
-the 20 ms budget, and the reason the CI job has no timing gate.
-
-**These are upper-bound-ish jsdom costs for a synthetic row**, not paint or scroll latency and not
-the real M2 row (which will carry toggles, thumbnails, and tags). They prove the window is bounded
-and give a regression floor. The row count, not the dataset size, drives the work.
-
-This is a skeleton. When WAR-5 lands the real list, replace `WindowedModList` in
-`frontend/src/perf/modList.perf.test.tsx` with the real component and keep the DOM contract
-(`role="list"`, `data-row-index`, bounded mounted rows). The real scroll/paint trace is a manual
+The cost is driven by the mounted row count, not the dataset: 20k is not slower than 5k. These are
+jsdom costs for synthetic rows, not paint or scroll latency. The real scroll/paint trace is a manual
 Chrome run on Windows:
 
 1. `pnpm dev` with 5k and 20k rows (or the M2 fixture).
@@ -335,58 +378,47 @@ Chrome run on Windows:
 4. Paste the trace filename, commit, and summary numbers into this section; attach the trace to the
    task, not the repo.
 
-## Rust Criterion benchmarks (deliverable 1)
+## Budgets and pass/fail
 
-Gated on WAR-5: the pack parser, mod index, conflict comparison, and `used_mods.txt` APIs are not on
-`main` yet, so there is nothing to benchmark. Do not add fixtures that call stub functions; a bench
-against a stub measures the stub.
+Source of the reference: legacy release 2.29.0, 500-pack fixture, 12 cold runs on `windows-latest`
+(median; see the legacy section). Same-host comparison is mandatory for a final claim: identical CI
+jobs differed by up to 89% on the header scan.
 
-Planned benches, to be added under `crates/wh3mm-core/benches/` with `criterion` as a dev
-dependency, all in `--release`:
+Legend: **gate** = must be strictly faster than the legacy reference; **headline** = the CEO's ≥2x
+target. A row is only marked **PASS** when the measured new number is on a path that does the same
+work; otherwise it is marked **not comparable** even when the number is fast.
 
-| Bench | Workload | Metric |
-| --- | --- | --- |
-| `pack_header` | one pack, repeated | ns per file |
-| `pack_header_batch` | 500-pack fixture | ms per 500 |
-| `mod_index_build` | 100/500/2000 fixture | ms per index |
-| `conflict_compare` | 500 enabled packs | ms per comparison |
-| `used_mods_write` | 500 names, temp dir | µs per write |
-| `profile_restore` | restore 500 enabled + order | µs per restore |
+| Path | Legacy reference | Gate | Headline (≥2x) | New (measured) | Verdict |
+| --- | --- | --- | --- | --- | --- |
+| Cold start to interactive mod list | 1322 ms | < 1322 ms | ≤ 661 ms | not measured (no UI-ready marker) | **PENDING** |
+| 500-pack header scan | 990 ms | < 990 ms | ≤ 495 ms | 0.586–0.595 ms core header batch | **PASS, not comparable** (new skips the file index) |
+| 500-mod load / core startup | 1862 ms (`6862 − 5000`) | < 1862 ms | ≤ 931 ms | 2.93–2.99 ms | **PASS, not comparable** (core only, no shell/Steam) |
+| Load-order apply/persist (`used_mods.txt`) | 279 ms | < 279 ms | n/a | 0.119–0.122 ms core write | **PASS, not comparable** (no renderer/IPC) |
+| Profile switch / restore | 298 ms | < 298 ms | n/a | 0.297–0.302 ms core switch; 0.106–0.111 ms config load | **PASS, not comparable** (no renderer) |
+| Game launch handoff | 6163 ms (proxy) | < 6163 ms | n/a | not implemented on `main` (M3) | **PENDING** |
+| Conflict comparison, 500 enabled packs | not measured | n/a | n/a | not implemented on `main` (M3) | **PENDING** |
+| First window render, 5k rows (jsdom) | no legacy DOM metric | ≤ 20 ms upper bound | n/a | 5.23–5.77 ms | **PASS** |
+| Scroll rerender, 20k rows (jsdom) | no legacy DOM metric | ≤ 16.7 ms (one 60 Hz frame) | n/a | 3.58–3.98 ms | **PASS** |
+| Reorder commit, 20k rows (jsdom) | no legacy DOM metric | ≤ 32 ms (two frames) | n/a | 1.56–1.68 ms | **PASS** |
 
-CI already runs `cargo bench --workspace --locked` when `crates/*/benches/*.rs` exists; until then
-the job records a skip in the step summary. Criterion output is not parsed into a gate.
+The core paths pass the numeric bar with large headroom, but **the CEO comparison is not closed**:
+cold start to an interactive list is the headline metric and it has no new-app number yet. A Tauri
+shell run on Windows that logs UI-ready (or a Playwright/WebDriver trace) is required; a core-only
+number must not be presented as cold start.
 
-## Budgets
+## Comparison status
 
-Source of the reference: legacy release 2.29.0, 500-pack fixture, five cold runs on
-`windows-latest` (see the legacy section). Same-host comparison is mandatory: a new-app number is
-only judged against a legacy number from the same runner class and the same run date, because
-identical CI jobs differed by ~15%.
+| Metric | Legacy | New core | Same host? | Same work? | Claim |
+| --- | --- | --- | --- | --- | --- |
+| 500-pack scan | 990 ms | 0.586 ms | no (Win CI vs Linux dev) | no (index vs header) | faster, not yet an A/B |
+| 500-mod load | 1862 ms | 2.93 ms | no | no (shell/Steam excluded) | faster, not yet an A/B |
+| Apply/persist | 279 ms | 0.122 ms | no | no (renderer excluded) | faster, not yet an A/B |
+| Profile switch | 298 ms | 0.297 ms | no | no (renderer excluded) | faster, not yet an A/B |
 
-Legend: **gate** = must be strictly faster than the legacy reference; **headline** = the CEO's
-≥2x target. Both are provisional until the first new-app measurement.
-
-| Path | Legacy reference | Gate | Headline (≥2x) | New app |
-| --- | --- | --- | --- | --- |
-| Cold start to interactive mod list | 1197 ms | < 1197 ms (provisional ceiling 1100 ms) | ≤ 598 ms | Pending (M2) |
-| 500-pack header parse | 551 ms | < 551 ms (provisional ceiling 450 ms) | ≤ 276 ms | Pending (WAR-5 + M2) |
-| 500-mod load/index, minus the 5,000 ms Steam wait | ≈ 1718 ms (`6718 − 5000`) | < 1718 ms (provisional ceiling 1500 ms) | ≤ 859 ms | Pending (M2) |
-| Load-order apply/persist (`used_mods.txt`) | not measured | TBD after first measurement | n/a | Pending (WAR-5; legacy path needs renderer automation) |
-| Profile switch / restore | not measured | TBD after first measurement | n/a | Pending (WAR-5) |
-| Launch handoff | not measured | TBD after first measurement | n/a | Pending (needs a real install; optional physical host) |
-| First window render, 5k rows (jsdom) | no legacy DOM metric | ≤ 20 ms jsdom upper bound | n/a | 2.85–3.42 ms (measured) |
-| Scroll rerender, 20k rows (jsdom) | no legacy DOM metric | ≤ 16.7 ms (one 60 Hz frame) | n/a | 1.47–1.66 ms (measured) |
-| Reorder commit, 20k rows (jsdom) | no legacy DOM metric | ≤ 32 ms (two frames) | n/a | 0.90–0.99 ms (measured) |
-
-Justification:
-
-- The Rust ceilings leave ~10–18% headroom under the legacy median, which is roughly the CI
-  run-to-run spread; the headline is the 2x target, not a second gate.
-- The frontend budgets are one/two 60 Hz frames, not measured user thresholds. The jsdom upper
-  bound already has ~5x headroom under the 20 ms budget, which is enough to catch a de-virtualized
-  list (it would render 5,000–20,000 rows, not 36).
-- No budget is invented for apply/persist, profile switch, or launch handoff: the legacy harness
-  cannot time them yet, and a guessed bar would be worse than a labelled `TBD`.
+Next step for a valid A/B: run the new app's shell and the legacy build on the same
+`windows-latest` job class, same fixture, 10+ cold runs, and report median + IQR for each primary
+metric. The legacy half is already automated (`perf-legacy-baseline.yml`); the new half needs the
+UI-ready marker.
 
 ## CI (deliverable 5)
 
@@ -396,33 +428,49 @@ Justification:
 | Job | Command | Nature |
 | --- | --- | --- |
 | Workloads 100/500/2000 | `generate-suite.mjs` + `--verify` | Deterministic; fails on a digest mismatch |
-| Frontend render guard | `pnpm test:perf` | Structural assertion; timings reported, never gated |
-| Rust Criterion | `cargo bench --workspace --locked` | Skips with a summary note until WAR-5 benches exist |
+| Frontend render guard | `pnpm test:perf` | Structural assertions; timings reported, never gated |
+| Rust Criterion (Linux) | `generate-suite.mjs` + `cargo bench -p wh3mm-core --bench hot_paths --locked` | Informational; no threshold parsed |
+| Rust Criterion (Windows) | same command on `windows-latest` | Same-host data for the eventual A/B; informational |
 
 The workflow is **not a required check** and has no timing gate. Adding it to branch protection
-would make shared-runner noise a merge blocker; that is explicitly out of scope.
+would make shared-runner noise a merge blocker; that is explicitly out of scope. The legacy baseline
+stays in its own workflow because it downloads and launches the old release.
 
 ## Known limits
 
-- **Header-only fixtures.** The packs are 0.25–8 KB of payload, ~6.6 KB average. Parse and index
-  numbers are header/index-bound and say nothing about decompressing real mod payloads. Real
-  WH3 packs are orders of magnitude larger; do not extrapolate I/O from these numbers.
+- **Header-only parsing.** The new header reader skips the packed-file index on purpose; the legacy
+  scan builds that index. Never present the 0.6 ms number as "the same scan" without the caveat.
+- **Synthetic payloads.** Packs are ~6.6 KB average, so these are metadata/syscall measurements, not
+  decompression or real game-data measurements.
 - **Cold vs warm cache.** Legacy runs clear `pack-headers-cache.bin` and use a fresh user-data dir.
-  New-app benches must state whether the OS cache is warm; on Windows, Defender scanning is part of
-  the first cold run and is not removable on a shared runner.
+  Criterion runs on a warm OS cache. Windows Defender scanning is part of a real first run and is
+  not removable on a shared runner.
+- **Core vs shell.** `session/startup_500` excludes Tauri/WebView, React, and Steam Workshop
+  metadata. Cold start to interactive must be measured through the shell.
 - **Steam wait.** Legacy `mod list populated` includes a fixed 5,000 ms wait for Workshop
-  subscription ids on a machine without Steam. Subtract it before comparing scan/load numbers, and
-  state whether the new app waits the same way.
-- **Disk-bound writes.** Atomic `used_mods.txt` writes are dominated by rename/fsync latency, so a
-  CI runner's disk is part of the result. Report p50 and p95; a single fast sample proves nothing.
-- **jsdom is not a browser.** The frontend numbers exclude layout, paint, compositing, and real
-  scroll event coalescing. Only the manual Chrome trace on Windows closes that gap.
-- **CI variance.** Two identical `windows-latest` jobs differed by ~15%. Ten runs with median and
-  IQR are the minimum to make a same-host claim.
+  subscription ids on a machine without Steam. The scan-related comparison subtracts it and says so.
+- **Disk-bound writes.** `used_mods/write_500` is fsync/rename-bound. A CI runner's disk is part of
+  the number; report the distribution, not one fast sample.
+- **jsdom is not a browser.** Frontend numbers exclude layout, paint, compositing, and scroll event
+  coalescing. Only the manual Chrome trace on Windows closes that gap.
+- **CI variance.** Identical `windows-latest` jobs differed by up to 89% on the legacy header scan.
+  Same-host, same-job-class, 10+ runs with median and IQR is the minimum for a claim.
 
-## Optimisation candidates
+## Optimisation candidates (ranked by measured impact)
 
-None ranked yet. The mandate is "no optimisation without a measurement", and there is no new-app
-measurement to rank against. The first comparison (M2 checkpoint) produces the list in the required
-shape: path, current number, budget, cause, proposed change, expected win. Any candidate will be a
-focused child issue or a change to the author's branch with the benchmark in the same PR.
+1. **One stat per pack in `mod_index::scan`.** Current: 2.97 ms for 500 packs, 13.38 ms for 2000
+   (≈6.7–7.3 µs/pack); `session/startup_500` is 2.93 ms and is almost entirely this scan. Cause:
+   `discover_mod` calls `fs::metadata`, then `read_pack_header` opens the file and calls
+   `file.metadata()` again, so every pack pays an extra stat. Proposed change: read size/mtime from
+   the opened file's metadata (or pass the `Metadata` into `read_pack_header`) — one open + one
+   fstat per pack, no behaviour change. Expected win: 10–20% on `mod_index/scan/*` and
+   `session/startup_500`. Verify with the same bench; hand to Karl as a scoped change, not a rewrite.
+2. **2000-pack scaling.** 4x packs cost 4.9x the 500-pack time; the gap is small and within run
+   noise (+9% on one run). Measure with 5 repetitions before touching directory enumeration. Expected
+   win: <10%, so do not prioritise.
+3. **No other candidate.** `used_mods` writes are fsync-bound (0.12 ms) and the frontend guard is
+   dataset-independent (26 mounted rows at 5k and 20k). Changing either would add complexity without
+   a measured win.
+
+Nothing here is required for v1.0 acceptance: every measured path is far inside its gate. Candidate 1
+is the only one worth scheduling, and only with the benchmark in the same change.
