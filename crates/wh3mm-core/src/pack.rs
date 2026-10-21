@@ -7,7 +7,7 @@
 //! malformed pack turns into a typed error instead of a panic or a huge
 //! allocation.
 
-use std::fs::File;
+use std::fs::{self, File, Metadata};
 use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 
@@ -47,13 +47,57 @@ pub struct PackHeader {
     pub dependencies: Vec<String>,
 }
 
+/// An opened pack: the header result plus the metadata of that same file.
+pub(crate) struct PackHeaderRead {
+    pub(crate) header: Result<PackHeader, AppError>,
+    pub(crate) metadata: Option<Metadata>,
+}
+
 /// Reads just the PFH5 header (and its dependency table) from disk.
 pub fn read_pack_header(path: &Path) -> Result<PackHeader, AppError> {
-    let mut file = File::open(path)
-        .map_err(|error| AppError::io_path("Could not open the pack file", path, &error))?;
-    let metadata = file.metadata().map_err(|error| {
-        AppError::io_path("Could not read the pack file metadata", path, &error)
-    })?;
+    read_pack_header_with_metadata(path).header
+}
+
+/// Opens the pack once, then reads its header and metadata from that handle.
+pub(crate) fn read_pack_header_with_metadata(path: &Path) -> PackHeaderRead {
+    let mut file = match File::open(path) {
+        Ok(file) => file,
+        Err(error) => {
+            return PackHeaderRead {
+                header: Err(AppError::io_path(
+                    "Could not open the pack file",
+                    path,
+                    &error,
+                )),
+                metadata: fs::metadata(path).ok(),
+            };
+        }
+    };
+    let metadata = match file.metadata() {
+        Ok(metadata) => metadata,
+        Err(error) => {
+            return PackHeaderRead {
+                header: Err(AppError::io_path(
+                    "Could not read the pack file metadata",
+                    path,
+                    &error,
+                )),
+                metadata: None,
+            };
+        }
+    };
+    let header = read_pack_header_from(&mut file, path, &metadata);
+    PackHeaderRead {
+        header,
+        metadata: Some(metadata),
+    }
+}
+
+fn read_pack_header_from(
+    file: &mut File,
+    path: &Path,
+    metadata: &Metadata,
+) -> Result<PackHeader, AppError> {
     let file_len = metadata.len();
     let mut header = [0u8; PFH5_HEADER_LEN];
     file.read_exact(&mut header).map_err(|error| {
@@ -214,6 +258,7 @@ pub fn synthetic_pack_bytes(byte_mask: u32, dependencies: &[&str], file_count: u
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
 
     fn valid_header() -> Vec<u8> {
         synthetic_pack_bytes(0, &["data.pack", "ünïcode_dep.pack"], 0)
@@ -306,5 +351,31 @@ mod tests {
         let error = parse(&bytes).unwrap_err();
         assert_eq!(error.code, ErrorCode::PackParseFailed);
         assert!(error.message.contains("safety cap"));
+    }
+
+    #[test]
+    fn reads_metadata_from_the_open_pack() {
+        let dir = crate::test_support::TempDir::new("pack-metadata");
+        let path = dir.path().join("mod.pack");
+        let bytes = valid_header();
+        fs::write(&path, &bytes).unwrap();
+
+        let read = read_pack_header_with_metadata(&path);
+        assert_eq!(
+            read.header.unwrap().dependencies,
+            vec!["data.pack", "ünïcode_dep.pack"]
+        );
+        assert_eq!(read.metadata.unwrap().len(), bytes.len() as u64);
+    }
+
+    #[test]
+    fn keeps_metadata_when_the_header_is_malformed() {
+        let dir = crate::test_support::TempDir::new("pack-metadata-bad");
+        let path = dir.path().join("broken.pack");
+        fs::write(&path, b"not a pack").unwrap();
+
+        let read = read_pack_header_with_metadata(&path);
+        assert!(read.header.is_err());
+        assert_eq!(read.metadata.unwrap().len(), 10);
     }
 }

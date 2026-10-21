@@ -17,8 +17,8 @@ when its acceptance checks are recorded here with command evidence.
 | M1 | Karl | Steam/WH3 detection, pack parser, mod index, fixtures | Done; merged as `c1a9cdd` (PR #6) |
 | M2 | Karl | Mod list, load order, tags, profiles | Done; merged as `c1a9cdd` (PR #6) |
 | M3 | Karl | Conflicts, Workshop, launch | Done; merged as `bb306d4` (PR #18) |
-| M4 | Katerina + Karl | TW:WH3 visual system, density, keyboard map, states | Not started |
-| M5 | Baltasar + Genny4Real | E2E, performance budgets, Windows installer, release | Release machinery in PR #25; Windows artifact and final parity follow merge and WAR-10 |
+| M4 | Katerina + Karl | TW:WH3 visual system, density, keyboard map, states | Done; merged as `0e051204` (PR #26), including the five WAR-79 ship-gate blockers |
+| M5 | Baltasar + Genny4Real | E2E, performance budgets, Windows installer, release | Release machinery merged as `e31eb64` (PR #25); Windows NSIS artifact blocked on WAR-101 |
 
 ## M0 evidence (WAR-4)
 
@@ -143,29 +143,43 @@ These are accepted for v1.0; the full manual scripts are in `docs/RELEASE.md`.
 | WS-3 | Steam subscribe/unsubscribe/update is manual; the app has no custom Steam auth and never automates it. | Subscribe and unsubscribe in Steam, rescan, confirm the mod list follows; confirm the app never asks for Steam credentials. |
 | LA-1 | Launch through Steam is measured as a proxy, not an in-game load time. | Launch in the Windows QA pass and keep the number labelled "proxy". |
 | ML-4 | Persisted scroll position and the 20k-row guard are polish. | A reset scroll is accepted; the 20k fixture must show the guard, not freeze. |
-| SET-2 | Density and thumbnail preferences persist best-effort. | Toggle each, restart, confirm persistence, and record any failure. |
+| SET-2 | Density and thumbnail preferences persist best-effort. | Toggle density and thumbnail display; restart; confirm each value survived. Record any value that did not persist. |
 | DET-1 Linux roots | Flatpak/Snap/XDG discovery is best-effort; Windows registry and native root are fixture-tested on WAR-10. | Detect on Linux Flatpak/Snap or use the manual path; confirm Windows detection without a manual path. |
 
-### Scope correction: pack author (WAR-104, WAR-107)
-
 The pack-author column, author sort, author search dimension, and Settings
-"Show authors" toggle are removed from v1.0, together with the unused `author`
-fields in the pack header and mod summary. PFH5 and the Steam ACF carry no
-author, and v1.0 forbids custom Steam authentication, so there is no supported
-source. PRODUCT_SCOPE capability 2 covers name, type, timestamp, and
-dependencies. This is a contract correction, not a known limitation.
+"Show authors" toggle are **removed in v1.0** (WAR-104, WAR-107). No author
+exists in the PFH5 header or the Steam ACF, and the legacy Steamworks persona
+lookup needs the custom Steam auth that v1.0 does not ship. The unused `author`
+fields in the pack header and mod summary are gone; PRODUCT_SCOPE capability 2
+now covers name, type, timestamp, and dependencies. This is a removal, not a
+limitation.
 
 The capability-parity index in `docs/PARITY.md` is generated from
-`docs/PARITY.yaml`; only WS-3, LA-1, ML-4, and SET-2 may remain `partial` there.
-At the release head, `node scripts/parity-report.mjs` must report 0 missing
-checks. Until WAR-10's blockers merge, SET-4 is expected to be the missing
-check, and no `v1.0.0` tag is created.
+`docs/PARITY.yaml`. At the WAR-107 head, `node scripts/parity-report.mjs`
+reports 93.000% with 34 done / 6 partial / **0 missing**. SET-4, ML-3, CF-4,
+and PRF-2 moved to done with the WAR-10 code and tests cited in
+`docs/PARITY.yaml`; DET-1 stays partial for the documented Flatpak/Snap/XDG
+Linux roots. The five documented v1.0 limitations are WS-3, LA-1, ML-4, SET-2,
+and DET-1's Linux roots. DSC-1 is done against the corrected PRODUCT_SCOPE
+criterion after WAR-107 cut the author surface; WS-2 remains partial until
+WAR-106 adds the missing Workshop Open test. WAR-106 and WAR-107 both block the
+`v1.0.0` tag (WAR-99), so it cannot ship ahead of them; neither is a WAR-79
+parity-gate blocker. The parity percentage itself is a monitoring metric, not
+the ship gate (WAR-79).
+A `v1.0.0` tag and draft release are created only after the `release.yml`
+artifact dispatch on `main` is green, WAR-106/WAR-107 are merged, and the
+release gates are on the branch; publishing waits for the WAR-12 audit of that
+draft.
 
 ## Risks and open items
 
-- The Windows Tauri shell is not compiled by the Linux gates. It is verified by
-  the manual `workflow_dispatch` job, not by a required PR check, until M5
-  packaging makes it mandatory.
+- The Windows Tauri shell is not compiled by the Linux gates: `tauri` and
+  `tauri-build` are `cfg(windows)`-only dependencies, so `cargo test --workspace`
+  never runs their build scripts. The first release dispatch on `main`
+  (`e31eb64`, run `39628830515`) failed on a missing `protocol-asset` feature
+  that Linux CI could not see; WAR-101 fixes it. Until a required Windows PR
+  check exists, treat every Windows-only dependency/feature change as untested
+  by the Linux gates.
 - `main` has no GitHub branch protection; the branch/PR policy is enforced by
   review. Enabling protection is an owner action for Torgrim.
 - The M0 scaffold commit reached `main` before the CEO's no-direct-push
@@ -176,7 +190,11 @@ check, and no `v1.0.0` tag is created.
 
 ## Next
 
-1. Genny4Real: use `ModListSnapshot.timings` and the `wh3mm: timing` log lines
-   as the new-app baseline for WAR-7.
-2. Baltasar Gelt: execute the Windows/Steam manual QA script in
-   `docs/M3_MANUAL_QA.md` against a real install.
+1. Karl Franz: land WAR-101 (`protocol-asset`) with a green `release.yml` run on
+   the fix branch that uploads `wh3mm-windows-1.0.0`.
+2. Karl Franz: land WAR-106 (WS-2 Open test) and WAR-107 (author-surface cut).
+   Both are WAR-104 ruling B and both block the `v1.0.0` tag (WAR-99).
+3. Katerina Zarina: merge WAR-101 after QA and tech-lead approval, re-dispatch
+   `release.yml` on `main`, and record the artifact on WAR-95/WAR-73.
+4. Baltasar Gelt: run the WAR-12 audit on the draft release produced by the
+   `v1.0.0` tag, after the artifact proof; publish only on his sign-off.

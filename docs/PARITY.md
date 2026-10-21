@@ -8,14 +8,14 @@ Snapshot: **2026-10-21** · weighted scope: `docs/PRODUCT_SCOPE.md`
 
 | Metric | Value |
 |---|---:|
-| **Capability Parity Index** | **87.125%** |
+| **Capability Parity Index** | **93.000%** |
 | Previous snapshot | 87.250% |
-| Change | -0.125 points |
-| Checks | 30 done / 9 partial / 1 missing (40 total) |
+| Change | +5.750 points |
+| Checks | 34 done / 6 partial / 0 missing (40 total) |
 | Legacy oracle coverage | 29/29 (100.0%) |
 | Oracle dispositions | 2 ported / 26 rewritten / 1 not-applicable |
 | Cut-feature scan | 0 findings in 35 UI/IPC files |
-| Rust tests on this tree | 135 |
+| Rust tests on this tree | 139 |
 | Frontend assertions on this tree | 74 in 9 files |
 
 ## Capability table
@@ -24,23 +24,25 @@ Snapshot: **2026-10-21** · weighted scope: `docs/PRODUCT_SCOPE.md`
 |---:|---|---:|---:|---:|---:|---:|---:|
 | 1 | Game & Steam detection | 12 | 3 | 1 | 0 | 3.50/4 | 10.50 |
 | 2 | Mod discovery | 10 | 4 | 0 | 0 | 4.00/4 | 10.00 |
-| 3 | Mod list | 15 | 2 | 2 | 0 | 3.00/4 | 11.25 |
+| 3 | Mod list | 15 | 3 | 1 | 0 | 3.50/4 | 13.13 |
 | 4 | Load order write | 15 | 4 | 0 | 0 | 4.00/4 | 15.00 |
-| 5 | Profiles | 10 | 3 | 1 | 0 | 3.50/4 | 8.75 |
-| 6 | Conflicts | 12 | 3 | 1 | 0 | 3.50/4 | 10.50 |
+| 5 | Profiles | 10 | 4 | 0 | 0 | 4.00/4 | 10.00 |
+| 6 | Conflicts | 12 | 4 | 0 | 0 | 4.00/4 | 12.00 |
 | 7 | Workshop | 8 | 2 | 2 | 0 | 3.00/4 | 6.00 |
 | 8 | Launch | 8 | 3 | 1 | 0 | 3.50/4 | 7.00 |
-| 9 | Settings | 5 | 2 | 1 | 1 | 2.50/4 | 3.13 |
+| 9 | Settings | 5 | 3 | 1 | 0 | 3.50/4 | 4.38 |
 | 10 | Safety | 5 | 4 | 0 | 0 | 4.00/4 | 5.00 |
-| | **Total** | **100** | **30** | **9** | **1** | | **87.125** |
+| | **Total** | **100** | **34** | **6** | **0** | | **93.000** |
 
 ## Corrections to the WAR-3 snapshot
 
-**Recorded index change:** WAR-107 contract correction. WAR-104 cut the author requirement from DSC-1, so the parser's name, type, timestamp, and dependency evidence is done against the corrected PRODUCT_SCOPE. This reverses the -1.250 author correction and lifts the verified index from 85.875 to 87.125; the index remains 0.125 below the WAR-3 87.250 figure.
+**Recorded index change:** WAR-107 contract correction after the release-head pass. WAR-104 cut the author requirement from DSC-1, so the parser's name, type, timestamp, and dependency evidence is done against the corrected PRODUCT_SCOPE. This reverses the -1.250 author correction; 34 done / 6 partial / 0 missing, with WS-2 still partial pending WAR-106.
 
 | Correction | Claim | Verified | Effect |
 |---|---|---|---|
-| dsc-1-author-requirement-cut | DSC-1 required the pack author. | WAR-104 ruling B: the PFH5 header and the Steam ACF carry no author, and v1.0 forbids custom Steam auth. WAR-107 removed the author column, sort, search dimension, toggle, preference, and IPC fields; PRODUCT_SCOPE capability 2 now requires name, type, timestamp, and dependencies. | Discovery 3.5 -> 4.0; DSC-1 is done against the corrected contract and contributes +1.250 to the index. This reverses the author-driven -1.250 recorded for the WAR-3 snapshot. |
+| set-4-implemented | SET-4 (reset to defaults) is missing. | WAR-10 merged to `0e051204` with the reset command (`crates/wh3mm-app/src/commands.rs`), the Settings confirmation flow (`frontend/src/components/settings/SettingsScreen.tsx`), and the session/config reset path. Tests: `reset_to_defaults_keeps_profiles_and_tags_and_writes_an_empty_order` and the other `reset_to_defaults_*` cases in `crates/wh3mm-core/tests/session_flow.rs`; the store path is asserted in `frontend/src/store.test.ts`. | Settings 2.5 -> 3.5; contributes +1.250; index 85.875 -> 87.125. The older set-4-reset-defaults entry records the pre-WAR-10 state. |
+| m4-blocker-parity | ML-3, CF-4, PRF-2, and DET-1 are still partial after WAR-10. | WAR-10 merged to `0e051204`. ML-3 has the sort control (`ModList.tsx`) and `sorts deterministically with an id tie-break in every non-drag mode`; CF-4 has duplicate rows and `renders duplicate pack names and shows none for a clean report`; PRF-2 has `applying_a_profile_restores_the_saved_order_exactly`; DET-1 has the injectable Windows/Unix candidate tests in `paths.rs`. All four tests pass on the merged tree. | ML-3 +1.875, CF-4 +1.500, PRF-2 +1.250; index 87.125 -> 91.750. DET-1 stays partial for the documented Flatpak/Snap/XDG limitation. DSC-1 (author) and WS-2 (Workshop open) remain partial and are not WAR-79 ship blockers; WAR-104 ruling B resolves them via WAR-106/WAR-107, and both block the WAR-99 `v1.0.0` tag. |
+| dsc-1-author-requirement-cut | DSC-1 required the pack author. | WAR-104 ruling B: the PFH5 header and the Steam ACF carry no author, and v1.0 forbids custom Steam auth. WAR-107 removed the author column, sort, search dimension, toggle, preference, and IPC fields; PRODUCT_SCOPE capability 2 now requires name, type, timestamp, and dependencies. | Discovery 3.5 -> 4.0; DSC-1 is done against the corrected contract and contributes +1.250 to the index. This reverses the author-driven -1.250 recorded in the WAR-3 snapshot correction. |
 | workshop-open-untested | WS-2 (open a Workshop item through Steam) was done. | The cited test asserts only the Subscribe and Update URL strings. WorkshopAction::Open is never called by a test and spawn_steam_url (workshop.rs:294) has no test; the UI test clicks Unsubscribe only. | Workshop 3.5 -> 3.0; contributes -1.000 to the index. WS-2 is partial until Open is tested or manually verified on Windows. |
 | set-4-reset-defaults | Reset-to-defaults was Partial. | Missing: no reset command, screen, or test exists. | Settings 3.0 -> 2.5; contributes -0.625 to the index. |
 | detection-partial-reason | The remaining detection gap is real Windows install detection plus manual override. | Manual override and no-game recovery are tested. The untested part is the platform root candidate list (Windows registry, Flatpak, Snap, XDG). | Score unchanged at 3.5; partial reason corrected. |

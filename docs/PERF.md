@@ -260,6 +260,25 @@ Same host class and the same fixture as the approved legacy baseline, so the rat
 Bar: **≥2x faster** on cold start and 500-mod list; every other metric strictly faster, or the gap
 explained with evidence. A miss is reported as `miss`, with the measured hotspot, not massaged.
 
+### Machine gate
+
+`docs/perf/comparison.json` (schema `wh3mm.perf.comparison.v1`) is the machine-checkable verdict
+behind this table. It stores every sample from the two committed reports and is checked by:
+
+```bash
+node scripts/qa/verify-perf-gate.mjs --json   # ok: true, no failures
+node --test scripts/qa/verify-perf-gate.test.mjs
+```
+
+The gate recomputes medians from the stored samples, so it reports the exact arithmetic medians
+for the five gated metrics (legacy `1321.5`, `1861.5`, `278.5`, `297.5`, `6163 ms`; new app
+`60.885`, `61.511`, `12.7495`, `10.7805`, `28.145 ms`). The table above rounds those medians to
+whole milliseconds for readability; its PFH5 header-scan row is measured but is not one of the
+five gated metrics. `modLoad500` stores the legacy samples with the same fixed 5,000 ms Steam wait
+removed. The same two CI runner instances are recorded in the file
+(`GitHub Actions 1000002466` legacy, `GitHub Actions 1000002508` new app), under one `hostId` that
+names the shared `windows-latest` class — host-class comparability, not one physical machine.
+
 ### Host-consistency cross-check (same PR)
 
 The legacy baseline workflow also runs on this PR because `scripts/perf/**` changed. Its 12 cold

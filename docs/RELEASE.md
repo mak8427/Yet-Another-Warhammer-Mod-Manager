@@ -8,15 +8,17 @@ is `docs/adr/004-testing-strategy.md`.
 ## Versioning
 
 - The app uses semantic versioning: `MAJOR.MINOR.PATCH`.
-- **One version, two files.** `crates/wh3mm-app/tauri.conf.json` and the Cargo
-  workspace (`[workspace.package].version` in `Cargo.toml`) must both say the
-  same `X.Y.Z`. The frontend packages mirror it as well.
+- **One version, four files.** `crates/wh3mm-app/tauri.conf.json`, the Cargo
+  workspace (`[workspace.package].version` in `Cargo.toml`), `package.json`, and
+  `frontend/package.json` must all say the same `X.Y.Z`.
 - The installer version and the `app_info` IPC response come from those files,
   so a mismatch is a release blocker.
 - The release tag is `vX.Y.Z` and must match the configured version. The tag
   workflow refuses to build on a mismatch.
-- v1.0.0 is the first release. The tag is created only after M4 (WAR-10) is
-  merged and the WAR-12 release audit is signed off.
+- v1.0.0 is the first release. The tag and draft release are created only after
+  M4 (WAR-10), WAR-106/WAR-107 (WAR-104 ruling B), and the release gates are on
+  `main`. Creating the tag is not publication: the workflow creates a draft,
+  WAR-12 audits that draft, and only then may a human publish it.
 
 ## Build locally on Windows
 
@@ -71,14 +73,12 @@ manual check in the QA pass below.
 | **SET-2** | Density and thumbnail preferences persist best-effort. | Toggle density and thumbnail display; restart; confirm each value survived. Record any value that did not persist. |
 | **DET-1 Linux roots** | Flatpak, Snap, and XDG game discovery is best-effort and may miss an installation. On Windows, the registry and native root are fixture-tested on WAR-10. | On a Flatpak or Snap install, confirm detection or use the manual path chooser. On Windows, confirm the registry/native detection finds the game without a manual path. |
 
-### Scope correction: pack author (WAR-104, WAR-107)
-
-The pack-author column, author sort, author search dimension, and Settings
-"Show authors" toggle are **not** in v1.0. PFH5 and the Steam ACF carry no
-author, and v1.0 forbids custom Steam authentication, so there is no supported
-source. PRODUCT_SCOPE capability 2 now covers name, type, timestamp, and
-dependencies. This is a contract correction, not a known limitation, and no
-empty column ships.
+The pack-author column is **removed in v1.0** (WAR-104, WAR-107), not
+documented as a limitation: the PFH5 header and the Steam ACF carry no author,
+and the legacy Steamworks persona lookup needs the custom Steam auth that v1.0
+does not ship. The author column, author sort, author search dimension, and
+Settings "Show authors" toggle are gone; PRODUCT_SCOPE capability 2 now covers
+name, type, timestamp, and dependencies.
 
 ## Tag workflow (CI)
 
@@ -103,8 +103,10 @@ artifact only.
 the default branch. The artifact-producing Windows run therefore comes **after**
 the release-engineering PR merges to `main`: dispatch `release.yml` at the
 release head, link the run and artifact on the task, and only then continue the
-approval path. Do not dispatch from an unmerged feature branch and do not create
-the `v1.0.0` tag until M4 (WAR-10) and the WAR-12 audit are done.
+approval path. Do not dispatch from an unmerged feature branch. Create the
+`v1.0.0` tag only after M4 (WAR-10), the WAR-104 ruling's WAR-106/WAR-107 work,
+the release gates, and a green `main` are in place. The tag run produces the
+artifact and draft that WAR-12 audits; publish only after WAR-12 signs off.
 
 ## Manual Windows QA script
 
@@ -166,19 +168,26 @@ release task.
 ## Pre-release checklist
 
 - [ ] M4 merged (WAR-10), including SET-4, ML-3, CF-4, PRF-2, and DET-1; `main` is green.
-- [ ] WAR-12 audit signed off.
 - [ ] `node scripts/parity-report.mjs` reports **0 missing checks** at the release
-      head. Only WS-3, LA-1, ML-4, and SET-2 may remain `partial`; DET-1 Linux
-      roots is documented separately.
+      head. The allowed limitations are WS-3, LA-1, ML-4, SET-2, and DET-1's
+      Linux roots. DSC-1 is done against the corrected PRODUCT_SCOPE after
+      WAR-107; WS-2 (Workshop open) remains partial until WAR-106 merges.
 - [ ] The generated `docs/PARITY.md` and `docs/STATUS.md` are committed at that
       head; `docs/STATUS.md` names the five limitations with their manual checks.
       Never hand-edit `docs/PARITY.md`.
+- [ ] WAR-106 (WS-2 Workshop Open test) is merged and QA-approved; it blocks the `v1.0.0` tag.
+- [ ] WAR-107 (DSC-1 author surface cut and `PRODUCT_SCOPE` correction) is merged and QA-approved; it blocks the `v1.0.0` tag.
 - [ ] Version matches in `tauri.conf.json`, `Cargo.toml`, and both `package.json` files.
 - [ ] `CHANGELOG.md` reflects the merged scope.
 - [ ] Tag workflow produced the NSIS installer, `SHA256SUMS.txt`, and a draft release.
+- [ ] WAR-12 audit signed off on that draft.
 - [ ] Manual QA script passed on clean Windows 10 and 11 machines.
 - [ ] Installer SHA-256 published in the release notes.
+- [ ] Publish the draft only after every item above is checked.
 
-Until WAR-10's blockers merge, the parity generator is expected to report
-`SET-4` as missing. That is a pre-tag gate, not a reason to hold the release
-machinery PR; do not tag while any check is missing.
+At the release head `0e051204` the parity generator reports 0 missing checks
+(91.750%; SET-4, ML-3, CF-4, and PRF-2 are done after WAR-10). WAR-107
+regenerates the report at 93.000% with DSC-1 done against the corrected
+PRODUCT_SCOPE; WS-2 stays partial until WAR-106 merges. Regenerate the report
+again after WAR-106. The pre-tag gate stays **0 missing**; do not tag while any
+check is missing, and never hand-edit `docs/PARITY.md`.
