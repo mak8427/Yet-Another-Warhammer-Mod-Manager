@@ -8,6 +8,10 @@ use wh3mm_core::paths::{
 };
 use wh3mm_core::test_support::TempDir;
 
+fn escape_vdf_path(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "\\\\")
+}
+
 fn write(path: &Path, contents: impl AsRef<[u8]>) {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).unwrap();
@@ -36,9 +40,9 @@ fn discovers_two_libraries_and_reports_the_missing_one() {
     "1" {{ "path" "{}" }}
     "2" {{ "path" "{}" }}
 }}"#,
-            root.display(),
-            second.display(),
-            missing.display()
+            escape_vdf_path(&root),
+            escape_vdf_path(&second),
+            escape_vdf_path(&missing)
         ),
     );
 
@@ -60,8 +64,8 @@ fn detects_a_game_in_a_secondary_library_with_workshop_and_proton_prefix() {
         &root.join("steamapps").join("libraryfolders.vdf"),
         format!(
             r#""libraryfolders" {{ "0" {{ "path" "{}" }} "1" {{ "path" "{}" }} }}"#,
-            root.display(),
-            second.display()
+            escape_vdf_path(&root),
+            escape_vdf_path(&second)
         ),
     );
 
@@ -126,21 +130,22 @@ fn falls_back_to_the_conventional_folder_when_the_manifest_is_missing() {
 
 #[test]
 fn vdf_fixture_parses_modern_and_legacy_paths() {
-    let vdf = r#"
+    let dir = TempDir::new("detect-vdf-paths");
+    let first = dir.path().join("steam-a");
+    let second = dir.path().join("steam-b");
+    let vdf = format!(
+        r#"
 "libraryfolders"
-{
-    "0" { "path" "/steam" }
-    "1" { "path" "/steam2" }
-}
-"#;
-    let paths = library_paths_from_vdf(vdf, Path::new("/")).unwrap();
-    assert_eq!(
-        paths,
-        vec![
-            std::path::PathBuf::from("/steam"),
-            std::path::PathBuf::from("/steam2")
-        ]
+{{
+    "0" {{ "path" "{}" }}
+    "1" {{ "path" "{}" }}
+}}
+"#,
+        escape_vdf_path(&first),
+        escape_vdf_path(&second)
     );
+    let paths = library_paths_from_vdf(&vdf, dir.path()).unwrap();
+    assert_eq!(paths, vec![first, second]);
 
     let manifest = r#""AppState" { "installdir" "Total War WARHAMMER III" }"#;
     assert_eq!(

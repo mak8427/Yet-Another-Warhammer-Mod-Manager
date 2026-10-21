@@ -674,71 +674,63 @@ fn dedupe_paths(paths: Vec<PathBuf>) -> Vec<PathBuf> {
 mod tests {
     use super::*;
 
-    const LIBRARY_VDF: &str = r#"
-"libraryfolders"
-{
-    "0"
-    {
-        "path"        "/games/Steam"
-        "label"       ""
-        "contentstatsid" "123"
+    fn escape_vdf_path(path: &Path) -> String {
+        path.to_string_lossy().replace('\\', "\\\\")
     }
-    "1"
-    {
-        "path"        "/mnt/games/SteamLibrary"
-    }
-    "2"
-    {
-        "path"        "/missing/SteamLibrary"
-    }
-}
-"#;
 
     #[test]
     fn parses_modern_library_folders() {
-        let paths = library_paths_from_vdf(LIBRARY_VDF, Path::new("/")).unwrap();
-        assert_eq!(
-            paths,
-            vec![
-                PathBuf::from("/games/Steam"),
-                PathBuf::from("/mnt/games/SteamLibrary"),
-                PathBuf::from("/missing/SteamLibrary"),
-            ]
+        let dir = crate::test_support::TempDir::new("vdf-modern");
+        let base = dir.path();
+        let first = base.join("games").join("Steam");
+        let second = base.join("mnt").join("SteamLibrary");
+        let missing = base.join("missing").join("SteamLibrary");
+        let text = format!(
+            r#""libraryfolders"
+{{
+    "0" {{ "path" "{}" "contentstatsid" "123" }}
+    "1" {{ "path" "{}" }}
+    "2" {{ "path" "{}" }}
+}}"#,
+            escape_vdf_path(&first),
+            escape_vdf_path(&second),
+            escape_vdf_path(&missing)
         );
+        let paths = library_paths_from_vdf(&text, base).unwrap();
+        assert_eq!(paths, vec![first, second, missing]);
     }
 
     #[test]
     fn parses_legacy_library_folders() {
-        let text = r#"
-"LibraryFolders"
-{
+        let dir = crate::test_support::TempDir::new("vdf-legacy");
+        let base = dir.path();
+        let absolute = base.join("old").join("SteamLibrary");
+        let text = format!(
+            r#""LibraryFolders"
+{{
     "TimeNextStatsReport" "123"
-    "1" "/mnt/old/SteamLibrary"
-    "2" "D:\\SteamLibrary"
-}
-"#;
-        let paths = library_paths_from_vdf(text, Path::new("/")).unwrap();
-        assert_eq!(
-            paths,
-            vec![
-                PathBuf::from("/mnt/old/SteamLibrary"),
-                PathBuf::from("/").join("D:\\SteamLibrary"),
-            ]
+    "1" "{}"
+    "2" "relative/lib"
+}}"#,
+            escape_vdf_path(&absolute)
         );
+        let paths = library_paths_from_vdf(&text, base).unwrap();
+        assert_eq!(paths, vec![absolute, base.join("relative/lib")]);
     }
 
     #[test]
     fn relative_paths_resolve_against_the_vdf_base() {
+        let dir = crate::test_support::TempDir::new("vdf-relative");
         let text = r#""libraryfolders" { "0" { "path" "relative/lib" } }"#;
-        let paths = library_paths_from_vdf(text, Path::new("/steam")).unwrap();
-        assert_eq!(paths, vec![PathBuf::from("/steam/relative/lib")]);
+        let paths = library_paths_from_vdf(text, dir.path()).unwrap();
+        assert_eq!(paths, vec![dir.path().join("relative/lib")]);
     }
 
     #[test]
     fn rejects_malformed_vdf() {
-        assert!(library_paths_from_vdf(r#""libraryfolders" { "#, Path::new("/")).is_err());
+        assert!(library_paths_from_vdf(r#""libraryfolders" { "#, Path::new(".")).is_err());
         assert!(
-            library_paths_from_vdf(r#""libraryfolders" "unterminated"#, Path::new("/")).is_err()
+            library_paths_from_vdf(r#""libraryfolders" "unterminated"#, Path::new(".")).is_err()
         );
     }
 
