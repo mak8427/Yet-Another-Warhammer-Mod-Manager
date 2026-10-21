@@ -160,6 +160,7 @@ pub enum Density {
     #[default]
     Comfortable,
     Compact,
+    Roomy,
 }
 
 impl<'de> Deserialize<'de> for Density {
@@ -170,6 +171,7 @@ impl<'de> Deserialize<'de> for Density {
         let value = String::deserialize(deserializer)?;
         Ok(match value.to_ascii_lowercase().as_str() {
             "compact" => Self::Compact,
+            "roomy" => Self::Roomy,
             _ => Self::Comfortable,
         })
     }

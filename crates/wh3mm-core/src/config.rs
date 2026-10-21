@@ -740,6 +740,18 @@ mod tests {
     }
 
     #[test]
+    fn roomy_density_round_trips() {
+        let dir = TempDir::new("config-density-roomy");
+        let path = config_path(&dir);
+        let loaded = load_or_create(&path).unwrap();
+        let mut value = serde_json::to_value(&loaded.config).unwrap();
+        value["ui"]["density"] = serde_json::Value::String("roomy".into());
+        fs::write(&path, serde_json::to_vec(&value).unwrap()).unwrap();
+        let reloaded = load_or_create(&path).unwrap();
+        assert_eq!(reloaded.config.ui.density, crate::ipc::Density::Roomy);
+    }
+
+    #[test]
     fn unknown_density_falls_back_to_comfortable() {
         let dir = TempDir::new("config-density");
         let path = config_path(&dir);

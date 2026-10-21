@@ -137,7 +137,7 @@ export interface Tag {
   color: string
 }
 
-export type Density = 'comfortable' | 'compact'
+export type Density = 'compact' | 'comfortable' | 'roomy'
 
 export interface UiPreferences {
   density: Density
