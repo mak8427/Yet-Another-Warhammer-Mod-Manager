@@ -10,6 +10,7 @@ import {
   PROFILES,
   TAGS,
   UI,
+  WRITE_REPORT,
   makeMod,
   makeSnapshot,
 } from './test/mocks'
@@ -40,10 +41,28 @@ function mockReady(snapshot = SNAPSHOT) {
   vi.mocked(ipc.getUiPreferences).mockResolvedValue(UI)
 }
 
+function mockViewportOverlay(overlay: boolean) {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    configurable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches: overlay,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  })
+}
+
 describe('App', () => {
   beforeEach(() => {
     store.reset()
     vi.clearAllMocks()
+    mockViewportOverlay(false)
   })
 
   it('starts with the explicit game-not-found state and a manual path form', async () => {
@@ -60,7 +79,7 @@ describe('App', () => {
     render(<App />)
 
     expect(
-      await screen.findByRole('heading', { name: /no total war: warhammer iii installation found/i }),
+      await screen.findByRole('heading', { name: /warhammer iii was not found/i }),
     ).toBeInTheDocument()
     expect(screen.getByLabelText('Game folder')).toBeInTheDocument()
     expect(screen.getByText('Checked 2 Steam libraries')).toBeInTheDocument()
@@ -74,9 +93,10 @@ describe('App', () => {
     const list = await screen.findByRole('listbox', { name: 'Mods' })
     expect(await within(list).findByText('Alpha Legion')).toBeInTheDocument()
     expect(within(list).getByText('Beta Bastion')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Load order' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Mods' })).toBeInTheDocument()
     expect(screen.getByLabelText('Active profile')).toHaveValue('profile-default')
-    expect(document.querySelector('.toolbar-count')?.textContent).toBe('1/2 enabled')
+    expect(document.querySelector('.toolbar-count')?.textContent).toBe('2 mods')
+    expect(screen.getByText(/Ready · 2 mods · 1 enabled/)).toBeInTheDocument()
   })
 
   it('filters the list from the search box', async () => {
@@ -135,7 +155,7 @@ describe('App', () => {
     await waitFor(() => {
       expect(ipc.applyProfile).toHaveBeenCalledWith('profile-campaign')
     })
-    expect(await screen.findByText(/2 of 2 enabled/)).toBeInTheDocument()
+    expect(await screen.findByText(/Ready · 2 mods · 2 enabled/)).toBeInTheDocument()
   })
 
   it('renames a non-active profile without replacing its enabled set', async () => {
@@ -145,8 +165,11 @@ describe('App', () => {
     await screen.findByRole('listbox', { name: 'Mods' })
 
     fireEvent.click(screen.getByRole('button', { name: /^Profiles/ }))
-    const renameButtons = await screen.findAllByRole('button', { name: 'Rename' })
-    fireEvent.click(renameButtons[1])
+    const profileTable = await screen.findByRole('table')
+    const profileRow = within(profileTable).getByText(PROFILE_CAMPAIGN.name).closest('tr')
+    expect(profileRow).not.toBeNull()
+    fireEvent.click(profileRow as HTMLTableRowElement)
+    fireEvent.click(screen.getByRole('button', { name: 'Rename' }))
 
     const dialog = await screen.findByRole('dialog', { name: 'Rename profile' })
     fireEvent.change(within(dialog).getByLabelText('Profile name'), {
@@ -182,12 +205,209 @@ describe('App', () => {
     })
     render(<App />)
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Write load order' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Apply load order' }))
 
     expect(await screen.findByRole('dialog', { name: 'Write used_mods.txt' })).toBeInTheDocument()
     expect(ipc.previewLoadOrder).toHaveBeenCalled()
     expect(screen.getByText('C:/game/used_mods.txt')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Write 1 mod/ })).toBeEnabled()
+  })
+
+  it('resets settings and the load order after confirmation', async () => {
+    mockReady()
+    render(<App />)
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    const rail = screen.getByRole('navigation', { name: 'Sections' })
+    fireEvent.click(within(rail).getByRole('button', { name: 'Settings' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Reset settings and load order' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Reset to defaults' })
+    expect(dialog).toHaveTextContent(/clear the game-path override/i)
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Reset settings and load order' }))
+
+    await waitFor(() => {
+      expect(ipc.resetToDefaults).toHaveBeenCalledWith(true, false)
+    })
+    expect(ipc.listMods).toHaveBeenCalled()
+    expect(await screen.findByText('Settings and load order reset to defaults')).toBeInTheDocument()
+  })
+
+  it('asks before dropping unmanaged directives during reset', async () => {
+    mockReady()
+    vi.mocked(ipc.resetToDefaults).mockResolvedValueOnce({
+      loadOrder: {
+        status: 'unmanagedDirectives',
+        message: 'used_mods.txt contains unmanaged directives that this write would remove',
+        unmanagedDirectives: ['add_working_directory "C:/tools";'],
+        requiresUnmanagedConfirmation: true,
+      },
+    })
+    render(<App />)
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    const rail = screen.getByRole('navigation', { name: 'Sections' })
+    fireEvent.click(within(rail).getByRole('button', { name: 'Settings' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Reset settings and load order' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Reset to defaults' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Reset settings and load order' }))
+
+    const warning = await screen.findByRole('dialog', { name: 'Drop unmanaged directives?' })
+    expect(warning).toHaveTextContent('add_working_directory "C:/tools";')
+    expect(ipc.resetToDefaults).toHaveBeenCalledWith(true, false)
+    expect(screen.queryByText('Settings and load order reset to defaults')).not.toBeInTheDocument()
+
+    fireEvent.click(within(warning).getByRole('button', { name: 'Drop directives and reset' }))
+
+    await waitFor(() => {
+      expect(ipc.resetToDefaults).toHaveBeenLastCalledWith(true, true)
+    })
+    expect(await screen.findByText('Settings and load order reset to defaults')).toBeInTheDocument()
+  })
+
+  it('shows a failure instead of a success toast when the reset cannot write the order', async () => {
+    mockReady()
+    vi.mocked(ipc.resetToDefaults).mockResolvedValueOnce({
+      loadOrder: {
+        status: 'failed',
+        message: 'used_mods.txt is corrupt; restore the backup before writing again',
+        unmanagedDirectives: [],
+        requiresUnmanagedConfirmation: false,
+      },
+    })
+    render(<App />)
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    const rail = screen.getByRole('navigation', { name: 'Sections' })
+    fireEvent.click(within(rail).getByRole('button', { name: 'Settings' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Reset settings and load order' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Reset to defaults' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Reset settings and load order' }))
+
+    expect(
+      await screen.findByText('used_mods.txt is corrupt; restore the backup before writing again'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Settings and load order reset to defaults')).not.toBeInTheDocument()
+    expect(screen.queryByText('Settings reset; no game path was available for the load order')).not.toBeInTheDocument()
+  })
+
+  it('opens the launch dialog and requests a launch through Steam', async () => {
+    mockReady()
+    render(<App />)
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Launch game' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Launch Warhammer III' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Launch game' }))
+
+    await waitFor(() => {
+      expect(ipc.launchGame).toHaveBeenCalled()
+    })
+    expect(await within(dialog).findByRole('status')).toHaveTextContent('launch requested through Steam')
+  })
+
+  it('changes density from settings and persists it', async () => {
+    mockReady()
+    render(<App />)
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    const rail = screen.getByRole('navigation', { name: 'Sections' })
+    fireEvent.click(within(rail).getByRole('button', { name: 'Settings' }))
+    fireEvent.change(await screen.findByLabelText('Density'), { target: { value: 'roomy' } })
+
+    await waitFor(() => {
+      expect(ipc.updateUiPreferences).toHaveBeenCalledWith(expect.objectContaining({ density: 'roomy' }))
+    })
+    expect(document.documentElement.dataset.density).toBe('roomy')
+  })
+
+  it('switches sections with Ctrl+1..5 and focuses search with Ctrl+F', async () => {
+    mockReady()
+    render(<App />)
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    fireEvent.keyDown(window, { key: '3', ctrlKey: true })
+    expect(await screen.findByRole('heading', { name: 'Conflicts' })).toBeInTheDocument()
+
+    fireEvent.keyDown(window, { key: '1', ctrlKey: true })
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    fireEvent.keyDown(window, { key: 'f', ctrlKey: true })
+    expect(screen.getByLabelText('Search mods')).toHaveFocus()
+  })
+
+  it('focuses search from another screen with Ctrl+F', async () => {
+    mockReady()
+    render(<App />)
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    const rail = screen.getByRole('navigation', { name: 'Sections' })
+    fireEvent.click(within(rail).getByRole('button', { name: 'Settings' }))
+    await screen.findByRole('heading', { name: 'Settings' })
+
+    fireEvent.keyDown(window, { key: 'f', ctrlKey: true })
+
+    expect(await screen.findByRole('heading', { name: 'Mods' })).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByLabelText('Search mods')).toHaveFocus()
+    })
+  })
+
+  it('cycles F6 through the visible regions at 1280px and wider', async () => {
+    mockReady()
+    render(<App />)
+    const list = await screen.findByRole('listbox', { name: 'Mods' })
+    const row = within(list).getAllByRole('option')[0]
+    row.focus()
+
+    fireEvent.keyDown(window, { key: 'F6' })
+    expect(document.activeElement?.closest('[data-region="inspector"]')).not.toBeNull()
+
+    fireEvent.keyDown(window, { key: 'F6' })
+    expect(document.activeElement?.closest('[data-region="rail"]')).not.toBeNull()
+  })
+
+  it('skips the closed overlay inspector and hidden toolbar content below 1280px', async () => {
+    mockReady()
+    render(<App />)
+    const list = await screen.findByRole('listbox', { name: 'Mods' })
+    const row = within(list).getAllByRole('option')[0]
+    const title = document.querySelector<HTMLElement>('[data-screen-title]')
+    expect(title).not.toBeNull()
+    if (title) title.style.display = 'none'
+    row.focus()
+    mockViewportOverlay(true)
+
+    fireEvent.keyDown(window, { key: 'F6' })
+    expect(document.activeElement?.closest('[data-region="rail"]')).not.toBeNull()
+
+    fireEvent.keyDown(window, { key: 'F6' })
+    expect(screen.getByLabelText('Search mods')).toHaveFocus()
+
+    fireEvent.keyDown(window, { key: 'F6' })
+    expect(document.activeElement?.closest('[data-region="list"]')).not.toBeNull()
+
+    row.focus()
+    fireEvent.keyDown(window, { key: 'F6', shiftKey: true })
+    expect(screen.getByLabelText('Search mods')).toHaveFocus()
+  })
+
+  it('focuses Cancel and marks the write action dangerous when directives are dropped', async () => {
+    mockReady()
+    vi.mocked(ipc.previewLoadOrder).mockResolvedValue({
+      ...WRITE_REPORT,
+      unmanagedDirectives: ['mod "legacy.pack";'],
+      wouldDropUnmanaged: true,
+      requiresUnmanagedConfirmation: true,
+    })
+    render(<App />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Apply load order' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Write used_mods.txt' })
+    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toHaveFocus()
+    expect(within(dialog).getByRole('button', { name: /Write 2 mods/ })).toHaveClass('btn-danger')
   })
 
   it('shows a structured error screen when the workspace cannot load', async () => {

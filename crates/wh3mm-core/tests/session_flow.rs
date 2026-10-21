@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use wh3mm_core::config::{self, AppConfig, CONFIG_FILE};
 use wh3mm_core::error::ErrorCode;
-use wh3mm_core::ipc::Density;
+use wh3mm_core::ipc::{Density, LocationSource, ResetLoadOrderStatus, UiPreferences};
 use wh3mm_core::load_order;
 use wh3mm_core::pack::synthetic_pack_bytes;
 use wh3mm_core::session::{Session, SessionOptions};
@@ -23,6 +23,29 @@ fn game_fixture(dir: &TempDir, names: &[&str]) -> PathBuf {
         write_pack(&game.join("data").join(name));
     }
     game
+}
+
+fn steam_game_fixture(dir: &TempDir, names: &[&str]) -> (PathBuf, PathBuf) {
+    let root = dir.path().join("Steam");
+    fs::create_dir_all(root.join("steamapps")).unwrap();
+    let game = root
+        .join("steamapps")
+        .join("common")
+        .join("Total War WARHAMMER III");
+    fs::create_dir_all(game.join("data")).unwrap();
+    for name in names {
+        write_pack(&game.join("data").join(name));
+    }
+    (root, game)
+}
+
+fn steam_options(dir: &TempDir, steam_root: &Path) -> SessionOptions {
+    SessionOptions {
+        config_path: dir.path().join(CONFIG_FILE),
+        steam_root_candidates: Some(vec![steam_root.to_path_buf()]),
+        manual_game_path: None,
+        log_timings: false,
+    }
 }
 
 fn options(dir: &TempDir, game: Option<&Path>) -> SessionOptions {
@@ -254,6 +277,370 @@ fn profiles_create_switch_duplicate_and_delete() {
     assert_eq!(applied.enabled_count, 1);
     session.delete_profile(&default_id).unwrap();
     assert_eq!(session.profiles_state().profiles.len(), 1);
+}
+
+#[test]
+fn reset_to_defaults_keeps_profiles_and_tags_and_writes_an_empty_order() {
+    let dir = TempDir::new("session-reset");
+    let (steam_root, game) = steam_game_fixture(&dir, &["a.pack", "b.pack"]);
+    let mut session = Session::initialize(steam_options(&dir, &steam_root)).unwrap();
+    let snapshot = session.snapshot();
+    let id = |name: &str| {
+        snapshot
+            .mods
+            .iter()
+            .find(|module| module.name == name)
+            .unwrap()
+            .id
+            .clone()
+    };
+    let a = id("a.pack");
+    let b = id("b.pack");
+
+    session
+        .set_mods_enabled(&[a.clone(), b.clone()], true)
+        .unwrap();
+    session
+        .save_profile(None, "Campaign", vec![b.clone(), a.clone()])
+        .unwrap();
+    let tags = session.create_tag("Overhaul", "#C9A227").unwrap();
+    session.set_mod_tags(&a, vec![tags[0].id.clone()]).unwrap();
+    session
+        .update_ui_preferences(UiPreferences {
+            density: Density::Compact,
+            show_authors: false,
+            show_thumbnails: false,
+            last_scroll_top: 400,
+        })
+        .unwrap();
+    let written = session.write_load_order(false, false).unwrap();
+    assert_eq!(written.written, 2);
+
+    let report = session.reset_to_defaults(true, false).unwrap();
+
+    assert_eq!(report.load_order.status, ResetLoadOrderStatus::Written);
+    let snapshot = session.snapshot();
+    assert_eq!(snapshot.enabled_count, 0);
+    assert_eq!(session.config.ui, UiPreferences::default());
+    assert!(session.config.paths.game_path_override.is_none());
+    assert_eq!(session.config.profiles.len(), 2);
+    let campaign = session
+        .config
+        .profiles
+        .iter()
+        .find(|profile| profile.name == "Campaign")
+        .unwrap();
+    assert_eq!(campaign.enabled_mod_ids, vec![b, a]);
+    assert_eq!(session.config.tags, tags);
+    assert_eq!(
+        session.config.mod_tags.values().next().map(Vec::len),
+        Some(1)
+    );
+    assert!(config::backup_path(&dir.path().join(CONFIG_FILE)).is_file());
+    assert!(game.join("used_mods.txt.bak").is_file());
+    let order = fs::read_to_string(game.join("used_mods.txt")).unwrap();
+    assert!(
+        order.trim().is_empty(),
+        "expected an empty order, got {order:?}"
+    );
+    let error = session.reset_to_defaults(false, false).unwrap_err();
+    assert_eq!(error.code, ErrorCode::Validation);
+}
+
+#[test]
+fn reset_to_defaults_without_a_game_still_persists_the_config() {
+    let dir = TempDir::new("session-reset-no-game");
+    let mut session = Session::initialize(options(&dir, None)).unwrap();
+    session
+        .update_ui_preferences(UiPreferences {
+            density: Density::Roomy,
+            show_authors: false,
+            show_thumbnails: false,
+            last_scroll_top: 900,
+        })
+        .unwrap();
+
+    let report = session.reset_to_defaults(true, false).unwrap();
+
+    assert_eq!(report.load_order.status, ResetLoadOrderStatus::NoGamePath);
+    assert_eq!(session.config.ui, UiPreferences::default());
+    assert!(session.config.paths.game_path_override.is_none());
+    let reloaded = config::load_or_create(&dir.path().join(CONFIG_FILE)).unwrap();
+    assert_eq!(reloaded.config.ui, UiPreferences::default());
+}
+
+#[test]
+fn reset_to_defaults_reports_a_corrupt_manual_order_even_when_auto_detection_finds_nothing() {
+    let dir = TempDir::new("session-reset-corrupt-manual");
+    let game = game_fixture(&dir, &["a.pack"]);
+    let corrupt = "mod \"unterminated;\n";
+    fs::write(game.join("used_mods.txt"), corrupt).unwrap();
+    let mut session = Session::initialize(options(&dir, Some(&game))).unwrap();
+
+    let report = session.reset_to_defaults(true, false).unwrap();
+
+    assert_eq!(report.load_order.status, ResetLoadOrderStatus::Failed);
+    assert!(
+        report
+            .load_order
+            .message
+            .as_deref()
+            .unwrap_or_default()
+            .contains("corrupt"),
+        "{:?}",
+        report.load_order.message
+    );
+    assert_eq!(
+        fs::read_to_string(game.join("used_mods.txt")).unwrap(),
+        corrupt
+    );
+    assert_eq!(
+        session.game_location().unwrap().source,
+        LocationSource::Manual,
+        "a failed reset must not clear the path the error refers to"
+    );
+}
+
+#[test]
+fn reset_to_defaults_reports_a_corrupt_used_mods_file_without_claiming_success() {
+    let dir = TempDir::new("session-reset-corrupt");
+    let (steam_root, game) = steam_game_fixture(&dir, &["a.pack"]);
+    let corrupt = "mod \"unterminated;\n";
+    fs::write(game.join("used_mods.txt"), corrupt).unwrap();
+    fs::write(game.join("used_mods.txt.bak"), "mod \"a.pack\";\n").unwrap();
+    let mut session = Session::initialize(steam_options(&dir, &steam_root)).unwrap();
+    let preferences = UiPreferences {
+        density: Density::Compact,
+        show_authors: false,
+        show_thumbnails: false,
+        last_scroll_top: 300,
+    };
+    session.update_ui_preferences(preferences.clone()).unwrap();
+
+    let report = session.reset_to_defaults(true, false).unwrap();
+
+    assert_eq!(report.load_order.status, ResetLoadOrderStatus::Failed);
+    assert!(
+        report
+            .load_order
+            .message
+            .as_deref()
+            .unwrap_or_default()
+            .contains("corrupt"),
+        "{:?}",
+        report.load_order.message
+    );
+    assert!(!report.load_order.requires_unmanaged_confirmation);
+    assert_eq!(
+        fs::read_to_string(game.join("used_mods.txt")).unwrap(),
+        corrupt
+    );
+    assert_eq!(session.ui_preferences(), preferences);
+    assert!(session.snapshot().load_order.corrupt);
+}
+
+#[test]
+fn reset_to_defaults_refuses_a_mixed_corrupt_and_unmanaged_file_without_asking() {
+    let dir = TempDir::new("session-reset-corrupt-unmanaged");
+    let (steam_root, game) = steam_game_fixture(&dir, &["a.pack"]);
+    let mixed = "add_working_directory \"C:/tools\";\nmod \"unterminated;\n";
+    fs::write(game.join("used_mods.txt"), mixed).unwrap();
+    let mut session = Session::initialize(steam_options(&dir, &steam_root)).unwrap();
+    let preferences = UiPreferences {
+        density: Density::Compact,
+        show_authors: false,
+        show_thumbnails: false,
+        last_scroll_top: 300,
+    };
+    session.update_ui_preferences(preferences.clone()).unwrap();
+
+    let report = session.reset_to_defaults(true, false).unwrap();
+
+    assert_eq!(report.load_order.status, ResetLoadOrderStatus::Failed);
+    assert!(
+        report
+            .load_order
+            .message
+            .as_deref()
+            .unwrap_or_default()
+            .contains("corrupt"),
+        "{:?}",
+        report.load_order.message
+    );
+    assert!(
+        !report.load_order.requires_unmanaged_confirmation,
+        "a write that cannot succeed must not ask for directive-loss confirmation"
+    );
+    assert_eq!(
+        fs::read_to_string(game.join("used_mods.txt")).unwrap(),
+        mixed
+    );
+    assert_eq!(session.ui_preferences(), preferences);
+    assert_eq!(
+        session.game_location().unwrap().source,
+        LocationSource::Auto
+    );
+}
+
+#[test]
+fn reset_to_defaults_reports_an_unreadable_used_mods_file_without_claiming_success() {
+    let dir = TempDir::new("session-reset-unreadable");
+    let (steam_root, game) = steam_game_fixture(&dir, &["a.pack"]);
+    // A directory at the file's path fails `fs::read` on every platform.
+    fs::create_dir(game.join("used_mods.txt")).unwrap();
+    let mut session = Session::initialize(steam_options(&dir, &steam_root)).unwrap();
+
+    let report = session.reset_to_defaults(true, false).unwrap();
+
+    assert_eq!(report.load_order.status, ResetLoadOrderStatus::Failed);
+    assert!(
+        report
+            .load_order
+            .message
+            .as_deref()
+            .unwrap_or_default()
+            .contains("could not be read"),
+        "{:?}",
+        report.load_order.message
+    );
+    assert!(game.join("used_mods.txt").is_dir());
+    assert!(session.snapshot().load_order.unreadable.is_some());
+}
+
+#[test]
+fn reset_to_defaults_asks_before_dropping_unmanaged_directives() {
+    let dir = TempDir::new("session-reset-unmanaged");
+    let (steam_root, game) = steam_game_fixture(&dir, &["a.pack"]);
+    let directive = "add_working_directory \"C:/tools\";";
+    let original = format!("{directive}\nmod \"a.pack\";\n");
+    fs::write(game.join("used_mods.txt"), &original).unwrap();
+    let mut session = Session::initialize(steam_options(&dir, &steam_root)).unwrap();
+    let preferences = UiPreferences {
+        density: Density::Compact,
+        show_authors: false,
+        show_thumbnails: false,
+        last_scroll_top: 300,
+    };
+    session.update_ui_preferences(preferences.clone()).unwrap();
+
+    let preview = session.reset_to_defaults(true, false).unwrap();
+
+    assert_eq!(
+        preview.load_order.status,
+        ResetLoadOrderStatus::UnmanagedDirectives
+    );
+    assert!(preview.load_order.requires_unmanaged_confirmation);
+    assert_eq!(
+        preview.load_order.unmanaged_directives,
+        vec![directive.to_string()]
+    );
+    assert_eq!(
+        fs::read_to_string(game.join("used_mods.txt")).unwrap(),
+        original
+    );
+    assert_eq!(session.ui_preferences(), preferences);
+
+    let report = session.reset_to_defaults(true, true).unwrap();
+
+    assert_eq!(report.load_order.status, ResetLoadOrderStatus::Written);
+    assert!(report.load_order.unmanaged_directives.is_empty());
+    assert_eq!(session.ui_preferences(), UiPreferences::default());
+    assert_eq!(fs::read_to_string(game.join("used_mods.txt")).unwrap(), "");
+}
+
+#[test]
+fn reset_to_defaults_clears_the_manual_override_and_redetects_immediately() {
+    let dir = TempDir::new("session-reset-redetect");
+    let manual = game_fixture(&dir, &["manual.pack"]);
+    fs::write(manual.join("used_mods.txt"), "mod \"manual.pack\";\n").unwrap();
+    let (steam_root, automatic) = steam_game_fixture(&dir, &["automatic.pack"]);
+    let options = SessionOptions {
+        config_path: dir.path().join(CONFIG_FILE),
+        steam_root_candidates: Some(vec![steam_root]),
+        manual_game_path: Some(manual.clone()),
+        log_timings: false,
+    };
+    let mut session = Session::initialize(options).unwrap();
+    assert_eq!(
+        session.game_location().unwrap().source,
+        LocationSource::Manual
+    );
+    assert_eq!(
+        session.config.paths.game_path_override.as_deref(),
+        Some(manual.as_path())
+    );
+
+    let report = session.reset_to_defaults(true, false).unwrap();
+
+    assert_eq!(report.load_order.status, ResetLoadOrderStatus::Written);
+    assert!(session.config.paths.game_path_override.is_none());
+    let location = session.game_location().unwrap();
+    assert_eq!(location.source, LocationSource::Auto);
+    assert_eq!(location.game_path, automatic.to_string_lossy());
+    let snapshot = session.snapshot();
+    assert_eq!(snapshot.mods.len(), 1);
+    assert_eq!(snapshot.mods[0].name, "automatic.pack");
+    assert_eq!(
+        fs::read_to_string(automatic.join("used_mods.txt")).unwrap(),
+        ""
+    );
+    assert_eq!(
+        fs::read_to_string(manual.join("used_mods.txt")).unwrap(),
+        "mod \"manual.pack\";\n",
+        "the previous manual install must not be rewritten"
+    );
+}
+
+#[test]
+fn applying_a_profile_restores_the_saved_order_exactly() {
+    let dir = TempDir::new("session-profile-order");
+    let game = game_fixture(&dir, &["a.pack", "b.pack", "c.pack"]);
+    let mut session = Session::initialize(options(&dir, Some(&game))).unwrap();
+    let snapshot = session.snapshot();
+    let id = |name: &str| {
+        snapshot
+            .mods
+            .iter()
+            .find(|module| module.name == name)
+            .unwrap()
+            .id
+            .clone()
+    };
+    let a = id("a.pack");
+    let b = id("b.pack");
+    let c = id("c.pack");
+
+    session
+        .set_mods_enabled(&[a.clone(), b.clone(), c.clone()], true)
+        .unwrap();
+    session
+        .set_load_order(&[c.clone(), a.clone(), b.clone()])
+        .unwrap();
+    let profile = session
+        .save_profile(None, "Ordered", vec![c.clone(), a.clone(), b.clone()])
+        .unwrap();
+
+    session
+        .set_load_order(&[b.clone(), c.clone(), a.clone()])
+        .unwrap();
+    session
+        .set_mods_enabled(std::slice::from_ref(&a), false)
+        .unwrap();
+
+    let applied = session.apply_profile(&profile.id).unwrap();
+    assert_eq!(applied.active_profile_id, profile.id);
+    assert_eq!(applied.enabled_count, 3);
+    let enabled: Vec<&str> = applied
+        .mods
+        .iter()
+        .filter(|module| module.is_enabled)
+        .map(|module| module.name.as_str())
+        .collect();
+    assert_eq!(enabled, vec!["c.pack", "a.pack", "b.pack"]);
+    assert_eq!(
+        session.config.active_profile().enabled_mod_ids,
+        vec![c, a, b]
+    );
 }
 
 #[test]

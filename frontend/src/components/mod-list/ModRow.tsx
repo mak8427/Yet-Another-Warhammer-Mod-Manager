@@ -4,23 +4,23 @@ import {
   type ConflictModSummary,
   type ModSummary,
   type Tag,
-  type WorkshopState,
 } from '../../lib/ipc'
-import { formatBytes, formatDate } from '../../lib/format'
-import { gridColumns } from './grid'
+import { factionSlotForColor } from '../../lib/ui'
 
 export interface ModRowProps {
   mod: ModSummary
   selected: boolean
   focused: boolean
   rowHeight: number
-  showAuthors: boolean
+  columns: string
   showThumbnails: boolean
   tagsById: Map<string, Tag>
   conflictSummary?: ConflictModSummary
-  workshopState?: WorkshopState
+  missingDependencies?: string[]
   onToggle: (modId: string) => void
   onSelect: (modId: string, event: ReactMouseEvent) => void
+  onInspect: (modId: string) => void
+  onOpenMenu: (modId: string, x: number, y: number) => void
   onDragStart: (modId: string) => void
   onDragOverRow: (modId: string) => void
   onDropRow: (modId: string) => void
@@ -33,13 +33,15 @@ export function ModRow({
   selected,
   focused,
   rowHeight,
-  showAuthors,
+  columns,
   showThumbnails,
   tagsById,
   conflictSummary,
-  workshopState,
+  missingDependencies,
   onToggle,
   onSelect,
+  onInspect,
+  onOpenMenu,
   onDragStart,
   onDragOverRow,
   onDropRow,
@@ -49,25 +51,45 @@ export function ModRow({
   const tags = mod.tags.map((id) => tagsById.get(id)).filter((tag): tag is Tag => Boolean(tag))
   const visibleTags = tags.slice(0, 2)
   const extraTags = tags.length - visibleTags.length
+  const wins = (conflictSummary?.overrides ?? 0) > 0
+  const loses = (conflictSummary?.overriddenOn ?? 0) > 0
+  const missing = (missingDependencies?.length ?? 0) > 0
+  const statusLabel = [
+    wins || loses ? 'Conflict' : null,
+    missing ? 'Missing dependency' : null,
+  ]
+    .filter(Boolean)
+    .join(' and ')
+  const authorHidden = !columns.includes('var(--row-author-w)')
+
+  const openMenuAt = (x: number, y: number) => onOpenMenu(mod.id, x, y)
 
   return (
     <div
       role="option"
       aria-selected={selected}
-      aria-label={`${mod.humanName}${mod.isEnabled ? ', enabled' : ', disabled'}`}
+      aria-label={`${mod.humanName}${mod.isEnabled ? ', enabled' : ', disabled'}${
+        statusLabel ? `, ${statusLabel}` : ''
+      }`}
       className={[
         'mod-row',
         mod.isEnabled ? 'is-enabled' : 'is-disabled',
         selected ? 'is-selected' : '',
+        focused ? 'is-focused' : '',
         mod.packError ? 'has-error' : '',
       ]
         .filter(Boolean)
         .join(' ')}
-      style={{ height: rowHeight, gridTemplateColumns: gridColumns(showAuthors, showThumbnails) }}
+      style={{ height: rowHeight, gridTemplateColumns: columns }}
       tabIndex={focused ? 0 : -1}
       data-mod-id={mod.id}
       ref={(element) => registerRow(mod.id, element)}
       onClick={(event) => onSelect(mod.id, event)}
+      onDoubleClick={() => onInspect(mod.id)}
+      onContextMenu={(event) => {
+        event.preventDefault()
+        openMenuAt(event.clientX, event.clientY)
+      }}
       draggable={mod.isEnabled}
       onDragStart={(event) => {
         event.dataTransfer.effectAllowed = 'move'
@@ -87,111 +109,115 @@ export function ModRow({
       }}
       onDragEnd={onDragEnd}
     >
-      <span className={`drag-grip ${mod.isEnabled ? '' : 'drag-grip-disabled'}`} aria-hidden="true">
-        ⠿
+      <span
+        className="row-order"
+        title={mod.isEnabled ? 'Drag to reorder' : 'Disabled mods are not in the load order'}
+        aria-hidden="true"
+      >
+        {mod.isEnabled ? mod.loadOrder + 1 : '–'}
       </span>
-      <input
-        type="checkbox"
-        className="mod-toggle"
-        checked={mod.isEnabled}
-        aria-label={`${mod.isEnabled ? 'Disable' : 'Enable'} ${mod.humanName}`}
-        onClick={(event) => event.stopPropagation()}
-        onChange={() => onToggle(mod.id)}
-      />
+
+      <span className="row-check">
+        <input
+          type="checkbox"
+          checked={mod.isEnabled}
+          aria-label={`${mod.isEnabled ? 'Disable' : 'Enable'} ${mod.humanName}`}
+          tabIndex={focused ? 0 : -1}
+          onClick={(event) => event.stopPropagation()}
+          onChange={() => onToggle(mod.id)}
+        />
+      </span>
+
       {showThumbnails ? (
-        <span className="mod-thumb" aria-hidden="true">
-          {mod.thumbnailPath ? <img src={fileUrl(mod.thumbnailPath)} alt="" loading="lazy" /> : <span>{initials(mod.humanName)}</span>}
+        <span className="row-thumb" aria-hidden="true">
+          {mod.thumbnailPath ? (
+            <img src={fileUrl(mod.thumbnailPath)} alt="" loading="lazy" />
+          ) : (
+            <span>{initials(mod.humanName)}</span>
+          )}
         </span>
       ) : null}
-      <span className="mod-name-cell">
-        <span className="mod-title">
-          {mod.isEnabled && <span className="order-number">{mod.loadOrder + 1}</span>}
-          <span className="mod-title-text">{mod.humanName}</span>
-          {mod.isWorkshop && <span className="row-badge">WS</span>}
-          {workshopState && (
-            <span
-              className={`row-badge row-badge-workshop-${workshopState}`}
-              title={workshopStateTitle(workshopState)}
-            >
-              {workshopStateLabel(workshopState)}
-            </span>
-          )}
-          {mod.isMovie && <span className="row-badge row-badge-muted">MOV</span>}
-          {conflictSummary && conflictSummary.overrides > 0 && (
-            <span
-              className="row-badge row-badge-conflict"
-              title={`Wins ${conflictSummary.overrides} shared file path(s)`}
-            >
-              W{conflictSummary.overrides}
-            </span>
-          )}
-          {conflictSummary && conflictSummary.overriddenOn > 0 && (
-            <span
-              className="row-badge row-badge-overridden"
-              title={`Overridden on ${conflictSummary.overriddenOn} shared file path(s)`}
-            >
-              L{conflictSummary.overriddenOn}
-            </span>
-          )}
-          {conflictSummary && conflictSummary.baseTableOverrides > 0 && (
-            <span
-              className="row-badge row-badge-muted"
-              title={`Shadows ${conflictSummary.baseTableOverrides} base-game table path(s)`}
-            >
-              DB
-            </span>
-          )}
+
+      <span className="row-name">
+        <span className="row-title">
+          <span className="row-title-text" title={mod.humanName}>
+            {mod.humanName}
+          </span>
+          {mod.isMovie && <span className="row-badge row-badge-muted">Movie</span>}
           {mod.packError && (
-            <span className="row-warning" title={mod.packError} aria-label={`Pack error: ${mod.packError}`}>
+            <span className="row-warning" title={mod.packError} role="img" aria-label="Pack header error">
               !
             </span>
           )}
         </span>
-        <span className="mod-subtitle">
-          {mod.name}
-          {!showAuthors && mod.author ? ` · ${mod.author}` : ''}
+        <span className="row-meta" title={`${mod.name}${authorHidden && mod.author ? ` · ${mod.author}` : ''}`}>
+          <span className="row-pack">{mod.name}</span>
+          {authorHidden && mod.author && <span className="row-meta-author"> · {mod.author}</span>}
         </span>
-      </span>
-      {showAuthors ? <span className="mod-author">{mod.author ?? '—'}</span> : null}
-      <span className="mod-tags">
-        {visibleTags.map((tag) => (
-          <span key={tag.id} className="tag-chip tag-chip-small" title={tag.name}>
-            <span className="tag-dot" style={{ background: tag.color }} />
-            {tag.name}
+        {!columns.includes('var(--row-tags-w)') && visibleTags.length > 0 && (
+          <span className="row-inline-tags">
+            {visibleTags.map((tag) => (
+              <span
+                key={tag.id}
+                className="tag-chip tag-chip-inline"
+                data-faction={factionSlotForColor(tag.color)}
+                title={tag.name}
+              >
+                {tag.name}
+              </span>
+            ))}
+            {extraTags > 0 && <span className="tag-more">+{extraTags}</span>}
           </span>
-        ))}
-        {extraTags > 0 && <span className="tag-more">+{extraTags}</span>}
+        )}
       </span>
-      <span className="mod-size">{formatBytes(mod.sizeBytes)}</span>
-      <span className="mod-updated">{formatDate(mod.updatedAt)}</span>
+
+      {columns.includes('var(--row-tags-w)') && (
+        <span className="row-tags" title={tags.map((tag) => tag.name).join(', ')}>
+          {visibleTags.map((tag) => (
+            <span
+              key={tag.id}
+              className="tag-chip tag-chip-small"
+              data-faction={factionSlotForColor(tag.color)}
+            >
+              {tag.name}
+            </span>
+          ))}
+          {extraTags > 0 && <span className="tag-more">+{extraTags}</span>}
+        </span>
+      )}
+
+      {columns.includes('var(--row-author-w)') && (
+        <span className="row-author" title={mod.author ?? 'No author declared'}>
+          {mod.author ?? '—'}
+        </span>
+      )}
+
+      <span className="row-status" role="img" aria-label={statusLabel || 'No conflicts'}>
+        {wins || loses ? (
+          <span className={`status-diamond${missing ? ' has-missing' : ''}`} aria-hidden="true" />
+        ) : null}
+        {missing ? <span className="status-triangle" aria-hidden="true" /> : null}
+        {!wins && !loses && !missing && <span className="status-clear" aria-hidden="true">·</span>}
+      </span>
+
+      <span className="row-menu">
+        <button
+          type="button"
+          className="btn btn-ghost btn-icon btn-small row-menu-button"
+          aria-label={`Actions for ${mod.humanName}`}
+          aria-haspopup="menu"
+          tabIndex={focused ? 0 : -1}
+          onClick={(event) => {
+            event.stopPropagation()
+            const rect = event.currentTarget.getBoundingClientRect()
+            openMenuAt(rect.right - 4, rect.bottom + 2)
+          }}
+        >
+          <span aria-hidden="true">⋯</span>
+        </button>
+      </span>
     </div>
   )
-}
-
-function workshopStateLabel(state: WorkshopState): string {
-  switch (state) {
-    case 'installed':
-      return 'INST'
-    case 'subscribed':
-      return 'SUB'
-    case 'update_pending':
-      return 'UPD'
-    case 'unknown':
-      return '?'
-  }
-}
-
-function workshopStateTitle(state: WorkshopState): string {
-  switch (state) {
-    case 'installed':
-      return 'Workshop: installed'
-    case 'subscribed':
-      return 'Workshop: subscribed, not installed'
-    case 'update_pending':
-      return 'Workshop: update pending — refresh after Steam updates'
-    case 'unknown':
-      return 'Workshop: subscription state unknown'
-  }
 }
 
 function initials(value: string): string {

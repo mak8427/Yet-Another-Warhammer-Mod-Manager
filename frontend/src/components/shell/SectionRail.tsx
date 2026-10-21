@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { View } from '../../store'
 
 interface SectionRailProps {
@@ -7,7 +8,24 @@ interface SectionRailProps {
   profileCount: number
   conflictCount: number
   workshopCount: number
+  loading?: boolean
   onSelect: (view: View) => void
+}
+
+interface RailItem {
+  view: View
+  label: string
+  shortcut: string
+  count?: number
+  icon: ReactNode
+}
+
+function icon(path: string) {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+      <path d={path} fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+    </svg>
+  )
 }
 
 export function SectionRail({
@@ -17,65 +35,90 @@ export function SectionRail({
   profileCount,
   conflictCount,
   workshopCount,
+  loading = false,
   onSelect,
 }: SectionRailProps) {
+  const groups: Array<{ label: string; items: RailItem[] }> = [
+    {
+      label: 'Collection',
+      items: [
+        {
+          view: 'mods',
+          label: 'Mods',
+          shortcut: 'Ctrl+1',
+          count: modCount,
+          icon: icon('M2.5 3.5h11v2h-11zM2.5 7.5h11v2h-11zM2.5 11.5h11v2h-11z'),
+        },
+        {
+          view: 'profiles',
+          label: 'Profiles',
+          shortcut: 'Ctrl+2',
+          count: profileCount,
+          icon: icon('M2.5 3.5h11v3h-11zM2.5 9.5h11v3h-11z'),
+        },
+        {
+          view: 'conflicts',
+          label: 'Conflicts',
+          shortcut: 'Ctrl+3',
+          count: conflictCount,
+          icon: icon('M8 2.5 13.5 13h-11z'),
+        },
+      ],
+    },
+    {
+      label: 'Game',
+      items: [
+        {
+          view: 'workshop',
+          label: 'Workshop',
+          shortcut: 'Ctrl+4',
+          count: workshopCount,
+          icon: icon('M2.5 4.5h11v7h-11zM6 2.5h4v2H6z'),
+        },
+        {
+          view: 'settings',
+          label: 'Settings',
+          shortcut: 'Ctrl+5',
+          icon: icon('M2.5 3.5h11v2h-11zM2.5 7.5h11v2h-11zM2.5 11.5h11v2h-11z'),
+        },
+      ],
+    },
+  ]
+
   return (
-    <nav className="section-rail" aria-label="Sections">
-      <span className="rail-group">Muster</span>
-      <button
-        type="button"
-        className={`rail-item ${view === 'mods' ? 'rail-item-active' : ''}`}
-        aria-current={view === 'mods' ? 'page' : undefined}
-        onClick={() => onSelect('mods')}
-      >
-        <span>Load order</span>
-        <span className="rail-count">
-          {enabledCount}/{modCount}
-        </span>
-      </button>
-      <button
-        type="button"
-        className={`rail-item ${view === 'profiles' ? 'rail-item-active' : ''}`}
-        aria-current={view === 'profiles' ? 'page' : undefined}
-        onClick={() => onSelect('profiles')}
-      >
-        <span>Profiles</span>
-        <span className="rail-count">{profileCount}</span>
-      </button>
-      <button
-        type="button"
-        className={`rail-item ${view === 'conflicts' ? 'rail-item-active' : ''}`}
-        aria-current={view === 'conflicts' ? 'page' : undefined}
-        onClick={() => onSelect('conflicts')}
-      >
-        <span>Conflicts</span>
-        <span className="rail-count">{conflictCount}</span>
-      </button>
-      <button
-        type="button"
-        className={`rail-item ${view === 'workshop' ? 'rail-item-active' : ''}`}
-        aria-current={view === 'workshop' ? 'page' : undefined}
-        onClick={() => onSelect('workshop')}
-      >
-        <span>Workshop</span>
-        <span className="rail-count">{workshopCount}</span>
-      </button>
-      <button
-        type="button"
-        className={`rail-item ${view === 'launch' ? 'rail-item-active' : ''}`}
-        aria-current={view === 'launch' ? 'page' : undefined}
-        onClick={() => onSelect('launch')}
-      >
-        <span>Launch</span>
-      </button>
-      <span className="rail-item rail-item-planned" aria-disabled="true" title="Arrives in M4">
-        Settings
-      </span>
+    <nav className="section-rail" aria-label="Sections" data-region="rail">
+      {groups.map((group) => (
+        <div className="rail-section" key={group.label}>
+          <span className="rail-group">{group.label}</span>
+          {group.items.map((item) => {
+            const active = view === item.view
+            return (
+              <button
+                key={item.view}
+                type="button"
+                className={`rail-item${active ? ' rail-item-active' : ''}`}
+                aria-current={active ? 'page' : undefined}
+                aria-keyshortcuts={item.shortcut}
+                title={`${item.label} (${item.shortcut})`}
+                onClick={() => onSelect(item.view)}
+              >
+                <span className="rail-icon">{item.icon}</span>
+                <span className="rail-label">{item.label}</span>
+                {!loading && item.count !== undefined && (
+                  <span className="rail-count" aria-hidden="true">
+                    {item.view === 'mods' ? `${enabledCount}/${item.count}` : item.count}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      ))}
       <div className="rail-note">
-        <span className="rail-group">Reference</span>
-        <p>
-          Top of the list loads first. The bottom of the list wins file conflicts. Drag enabled
-          rows, or use Alt+Arrow to move the selection.
+        <span className="rail-group">Load order</span>
+        <p>Top loads first. The bottom of the list wins file conflicts.</p>
+        <p className="rail-hint">
+          <kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd> moves the selection.
         </p>
       </div>
     </nav>

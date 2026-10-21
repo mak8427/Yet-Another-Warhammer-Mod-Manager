@@ -16,8 +16,8 @@
         "title": "WH3 Mod Manager",
         "width": 1280,
         "height": 840,
-        "minWidth": 960,
-        "minHeight": 640,
+        "minWidth": 1024,
+        "minHeight": 720,
         "resizable": true
       }
     ],

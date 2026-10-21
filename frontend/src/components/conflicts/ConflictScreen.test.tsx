@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { IpcError } from '../../lib/ipc'
-import { CONFLICT_REPORT } from '../../test/mocks'
+import { CONFLICT_REPORT, EMPTY_CONFLICTS } from '../../test/mocks'
 import { ConflictScreen } from './ConflictScreen'
 
 describe('ConflictScreen', () => {
@@ -20,10 +20,53 @@ describe('ConflictScreen', () => {
     const fileTable = screen.getAllByRole('table')[0]
     expect(within(fileTable).getByText('db/units_tables/units')).toBeInTheDocument()
     expect(within(fileTable).getByText('beta.pack')).toBeInTheDocument()
-    expect(within(fileTable).getByText('alpha.pack')).toBeInTheDocument()
     expect(screen.getByText(/missing\.pack/)).toBeInTheDocument()
     expect(screen.getAllByText('beta.pack').length).toBeGreaterThan(0)
-    expect(screen.getByText('Shared paths').parentElement).toHaveTextContent('1')
+    expect(screen.getByText(/1 shared path · 1 missing dependency · 0 duplicate names/)).toBeInTheDocument()
+    const missingRow = screen.getByText(/missing\.pack/).closest('tr')
+    expect(missingRow).not.toBeNull()
+    expect(within(missingRow as HTMLTableRowElement).getByText('—')).toBeInTheDocument()
+    expect(screen.queryByText('Wins Missing')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expand losers' }))
+    expect(within(fileTable).getByText('Loses: alpha.pack')).toBeInTheDocument()
+  })
+
+  it('renders duplicate pack names and shows none for a clean report', () => {
+    const report = {
+      ...CONFLICT_REPORT,
+      duplicatePackNames: [{ name: 'dup.pack', modIds: ['mod-a', 'mod-b'] }],
+    }
+    const { unmount } = render(
+      <ConflictScreen
+        report={report}
+        loading={false}
+        error={null}
+        onRefresh={() => {}}
+        onDismissError={() => {}}
+      />,
+    )
+
+    expect(screen.getByText('dup.pack')).toBeInTheDocument()
+    expect(screen.getByText('Duplicate name')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Duplicate names' }))
+    const table = screen.getByRole('table')
+    expect(within(table).getByText('dup.pack')).toBeInTheDocument()
+    expect(within(table).getByText('Duplicate name')).toBeInTheDocument()
+
+    unmount()
+    render(
+      <ConflictScreen
+        report={EMPTY_CONFLICTS}
+        loading={false}
+        error={null}
+        onRefresh={() => {}}
+        onDismissError={() => {}}
+      />,
+    )
+    expect(screen.queryByText('Duplicate name')).not.toBeInTheDocument()
+    expect(screen.getByText(/No conflicts across 0 enabled mods/)).toBeInTheDocument()
   })
 
   it('shows a structured error and refreshes on demand', () => {
@@ -45,7 +88,7 @@ describe('ConflictScreen', () => {
     )
 
     expect(screen.getByRole('alert')).toHaveTextContent('A pack index could not be read')
-    fireEvent.click(screen.getByRole('button', { name: 'Refresh' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Rescan' })[0])
     expect(onRefresh).toHaveBeenCalled()
   })
 })

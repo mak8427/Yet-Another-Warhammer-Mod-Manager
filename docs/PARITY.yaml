@@ -439,8 +439,8 @@ capabilities:
         evidence:
           - path: crates/wh3mm-core/src/launch.rs
             test: launch_options_round_trip_per_profile
-          - path: frontend/src/components/launch/LaunchScreen.test.tsx
-            test: changes a launch option and requests a launch
+          - path: frontend/src/App.test.tsx
+            test: opens the launch dialog and requests a launch through Steam
 
   - id: settings
     title: Settings
@@ -478,7 +478,7 @@ capabilities:
             test: successful_write_creates_a_byte_exact_backup_and_restore_brings_it_back
           - path: frontend/src/components/load-order/LoadOrderBanner.test.tsx
             test: enables explicit backup restore only when a backup exists
-          - path: frontend/src/App.tsx
+          - path: frontend/src/components/mod-list/ModsScreen.tsx
             contains: "store.restoreLoadOrder"
       - id: SET-4
         title: Reset settings and load order to documented defaults

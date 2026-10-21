@@ -233,6 +233,18 @@ impl AppConfig {
         Ok(())
     }
 
+    /// Returns the document to the documented defaults while keeping profiles,
+    /// tags, mod tags, and launch options. Only the active profile's enabled set
+    /// is cleared; other profiles keep their saved sets.
+    pub fn reset_to_defaults(&mut self) {
+        self.ui = UiPreferences::default();
+        self.paths = PathsConfig::default();
+        let now = now_iso8601();
+        let active = self.active_profile_mut();
+        active.enabled_mod_ids.clear();
+        active.updated_at = now;
+    }
+
     /// Repairs safe invariants and rejects the ones that would lose data.
     fn validate_and_normalize(mut self) -> Result<(Self, Vec<String>), AppError> {
         if self.schema_version != SCHEMA_VERSION {
@@ -737,6 +749,18 @@ mod tests {
         assert_eq!(config.mod_tags["mod"], vec![tag.id.clone()]);
         config.delete_tag(&tag.id).unwrap();
         assert!(!config.mod_tags.contains_key("mod"));
+    }
+
+    #[test]
+    fn roomy_density_round_trips() {
+        let dir = TempDir::new("config-density-roomy");
+        let path = config_path(&dir);
+        let loaded = load_or_create(&path).unwrap();
+        let mut value = serde_json::to_value(&loaded.config).unwrap();
+        value["ui"]["density"] = serde_json::Value::String("roomy".into());
+        fs::write(&path, serde_json::to_vec(&value).unwrap()).unwrap();
+        let reloaded = load_or_create(&path).unwrap();
+        assert_eq!(reloaded.config.ui.density, crate::ipc::Density::Roomy);
     }
 
     #[test]

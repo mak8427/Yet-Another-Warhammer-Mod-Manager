@@ -5,6 +5,7 @@ import {
   GAME,
   PROFILE_CAMPAIGN,
   PROFILES,
+  RESET_REPORT,
   UI,
   makeClient,
   makeMod,
@@ -171,6 +172,95 @@ describe('AppStore', () => {
     expect(client.writeLoadOrder).toHaveBeenCalledWith(false, false)
     expect(store.getState().previewOpen).toBe(false)
     expect(store.getState().notice?.kind).toBe('success')
+  })
+
+  it('re-detects the game after a reset so the source returns to automatic', async () => {
+    const manual = { ...GAME, source: 'manual' as const }
+    const auto = { ...GAME, source: 'auto' as const }
+    const client = makeClient({
+      detectGame: vi.fn().mockResolvedValueOnce(manual).mockResolvedValue(auto),
+    })
+    const store = new AppStore(client)
+    await store.init()
+    expect(store.getState().game?.source).toBe('manual')
+
+    await store.resetToDefaults()
+
+    expect(client.detectGame).toHaveBeenCalledTimes(2)
+    expect(store.getState().game?.source).toBe('auto')
+  })
+
+  it('reports the real load-order reason when a reset is blocked', async () => {
+    const blocked = {
+      ...RESET_REPORT,
+      loadOrder: {
+        status: 'failed' as const,
+        message: 'used_mods.txt is corrupt; restore the backup before writing again',
+        unmanagedDirectives: [],
+        requiresUnmanagedConfirmation: false,
+      },
+    }
+    const client = makeClient({ resetToDefaults: vi.fn(async () => blocked) })
+    const store = new AppStore(client)
+    await store.init()
+
+    await store.resetToDefaults()
+
+    const notice = store.getState().notice
+    expect(notice?.kind).toBe('error')
+    expect(notice?.message).toContain('used_mods.txt is corrupt')
+    expect(notice?.message).not.toContain('no game path')
+  })
+
+  it('sorts deterministically with an id tie-break in every non-drag mode', async () => {
+    const mods = [
+      makeMod({
+        id: 'mod-z',
+        name: 'z.pack',
+        humanName: 'Same',
+        author: 'A',
+        updatedAt: '2026-10-20T12:00:00Z',
+      }),
+      makeMod({
+        id: 'mod-a',
+        name: 'a.pack',
+        humanName: 'Same',
+        author: 'A',
+        updatedAt: '2026-10-20T12:00:00Z',
+      }),
+      makeMod({
+        id: 'mod-m',
+        name: 'm.pack',
+        humanName: 'Alpha',
+        author: 'B',
+        updatedAt: '2026-10-21T12:00:00Z',
+      }),
+    ]
+    const store = new AppStore(makeClient({ listMods: vi.fn(async () => makeSnapshot(mods)) }))
+    await store.init()
+    const order = () => visibleMods(store.getState()).map((mod) => mod.id)
+
+    const sourceOrder = () =>
+      store.getState().snapshot?.mods.map((mod) => mod.id)
+
+    store.setSort('name')
+    const sortedByName = order()
+    expect(sortedByName).toEqual(['mod-m', 'mod-a', 'mod-z'])
+
+    // Re-sorting after another mode must reproduce the identical order.
+    store.setSort('author')
+    store.setSort('name')
+    expect(order()).toEqual(sortedByName)
+    expect(sourceOrder()).toEqual(['mod-z', 'mod-a', 'mod-m'])
+
+    store.setSort('author')
+    expect(order()).toEqual(['mod-a', 'mod-z', 'mod-m'])
+
+    store.setSort('updated')
+    expect(order()).toEqual(['mod-m', 'mod-a', 'mod-z'])
+
+    store.setSort('load-order')
+    expect(order()).toEqual(['mod-z', 'mod-a', 'mod-m'])
   })
 
   it('filters by search, author, and tags', async () => {
