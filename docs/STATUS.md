@@ -87,10 +87,10 @@ missing the `icons/icon.ico` that `tauri-build` requires; `2070b7f` fixes it.
 |---|---|
 | `cargo fmt --all --check` | pass |
 | `cargo clippy --workspace --all-targets --locked -- -D warnings` | pass |
-| `cargo test --workspace --locked` | pass, 60 tests |
+| `cargo test --workspace --locked` | pass, 63 tests |
 | `pnpm typecheck` | pass |
 | `pnpm lint` | pass |
-| `pnpm test` | pass, 33 tests |
+| `pnpm test` | pass, 37 tests |
 | `pnpm build` | pass |
 
 Windows shell compile remains covered by the manual `workflow_dispatch` job
