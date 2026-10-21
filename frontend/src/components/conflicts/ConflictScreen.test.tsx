@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { IpcError } from '../../lib/ipc'
-import { CONFLICT_REPORT } from '../../test/mocks'
+import { CONFLICT_REPORT, EMPTY_CONFLICTS } from '../../test/mocks'
 import { ConflictScreen } from './ConflictScreen'
 
 describe('ConflictScreen', () => {
@@ -26,6 +26,43 @@ describe('ConflictScreen', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Expand losers' }))
     expect(within(fileTable).getByText('Loses: alpha.pack')).toBeInTheDocument()
+  })
+
+  it('renders duplicate pack names and shows none for a clean report', () => {
+    const report = {
+      ...CONFLICT_REPORT,
+      duplicatePackNames: [{ name: 'dup.pack', modIds: ['mod-a', 'mod-b'] }],
+    }
+    const { unmount } = render(
+      <ConflictScreen
+        report={report}
+        loading={false}
+        error={null}
+        onRefresh={() => {}}
+        onDismissError={() => {}}
+      />,
+    )
+
+    expect(screen.getByText('dup.pack')).toBeInTheDocument()
+    expect(screen.getByText('Duplicate name')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Duplicate names' }))
+    const table = screen.getByRole('table')
+    expect(within(table).getByText('dup.pack')).toBeInTheDocument()
+    expect(within(table).getByText('Duplicate name')).toBeInTheDocument()
+
+    unmount()
+    render(
+      <ConflictScreen
+        report={EMPTY_CONFLICTS}
+        loading={false}
+        error={null}
+        onRefresh={() => {}}
+        onDismissError={() => {}}
+      />,
+    )
+    expect(screen.queryByText('Duplicate name')).not.toBeInTheDocument()
+    expect(screen.getByText(/No conflicts across 0 enabled mods/)).toBeInTheDocument()
   })
 
   it('shows a structured error and refreshes on demand', () => {
