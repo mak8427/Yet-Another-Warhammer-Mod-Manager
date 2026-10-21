@@ -6,7 +6,7 @@ import { convertFileSrc, invoke } from '@tauri-apps/api/core'
  * Source of truth:
  * - `crates/wh3mm-core/src/ipc.rs` (payload structs)
  * - `crates/wh3mm-core/src/error.rs` (error envelope and codes)
- * - ADR-002 and ADR-005 in `docs/adr/`
+ * - ADR-002 and ADR-006 in `docs/adr/`
  *
  * Keep this file in lockstep with Rust. Do not add filesystem or business
  * logic here; this module only marshals values across the Tauri boundary.
