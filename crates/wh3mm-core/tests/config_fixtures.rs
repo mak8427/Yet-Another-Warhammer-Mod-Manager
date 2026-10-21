@@ -71,10 +71,16 @@ fn future_schema_with_a_stale_backup_must_still_not_overwrite() {
     let dir = TempDir::new("qa-config-future-bak");
     let original = fixture_bytes("config_future_version.json");
     let path = stage(&dir, "config_future_version.json");
-    fs::write(backup_path(&path), fixture_bytes("config_valid.json")).expect("valid backup");
+    let backup_bytes = fixture_bytes("config_valid.json");
+    fs::write(backup_path(&path), &backup_bytes).expect("valid backup");
 
     let loaded = load_or_create(&path).expect("a future schema must not crash startup");
     assert_eq!(fs::read(&path).expect("future config"), original);
+    assert_eq!(
+        fs::read(backup_path(&path)).expect("backup"),
+        backup_bytes,
+        "a stale v1 backup must be left byte-identical too"
+    );
     assert_eq!(loaded.status, ConfigStatus::Corrupt);
     assert!(loaded.write_blocked);
 }
