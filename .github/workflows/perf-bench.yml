@@ -1,0 +1,114 @@
+name: Perf benchmarks
+
+# Informational workload. This workflow is deliberately NOT a required check and it asserts no
+# wall-clock threshold: shared-runner variance must never block a merge (WAR-7). It builds the
+# deterministic 100/500/2000 workloads, runs the jsdom render guard, and runs Criterion benches
+# once WAR-5 exposes the parser/index APIs. Numbers are recorded in docs/PERF.md.
+on:
+  pull_request:
+    paths:
+      - "crates/**"
+      - "frontend/**"
+      - "scripts/perf/**"
+      - ".github/workflows/perf-bench.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: perf-bench-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fixtures:
+    name: Workloads 100/500/2000
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Generate and verify deterministic workloads
+        run: |
+          node scripts/perf/generate-suite.mjs
+          node scripts/perf/generate-suite.mjs --verify perf-fixture
+
+      - name: Record the suite manifest
+        run: |
+          {
+            echo '```json'
+            cat perf-fixture/suite-manifest.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  render-guard:
+    name: Frontend render guard (jsdom upper bound)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run the 5k/20k render guard
+        env:
+          WH3MM_PERF_OUT: ${{ runner.temp }}/frontend-render-guard.json
+        run: pnpm test:perf
+
+      - name: Record the render guard report
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/frontend-render-guard.json" ]; then
+            {
+              echo '```json'
+              cat "$RUNNER_TEMP/frontend-render-guard.json"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No render guard report: the guard failed before writing it." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-render-guard
+          path: ${{ runner.temp }}/frontend-render-guard.json
+          if-no-files-found: warn
+
+  rust-benches:
+    name: Rust Criterion benches
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run Criterion benches when they exist
+        run: |
+          shopt -s nullglob
+          benches=(crates/*/benches/*.rs)
+          if [ "${#benches[@]}" -eq 0 ]; then
+            echo "No Criterion benches yet; they attach with WAR-5 (pack header, mod index, conflicts, used_mods)." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          cargo bench --workspace --locked
