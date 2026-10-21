@@ -19,6 +19,10 @@ on:
         description: Measured cold runs per metric
         required: true
         default: "12"
+      scan_budget:
+        description: Run the wall-clock scan budget on the self-hosted perf-budget runner
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -138,3 +142,25 @@ jobs:
           if-no-files-found: warn
           include-hidden-files: true
           retention-days: 90
+
+  scan-budget:
+    name: Scan budget (stable host)
+    # The 2.3 ms / 10 ms budgets belong to the Linux dev host (i9-13900K). Shared GitHub
+    # runners are too noisy for a wall-clock gate, so this job is opt-in on workflow_dispatch
+    # and only runs on a self-hosted runner labelled `perf-budget`. It is not a required check.
+    if: github.event_name == 'workflow_dispatch' && inputs.scan_budget
+    runs-on: [self-hosted, linux, x64, perf-budget]
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Generate the fixture, run the scan benches, enforce the budgets
+        run: node scripts/perf/scan-budget.mjs
