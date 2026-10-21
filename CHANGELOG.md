@@ -7,8 +7,9 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [1.0.0] - unreleased
 
 This entry describes the scope merged on `main` as of 2026-10-21. The `v1.0.0`
-tag and the published release wait for M4 (WAR-10) and the WAR-12 release
-audit; see `docs/RELEASE.md`.
+tag and draft release follow the green Windows artifact dispatch and the release
+gates; the release is published only after the WAR-12 audit signs off the draft.
+See `docs/RELEASE.md`.
 
 ### Added
 
@@ -23,15 +24,29 @@ audit; see `docs/RELEASE.md`.
 - **M3 — conflicts, Workshop, and launch** (`#18`, `bb306d4`): conflict
   analysis with a disabled-local-dependency fix, Steam Workshop discovery and
   thumbnails, and game launch with the saved load order.
-- **UI direction** (`#10`, `32945a2`): the Total War: Warhammer III-inspired
+- **UI design system** (`#10`, `32945a2`): the Total War: Warhammer III-inspired
   visual system, design tokens, density rules, keyboard map, and the screen
   acceptance checklist.
 - **Performance and QA gates** (`#4`, `#7`, `#19`): the legacy baseline
   measurement harness, the 500-mod fixture, acceptance suites, and the perf gate.
-- **Release engineering** (this branch): Windows NSIS per-user installer
+- **M4 — TW:WH3 UI direction and v1.0 blockers** (`#26`, `0e051204`): the
+  TW:WH3 visual system applied to every v1.0 screen (density, keyboard map,
+  empty/error states) and the WAR-79 ship-gate blockers: reset settings and load
+  order to defaults, deterministic mod-list sort, duplicate-pack-name warning,
+  profile apply restoring the saved order, and fixture-tested Windows/native
+  Steam roots.
+- **Release engineering** (`#25`, `e31eb64`): Windows NSIS per-user installer
   configuration at version 1.0.0, a `v*` tag workflow that builds the
   installer, uploads the artifact, and opens a draft release, and this release
   guide plus changelog.
+
+### Removed
+
+- **Pack-author display** (`WAR-107`): the author column, author sort, author
+  search dimension, the Settings "Show authors" toggle, and the `showAuthors`
+  preference are removed for v1.0. The PFH5 header and the Steam ACF carry no
+  author, and the legacy Steamworks persona lookup needs the custom Steam auth
+  that v1.0 does not ship; an empty column is not a feature.
 
 ### Known limitations
 
@@ -47,15 +62,14 @@ v1.0 accepts these limitations; the exact manual checks are in `docs/RELEASE.md`
 - **ML-4 — scroll persistence and the 20k-row guard are polish.** A reset scroll
   position is accepted; the 20k fixture must show the guard instead of freezing.
   Manual check in the Windows QA pass.
-- **SET-2 — density/author/thumbnail preferences are best-effort.** Manual
-  check: toggle each, restart, confirm the values persist, and record any that
-  do not.
+- **SET-2 — density/thumbnail preferences are best-effort.** Manual check:
+  toggle each, restart, confirm the values persist, and record any that do not.
+  The author surface is removed, not a limitation (see Removed).
 - **DET-1 — Linux Flatpak/Snap/XDG discovery is best-effort.** Windows registry
   and native root are fixture-tested on WAR-10. Manual check: detect on Linux
   Flatpak/Snap or use the manual path; confirm Windows detection without a path.
 - The Windows installer is unsigned; SmartScreen shows the documented
   "Unknown publisher" warning.
-- M4 (the full TW:WH3 visual pass on every v1.0 screen) is not merged yet.
 - The offline installer is not shipped; WebView2 uses the bootstrapper.
 - No auto-updater, telemetry, account system, or Windows code signing.
 

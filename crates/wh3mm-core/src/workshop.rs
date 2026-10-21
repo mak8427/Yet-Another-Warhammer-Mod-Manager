@@ -318,6 +318,27 @@ pub fn validate_workshop_id(workshop_id: &str) -> Result<(), AppError> {
     Ok(())
 }
 
+fn launch_workshop_action(
+    location: &GameLocation,
+    action: WorkshopAction,
+    workshop_id: &str,
+    spawn: impl FnOnce(&Path, &str) -> Result<(), AppError>,
+) -> Result<SteamActionResult, AppError> {
+    let steam = find_steam_executable(location).ok_or_else(|| {
+        AppError::new(
+            ErrorCode::SteamNotFound,
+            "Steam was not found; install Steam or point the manager at a Steam library",
+        )
+    })?;
+    spawn(&steam, &workshop_url(action, workshop_id))?;
+    Ok(SteamActionResult {
+        action,
+        workshop_id: workshop_id.to_string(),
+        opened: true,
+        message: action_message(action).to_string(),
+    })
+}
+
 impl Session {
     pub fn workshop_items(&self) -> Result<Vec<WorkshopItem>, AppError> {
         let location = self.location.as_ref().ok_or_else(|| {
@@ -361,6 +382,15 @@ impl Session {
         action: WorkshopAction,
         workshop_id: &str,
     ) -> Result<SteamActionResult, AppError> {
+        self.workshop_action_with_launcher(action, workshop_id, spawn_steam_url)
+    }
+
+    fn workshop_action_with_launcher(
+        &self,
+        action: WorkshopAction,
+        workshop_id: &str,
+        spawn: impl FnOnce(&Path, &str) -> Result<(), AppError>,
+    ) -> Result<SteamActionResult, AppError> {
         validate_workshop_id(workshop_id)?;
         let location = self.location.as_ref().ok_or_else(|| {
             AppError::new(
@@ -368,25 +398,14 @@ impl Session {
                 "Could not find a Total War: Warhammer III installation",
             )
         })?;
-        let steam = find_steam_executable(location).ok_or_else(|| {
-            AppError::new(
-                ErrorCode::SteamNotFound,
-                "Steam was not found; install Steam or point the manager at a Steam library",
-            )
-        })?;
-        spawn_steam_url(&steam, &workshop_url(action, workshop_id))?;
-        Ok(SteamActionResult {
-            action,
-            workshop_id: workshop_id.to_string(),
-            opened: true,
-            message: action_message(action).to_string(),
-        })
+        launch_workshop_action(location, action, workshop_id, spawn)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::session::SessionOptions;
     use crate::test_support::TempDir;
     use std::fs;
 
@@ -491,6 +510,48 @@ mod tests {
     fn rejects_non_numeric_workshop_ids() {
         let error = validate_workshop_id("../123").unwrap_err();
         assert_eq!(error.code, ErrorCode::Validation);
+    }
+
+    #[test]
+    fn open_reaches_the_steam_launch_boundary_with_the_community_page_url() {
+        let dir = TempDir::new("workshop-open");
+        let steam_root = dir.path().join("Steam");
+        let game = steam_root
+            .join("steamapps")
+            .join("common")
+            .join("Total War WARHAMMER III");
+        fs::create_dir_all(game.join("data")).unwrap();
+        let steam = steam_root.join(if cfg!(windows) {
+            "steam.exe"
+        } else {
+            "steam.sh"
+        });
+        fs::write(&steam, b"#!/bin/sh\n").unwrap();
+
+        let session = Session::initialize(SessionOptions {
+            config_path: dir.path().join("config.json"),
+            steam_root_candidates: Some(Vec::new()),
+            manual_game_path: Some(game),
+            log_timings: false,
+        })
+        .unwrap();
+
+        let mut launched = None;
+        let result = session
+            .workshop_action_with_launcher(WorkshopAction::Open, "123", |executable, url| {
+                launched = Some((executable.to_path_buf(), url.to_string()));
+                Ok(())
+            })
+            .unwrap();
+
+        assert_eq!(
+            launched,
+            Some((steam, "steam://url/CommunityFilePage/123".to_string()))
+        );
+        assert_eq!(result.action, WorkshopAction::Open);
+        assert_eq!(result.workshop_id, "123");
+        assert!(result.opened);
+        assert_eq!(result.message, action_message(WorkshopAction::Open));
     }
 
     #[test]
