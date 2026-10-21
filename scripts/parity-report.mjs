@@ -157,11 +157,15 @@ function resolveEvidence(evidence, root, issues, context) {
 
 function evidenceIsStrong(evidence, root) {
   if (!evidence || typeof evidence !== 'object') return false
-  if (evidence.path) {
+  const kind = evidence.kind ?? (evidence.pr ? 'pr' : 'path')
+  if (kind === 'pr') return evidence.qa === 'approved' || evidence.qa === 'merged'
+  if (kind === 'path' && evidence.path) {
     const target = join(root, evidence.path)
-    if (existsSync(target) && evidence.test && readText(target).includes(evidence.test)) return true
+    return Boolean(
+      existsSync(target) && evidence.test && readText(target).includes(evidence.test),
+    )
   }
-  return evidence.kind === 'pr' && (evidence.qa === 'approved' || evidence.qa === 'merged')
+  return false
 }
 
 function validateEvidenceList(evidence, root, issues, context, { requireStrong = false } = {}) {

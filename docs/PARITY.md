@@ -14,9 +14,9 @@ Snapshot: **2026-10-21** · weighted scope: `docs/PRODUCT_SCOPE.md`
 | Checks | 31 done / 8 partial / 1 missing (40 total) |
 | Legacy oracle coverage | 39/39 (100.0%) |
 | Oracle dispositions | 12 ported / 10 rewritten / 17 not-applicable |
-| Cut-feature scan | 0 findings in 28 UI/IPC files |
-| Rust tests on this tree | 97 |
-| Frontend assertions on this tree | 50 in 7 files |
+| Cut-feature scan | 0 findings in 31 UI/IPC files |
+| Rust tests on this tree | 120 |
+| Frontend assertions on this tree | 58 in 10 files |
 
 ## Capability table
 
@@ -36,7 +36,7 @@ Snapshot: **2026-10-21** · weighted scope: `docs/PRODUCT_SCOPE.md`
 
 ## Corrections to the WAR-3 snapshot
 
-**Recorded index change:** Net change +0.875: SET-4 (reset to defaults) is Missing, not Partial (-0.625); the disabled-dependency conflict check is done on QA-approved PR #18 at b6696e5 (+1.500). No other check changed score.
+**Recorded index change:** Net change +0.875: SET-4 (reset to defaults) is Missing, not Partial (-0.625); the disabled-dependency conflict check is done on PR #18 (QA-approved at b6696e5, merged as bb306d4) (+1.500). No other check changed score.
 
 | Correction | Claim | Verified | Effect |
 |---|---|---|---|
@@ -44,8 +44,8 @@ Snapshot: **2026-10-21** · weighted scope: `docs/PRODUCT_SCOPE.md`
 | detection-partial-reason | The remaining detection gap is real Windows install detection plus manual override. | Manual override and no-game recovery are tested. The untested part is the platform root candidate list (Windows registry, Flatpak, Snap, XDG). | Score unchanged at 3.5; partial reason corrected. |
 | profiles-partial-reason | Rename cannot overwrite a non-active profile; the UI path is unverified. | The UI path is tested in frontend/src/App.test.tsx and store.test.ts. The remaining gap is an assertion that applying a profile restores its saved order, not just its count. | Score unchanged at 3.5; partial reason corrected. |
 | mod-list-partials | Search, sort, and tag filtering are implemented in logic; the remaining gap is final UI sign-off. | Search and tag filtering are implemented and tested. Sort is not implemented. Virtualization is tested at 500 rows; the 20k guard and persisted-scroll proof are not on this branch. | Score unchanged at 3.0; partial reasons corrected. |
-| conflicts-partials | Conflict analysis is Partial, including the disabled-dependency fix in review. | PR #18 is QA-approved at b6696e5; the WAR-64 fix is in that head and its test passes. The duplicate-name warning path still has no session/frontend assertion, so CF-4 stays Partial. | Conflicts 3.0 -> 3.5; contributes +1.500 to the index. |
-| test-counts | 92 Rust tests and 45 frontend assertions in 8 files. | Those counts mix main and the M3 PR. This tree has the counts printed in docs/PARITY.md; test counts are informational and are not scored. | No index effect; counts are generated from the current tree. |
+| conflicts-partials | Conflict analysis is Partial, including the disabled-dependency fix in review. | PR #18 was QA-approved at b6696e5 and merged as bb306d4; the WAR-64 fix and its test are on main. The duplicate-name warning path still has no session/frontend assertion, so CF-4 stays Partial. | Conflicts 3.0 -> 3.5; contributes +1.500 to the index. |
+| test-counts | 92 Rust tests and 45 frontend assertions in 8 files. | The snapshot counted the M3 branch. The current tree, with M3 and the UI tokens merged, has 120 Rust tests and 58 frontend assertions in 10 files; docs/PARITY.md prints the exact counts. Test counts are informational and are not scored. | No index effect; counts are generated from the current tree. |
 | oracle-count | 39 relevant legacy files / 2,437 legacy tests. | The 39-file subset contains 272 it() assertions in the pinned checkout. 2,437 is the whole legacy suite. | No index effect; the oracle map uses 272 for the selected subset. |
 
 ## Evidence policy

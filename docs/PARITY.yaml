@@ -6,14 +6,14 @@ snapshot:
   previous_label: "WAR-3 parity document rev 2 (2026-10-21T11:25Z), reported as 87.3%"
   drop_reason: >-
     Net change +0.875: SET-4 (reset to defaults) is Missing, not Partial (-0.625);
-    the disabled-dependency conflict check is done on QA-approved PR #18 at b6696e5
+    the disabled-dependency conflict check is done on PR #18 (QA-approved at b6696e5, merged as bb306d4)
     (+1.500). No other check changed score.
   history:
     - date: "2026-10-21"
       index: 88.125
       reason: >-
         Net change +0.875: SET-4 (reset to defaults) is Missing, not Partial (-0.625);
-        the disabled-dependency conflict check is done on QA-approved PR #18 at b6696e5
+        the disabled-dependency conflict check is done on PR #18 (QA-approved at b6696e5, merged as bb306d4)
         (+1.500). No other check changed score.
   scoring: >-
     Each capability has four binary checks. A check scores 1.0 when it is done, 0.5 when
@@ -48,11 +48,11 @@ corrections:
     effect: "Score unchanged at 3.0; partial reasons corrected."
   - id: conflicts-partials
     claim: "Conflict analysis is Partial, including the disabled-dependency fix in review."
-    verified: "PR #18 is QA-approved at b6696e5; the WAR-64 fix is in that head and its test passes. The duplicate-name warning path still has no session/frontend assertion, so CF-4 stays Partial."
+    verified: "PR #18 was QA-approved at b6696e5 and merged as bb306d4; the WAR-64 fix and its test are on main. The duplicate-name warning path still has no session/frontend assertion, so CF-4 stays Partial."
     effect: "Conflicts 3.0 -> 3.5; contributes +1.500 to the index."
   - id: test-counts
     claim: "92 Rust tests and 45 frontend assertions in 8 files."
-    verified: "Those counts mix main and the M3 PR. This tree has the counts printed in docs/PARITY.md; test counts are informational and are not scored."
+    verified: "The snapshot counted the M3 branch. The current tree, with M3 and the UI tokens merged, has 120 Rust tests and 58 frontend assertions in 10 files; docs/PARITY.md prints the exact counts. Test counts are informational and are not scored."
     effect: "No index effect; counts are generated from the current tree."
   - id: oracle-count
     claim: "39 relevant legacy files / 2,437 legacy tests."
@@ -301,48 +301,21 @@ capabilities:
         title: Compare enabled pack file indexes and name the bottom-of-order winner
         status: done
         evidence:
-          - kind: pr
-            pr: 18
-            url: https://github.com/mak8427/Warhammer_mod_manager/pull/18
-            head: ada14ff
-            qa: approved
-            path: crates/wh3mm-core/src/conflicts.rs
+          - path: crates/wh3mm-core/src/conflicts.rs
             test: three_overlapping_mods_use_the_bottom_of_the_order_as_winner
-          - kind: pr
-            pr: 18
-            url: https://github.com/mak8427/Warhammer_mod_manager/pull/18
-            head: ada14ff
-            qa: approved
-            path: frontend/src/components/conflicts/ConflictScreen.test.tsx
+          - path: frontend/src/components/conflicts/ConflictScreen.test.tsx
             test: renders the winner, loser, dependency, and per-mod summary
       - id: CF-2
         title: Warn on missing dependencies
         status: done
         evidence:
-          - kind: pr
-            pr: 18
-            url: https://github.com/mak8427/Warhammer_mod_manager/pull/18
-            head: ada14ff
-            qa: approved
-            path: crates/wh3mm-core/src/conflicts.rs
+          - path: crates/wh3mm-core/src/conflicts.rs
             test: detects_missing_and_disabled_dependencies
       - id: CF-3
         title: Report a disabled local dependency correctly instead of treating it as base-game
         status: done
         evidence:
-          - kind: pr
-            pr: 18
-            url: https://github.com/mak8427/Warhammer_mod_manager/pull/18
-            head: b6696e5
-            qa: approved
-            path: crates/wh3mm-core/src/conflicts.rs
-            test: disabled_local_dependency_is_not_treated_as_a_base_game_pack
-          - kind: pr
-            pr: 20
-            url: https://github.com/mak8427/Warhammer_mod_manager/pull/20
-            head: 7b646c8
-            qa: merged
-            path: crates/wh3mm-core/src/conflicts.rs
+          - path: crates/wh3mm-core/src/conflicts.rs
             test: disabled_local_dependency_is_not_treated_as_a_base_game_pack
       - id: CF-4
         title: Detect duplicate pack names and surface the warning
@@ -350,12 +323,7 @@ capabilities:
         evidence:
           - path: crates/wh3mm-core/src/mod_index.rs
             test: deduplicates_pack_names_with_data_winning_over_workshop
-          - kind: pr
-            pr: 18
-            url: https://github.com/mak8427/Warhammer_mod_manager/pull/18
-            head: ada14ff
-            qa: approved
-            path: frontend/src/components/conflicts/ConflictScreen.tsx
+          - path: frontend/src/components/conflicts/ConflictScreen.tsx
             contains: "duplicatePackNames"
         need: >-
           A session or frontend assertion that a duplicate pack name produces the
@@ -369,34 +337,19 @@ capabilities:
         title: List subscriptions and map installed, update-pending, and subscribed states
         status: done
         evidence:
-          - kind: pr
-            pr: 18
-            url: https://github.com/mak8427/Warhammer_mod_manager/pull/18
-            head: ada14ff
-            qa: approved
-            path: crates/wh3mm-core/src/workshop.rs
+          - path: crates/wh3mm-core/src/workshop.rs
             test: parses_installed_update_pending_and_subscribed_states
       - id: WS-2
         title: Open a Workshop item page through the Steam client
         status: done
         evidence:
-          - kind: pr
-            pr: 18
-            url: https://github.com/mak8427/Warhammer_mod_manager/pull/18
-            head: ada14ff
-            qa: approved
-            path: crates/wh3mm-core/src/workshop.rs
+          - path: crates/wh3mm-core/src/workshop.rs
             test: workshop_actions_use_the_steam_client_url
       - id: WS-3
         title: Subscribe, unsubscribe, and update through the Steam client without custom auth
         status: partial
         evidence:
-          - kind: pr
-            pr: 18
-            url: https://github.com/mak8427/Warhammer_mod_manager/pull/18
-            head: ada14ff
-            qa: approved
-            path: crates/wh3mm-core/src/workshop.rs
+          - path: crates/wh3mm-core/src/workshop.rs
             test: workshop_actions_use_the_steam_client_url
         need: >-
           A recorded manual Windows run of subscribe, unsubscribe, and update through
@@ -405,19 +358,9 @@ capabilities:
         title: Workshop screen lists subscriptions and renders the Steam-unavailable error
         status: done
         evidence:
-          - kind: pr
-            pr: 18
-            url: https://github.com/mak8427/Warhammer_mod_manager/pull/18
-            head: ada14ff
-            qa: approved
-            path: frontend/src/components/workshop/WorkshopScreen.test.tsx
+          - path: frontend/src/components/workshop/WorkshopScreen.test.tsx
             test: renders subscriptions and dispatches a Steam action
-          - kind: pr
-            pr: 18
-            url: https://github.com/mak8427/Warhammer_mod_manager/pull/18
-            head: ada14ff
-            qa: approved
-            path: frontend/src/components/workshop/WorkshopScreen.test.tsx
+          - path: frontend/src/components/workshop/WorkshopScreen.test.tsx
             test: shows the Steam-unavailable error state
 
   - id: launch
@@ -428,12 +371,7 @@ capabilities:
         title: Launch WH3 through Steam with the correct app id
         status: partial
         evidence:
-          - kind: pr
-            pr: 18
-            url: https://github.com/mak8427/Warhammer_mod_manager/pull/18
-            head: ada14ff
-            qa: approved
-            path: crates/wh3mm-core/src/launch.rs
+          - path: crates/wh3mm-core/src/launch.rs
             test: launch_command_uses_the_steam_app_id_and_carries_options
         need: >-
           A recorded manual Windows launch of TW:WH3 through Steam. CI proves the
@@ -442,55 +380,25 @@ capabilities:
         title: Skip-intro and script-logging options write and remove their tweaks safely
         status: done
         evidence:
-          - kind: pr
-            pr: 18
-            url: https://github.com/mak8427/Warhammer_mod_manager/pull/18
-            head: ada14ff
-            qa: approved
-            path: crates/wh3mm-core/src/launch.rs
+          - path: crates/wh3mm-core/src/launch.rs
             test: skip_intro_pack_contains_all_intro_movies
-          - kind: pr
-            pr: 18
-            url: https://github.com/mak8427/Warhammer_mod_manager/pull/18
-            head: ada14ff
-            qa: approved
-            path: crates/wh3mm-core/src/launch.rs
+          - path: crates/wh3mm-core/src/launch.rs
             test: tweaks_are_written_and_removed_with_the_option
-          - kind: pr
-            pr: 18
-            url: https://github.com/mak8427/Warhammer_mod_manager/pull/18
-            head: ada14ff
-            qa: approved
-            path: crates/wh3mm-core/src/launch.rs
+          - path: crates/wh3mm-core/src/launch.rs
             test: user_owned_script_logging_marker_is_not_deleted
       - id: LA-3
         title: Verify the game is not already running
         status: done
         evidence:
-          - kind: pr
-            pr: 18
-            url: https://github.com/mak8427/Warhammer_mod_manager/pull/18
-            head: ada14ff
-            qa: approved
-            path: crates/wh3mm-core/src/launch.rs
+          - path: crates/wh3mm-core/src/launch.rs
             test: process_matching_is_case_insensitive
       - id: LA-4
         title: Persist launch options per profile and expose them on the launch screen
         status: done
         evidence:
-          - kind: pr
-            pr: 18
-            url: https://github.com/mak8427/Warhammer_mod_manager/pull/18
-            head: ada14ff
-            qa: approved
-            path: crates/wh3mm-core/src/launch.rs
+          - path: crates/wh3mm-core/src/launch.rs
             test: launch_options_round_trip_per_profile
-          - kind: pr
-            pr: 18
-            url: https://github.com/mak8427/Warhammer_mod_manager/pull/18
-            head: ada14ff
-            qa: approved
-            path: frontend/src/components/launch/LaunchScreen.test.tsx
+          - path: frontend/src/components/launch/LaunchScreen.test.tsx
             test: changes a launch option and requests a launch
 
   - id: settings
@@ -764,8 +672,6 @@ oracle:
       ported_to:
         - path: crates/wh3mm-core/src/conflicts.rs
           test: three_overlapping_mods_use_the_bottom_of_the_order_as_winner
-          ref: origin/feat/m3-conflicts-workshop-launch
-          pr: 18
       note: "Collapsed directional file records and bottom-of-order winner."
     - path: test/compatIndexedAlgorithms.node.test.ts
       capability: conflicts
@@ -773,8 +679,6 @@ oracle:
       ported_to:
         - path: crates/wh3mm-core/src/conflicts.rs
           test: reads_the_pack_file_index_without_file_bodies
-          ref: origin/feat/m3-conflicts-workshop-launch
-          pr: 18
       note: "Index-only collision detection; no file bodies are read."
     - path: test/compatPackReuse.node.test.ts
       capability: conflicts
@@ -783,16 +687,12 @@ oracle:
       evidence:
         - path: crates/wh3mm-core/src/conflicts.rs
           test: reads_the_pack_file_index_without_file_bodies
-          ref: origin/feat/m3-conflicts-workshop-launch
-          pr: 18
     - path: test/compatScope.node.test.ts
       capability: conflicts
       disposition: ported
       ported_to:
         - path: crates/wh3mm-core/src/conflicts.rs
           test: three_overlapping_mods_use_the_bottom_of_the_order_as_winner
-          ref: origin/feat/m3-conflicts-workshop-launch
-          pr: 18
       note: "Only the enabled order is analysed."
     - path: test/compatReportExport.node.test.ts
       capability: conflicts
@@ -816,8 +716,6 @@ oracle:
       ported_to:
         - path: crates/wh3mm-core/src/conflicts.rs
           test: detects_missing_and_disabled_dependencies
-          ref: origin/feat/m3-conflicts-workshop-launch
-          pr: 18
       note: "Missing and disabled dependency warnings."
     - path: test/workshopSubscriptions.node.test.ts
       capability: workshop
@@ -825,8 +723,6 @@ oracle:
       ported_to:
         - path: crates/wh3mm-core/src/workshop.rs
           test: parses_installed_update_pending_and_subscribed_states
-          ref: origin/feat/m3-conflicts-workshop-launch
-          pr: 18
       note: "Steam subscription timestamps and ACF state."
     - path: test/workshopModStaging.node.test.ts
       capability: workshop
@@ -855,8 +751,6 @@ oracle:
       evidence:
         - path: crates/wh3mm-core/src/launch.rs
           test: launch_command_uses_the_steam_app_id_and_carries_options
-          ref: origin/feat/m3-conflicts-workshop-launch
-          pr: 18
     - path: test/nativePatchLaunchReview.node.test.ts
       capability: launch
       disposition: not-applicable
