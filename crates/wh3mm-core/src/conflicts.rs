@@ -19,7 +19,6 @@ use crate::session::Session;
 
 pub const PFH5_HEADER_LEN: usize = 28;
 pub const FILENAME_HASH_MASK: u32 = 0x40;
-pub const COMPRESSION_FLAG_MASK: u32 = 0x01;
 pub const MAX_FILE_COUNT: u32 = 2_000_000;
 pub const MAX_PACK_INDEX_BYTES: u32 = 256 * 1024 * 1024;
 pub const MAX_TABLE_SHADOWS: usize = 200;
@@ -184,15 +183,13 @@ pub fn read_pack_file_index(path: &Path) -> Result<Vec<PackFileEntry>, AppError>
     file.read_exact(&mut index)
         .map_err(|error| AppError::io_path("Could not read the pack index", path, &error))?;
 
-    let has_compression = byte_mask & COMPRESSION_FLAG_MASK != 0;
     let has_filename_hash = byte_mask & FILENAME_HASH_MASK != 0;
-    parse_pack_file_index(&index, file_count, has_compression, has_filename_hash, path)
+    parse_pack_file_index(&index, file_count, has_filename_hash, path)
 }
 
 fn parse_pack_file_index(
     index: &[u8],
     file_count: u32,
-    has_compression: bool,
     has_filename_hash: bool,
     path: &Path,
 ) -> Result<Vec<PackFileEntry>, AppError> {
@@ -220,16 +217,16 @@ fn parse_pack_file_index(
             }
             position += 4;
         }
-        if has_compression {
-            if position >= index.len() {
-                return Err(malformed_index(
-                    path,
-                    entry_number,
-                    "the compression flag is truncated",
-                ));
-            }
-            position += 1;
+        // PFH5 stores a compression bool on every entry. The low header bits
+        // identify the pack type, not index flags, so this byte is always read.
+        if position >= index.len() {
+            return Err(malformed_index(
+                path,
+                entry_number,
+                "the compression flag is truncated",
+            ));
         }
+        position += 1;
 
         let Some(relative_end) = index[position..].iter().position(|byte| *byte == 0) else {
             return Err(malformed_index(
@@ -585,17 +582,20 @@ mod tests {
     use crate::test_support::TempDir;
     use std::fs;
 
-    fn pack_with_files(files: &[(&str, &[u8])]) -> Vec<u8> {
+    fn pack_with_mask(mask: u32, files: &[(&str, &[u8])], has_filename_hash: bool) -> Vec<u8> {
         let mut index = Vec::new();
         for (name, body) in files {
             index.extend_from_slice(&(body.len() as u32).to_le_bytes());
+            if has_filename_hash {
+                index.extend_from_slice(&0xdead_beefu32.to_le_bytes());
+            }
             index.push(0);
             index.extend_from_slice(name.as_bytes());
             index.push(0);
         }
         let mut bytes = vec![0u8; PFH5_HEADER_LEN];
         bytes[0..4].copy_from_slice(b"PFH5");
-        bytes[4..8].copy_from_slice(&3u32.to_le_bytes());
+        bytes[4..8].copy_from_slice(&mask.to_le_bytes());
         bytes[16..20].copy_from_slice(&(files.len() as u32).to_le_bytes());
         bytes[20..24].copy_from_slice(&(index.len() as u32).to_le_bytes());
         bytes[24..28].copy_from_slice(&0x7fff_ffffu32.to_le_bytes());
@@ -604,6 +604,10 @@ mod tests {
             bytes.extend_from_slice(body);
         }
         bytes
+    }
+
+    fn pack_with_files(files: &[(&str, &[u8])]) -> Vec<u8> {
+        pack_with_mask(3, files, false)
     }
 
     fn write_pack(path: &Path, files: &[(&str, &[u8])]) {
@@ -647,28 +651,84 @@ mod tests {
     }
 
     #[test]
-    fn reads_filename_hash_entries() {
-        let dir = TempDir::new("conflicts-hash");
-        let path = dir.path().join("hash.pack");
-        let name = b"db\\hash_table\\entry";
-        let body = b"x";
-        let mut index = Vec::new();
-        index.extend_from_slice(&(body.len() as u32).to_le_bytes());
-        index.extend_from_slice(&0xdead_beefu32.to_le_bytes());
-        index.push(0);
-        index.extend_from_slice(name);
-        index.push(0);
-        let mut bytes = vec![0u8; PFH5_HEADER_LEN];
-        bytes[0..4].copy_from_slice(b"PFH5");
-        bytes[4..8].copy_from_slice(&0x43u32.to_le_bytes());
-        bytes[16..20].copy_from_slice(&1u32.to_le_bytes());
-        bytes[20..24].copy_from_slice(&(index.len() as u32).to_le_bytes());
-        bytes.extend_from_slice(&index);
-        bytes.extend_from_slice(body);
-        fs::write(&path, bytes).unwrap();
+    fn reads_file_index_entries_for_every_wh3_pack_type() {
+        for mask in 0u32..=4 {
+            let dir = TempDir::new(&format!("conflicts-type-{mask}"));
+            let path = dir.path().join(format!("type-{mask}.pack"));
+            fs::write(
+                &path,
+                pack_with_mask(mask, &[("db\\type_table\\entry", b"body")], false),
+            )
+            .unwrap();
 
-        let entries = read_pack_file_index(&path).unwrap();
-        assert_eq!(entries[0].path, "db/hash_table/entry");
+            let entries = read_pack_file_index(&path).unwrap();
+            assert_eq!(entries.len(), 1, "pack type {mask}");
+            assert_eq!(entries[0].path, "db/type_table/entry", "pack type {mask}");
+        }
+    }
+
+    #[test]
+    fn reads_hash_flagged_entries_for_every_wh3_pack_type() {
+        for pack_type in 0u32..=4 {
+            let mask = FILENAME_HASH_MASK | pack_type;
+            let dir = TempDir::new(&format!("conflicts-hash-{pack_type}"));
+            let path = dir.path().join(format!("hash-{pack_type}.pack"));
+            fs::write(
+                &path,
+                pack_with_mask(mask, &[("db\\hash_table\\entry", b"x")], true),
+            )
+            .unwrap();
+
+            let entries = read_pack_file_index(&path).unwrap();
+            assert_eq!(
+                entries[0].path, "db/hash_table/entry",
+                "pack type {pack_type}"
+            );
+        }
+    }
+
+    #[test]
+    fn base_game_index_reads_patch_and_boot_packs_from_the_manifest() {
+        let dir = TempDir::new("conflicts-base-index");
+        let data = dir.path().join("data");
+        fs::create_dir_all(&data).unwrap();
+        fs::write(data.join("manifest.txt"), "data.pack\npatch.pack\n").unwrap();
+        fs::write(
+            data.join("data.pack"),
+            pack_with_mask(1, &[("db\\units_tables\\unit", b"x")], false),
+        )
+        .unwrap();
+        fs::write(
+            data.join("patch.pack"),
+            pack_with_mask(2, &[("db\\units_tables\\patch_unit", b"x")], false),
+        )
+        .unwrap();
+        let location = GameLocation {
+            game_path: dir.path().to_path_buf(),
+            data_path: data,
+            workshop_path: std::path::PathBuf::new(),
+            steam_root: dir.path().join("steam"),
+            proton_prefix: None,
+            source: crate::ipc::LocationSource::Manual,
+        };
+
+        let index = base_game_index(&location);
+        assert!(
+            index.warnings.is_empty(),
+            "unexpected warnings: {:?}",
+            index.warnings
+        );
+        assert_eq!(
+            index.tables.get("db/units_tables/unit").map(String::as_str),
+            Some("data.pack")
+        );
+        assert_eq!(
+            index
+                .tables
+                .get("db/units_tables/patch_unit")
+                .map(String::as_str),
+            Some("patch.pack")
+        );
     }
 
     #[test]
