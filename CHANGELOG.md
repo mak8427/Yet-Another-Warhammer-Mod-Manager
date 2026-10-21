@@ -35,6 +35,24 @@ audit; see `docs/RELEASE.md`.
 
 ### Known limitations
 
+v1.0 accepts these limitations; the exact manual checks are in `docs/RELEASE.md`.
+
+- **WS-3 — Steam subscription actions are manual.** Subscribe, unsubscribe, and
+  update through the Steam client; the app has no custom Steam authentication
+  and never automates them. Manual check: subscribe and unsubscribe in Steam,
+  rescan, and confirm the mod list follows.
+- **LA-1 — launch through Steam is measured as a proxy.** The launch number is a
+  proxy, not an in-game load time. Manual check: launch in the Windows QA pass
+  and keep the proxy label.
+- **ML-4 — scroll persistence and the 20k-row guard are polish.** A reset scroll
+  position is accepted; the 20k fixture must show the guard instead of freezing.
+  Manual check in the Windows QA pass.
+- **SET-2 — density/author/thumbnail preferences are best-effort.** Manual
+  check: toggle each, restart, confirm the values persist, and record any that
+  do not.
+- **DET-1 — Linux Flatpak/Snap/XDG discovery is best-effort.** Windows registry
+  and native root are fixture-tested on WAR-10. Manual check: detect on Linux
+  Flatpak/Snap or use the manual path; confirm Windows detection without a path.
 - The Windows installer is unsigned; SmartScreen shows the documented
   "Unknown publisher" warning.
 - M4 (the full TW:WH3 visual pass on every v1.0 screen) is not merged yet.

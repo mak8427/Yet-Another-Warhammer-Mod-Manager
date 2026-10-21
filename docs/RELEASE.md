@@ -55,6 +55,19 @@ The installer is **not code-signed**. Windows SmartScreen will show an
 and never to bypass a warning for a file whose SHA-256 does not match the
 checksum published with the release.
 
+## Known limitations (v1.0)
+
+These are accepted for v1.0. None is a correctness risk, and each has an exact
+manual check in the QA pass below.
+
+| ID | Limitation | Manual check |
+|---|---|---|
+| **WS-3** | Subscribe, unsubscribe, and update through the Steam client only. The app has no custom Steam authentication and never automates these actions. | On a clean Windows machine, subscribe to a Workshop mod in the Steam client, rescan, and confirm the mod appears; unsubscribe and confirm it disappears. Confirm the app never asks for Steam credentials. |
+| **LA-1** | Launch goes through Steam. The measured launch number is a proxy (time from the app request to the Steam process starting), not an in-game load time. | In QA step 7, launch through the app and record the result. Keep the number labelled "proxy" in any report; do not compare it to an in-game load timing. |
+| **ML-4** | Persisted scroll position and the 20k-row guard are polish, not correctness. | Scroll a long mod list, switch screens and back; a reset scroll position is accepted. Load the 20k-row fixture and confirm the guard shows a clear message instead of freezing. |
+| **SET-2** | Density, author, and thumbnail preferences persist best-effort. | Toggle density, author, and thumbnail display; restart; confirm each value survived. Record any value that did not persist. |
+| **DET-1 Linux roots** | Flatpak, Snap, and XDG game discovery is best-effort and may miss an installation. On Windows, the registry and native root are fixture-tested on WAR-10. | On a Flatpak or Snap install, confirm detection or use the manual path chooser. On Windows, confirm the registry/native detection finds the game without a manual path. |
+
 ## Tag workflow (CI)
 
 `.github/workflows/release.yml` runs on a `v*` tag:
@@ -72,6 +85,13 @@ unchanged and stay required.
 To exercise the build without creating a tag or a release, run the workflow
 manually (`workflow_dispatch`) with the version input; that path uploads the
 artifact only.
+
+**Ordering.** GitHub only exposes `workflow_dispatch` for a workflow that is on
+the default branch. The artifact-producing Windows run therefore comes **after**
+the release-engineering PR merges to `main`: dispatch `release.yml` at the
+release head, link the run and artifact on the task, and only then continue the
+approval path. Do not dispatch from an unmerged feature branch and do not create
+the `v1.0.0` tag until M4 (WAR-10) and the WAR-12 audit are done.
 
 ## Manual Windows QA script
 
