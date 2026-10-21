@@ -4,6 +4,7 @@
 - Date: 2026-10-20
 - Owner: Katerina Zarina
 - Depends on: ADR-001, ADR-002
+- Amended by: ADR-005 (`ui.density` also accepts `roomy`)
 
 ## Context
 
