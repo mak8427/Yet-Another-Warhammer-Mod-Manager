@@ -420,6 +420,46 @@ the same startup pipeline, is reproducible on any host, and states exactly what 
 M3 adds the launch path, the launch metric must be re-measured through the app rather than the
 harness stub.
 
+## Scan regression bench and budget (WAR-66 / WAR-115)
+
+The mod-index scan is the hot path behind cold start and mod-list population. WAR-66 reduced its
+syscalls and measured the win with a Criterion bench that was not on `main` at the time (PR #8 was
+closed; PR #24 imported the bench uncommitted). WAR-115 lands the bench, the fixture suite, and a
+budget check so that win cannot silently regress.
+
+| Path | Value |
+| --- | --- |
+| Bench | `crates/wh3mm-core/benches/hot_paths.rs` (Criterion 0.7, `bench` profile, 100 samples) |
+| Fixture suite | `node scripts/perf/generate-suite.mjs` — 100/500/2000 trees, digest `d8896967d0910fe6e3b8c1a6f5ae0a46f47d5cfd4c079c8d4ead98c3bc024217` |
+| Bench command | `node scripts/perf/generate-suite.mjs && cargo bench -p wh3mm-core --bench hot_paths --locked -- "scan/"` |
+| Budget check | `node scripts/perf/scan-budget.mjs` (regenerates the suite, verifies the digest, fails on a missed budget) |
+| Budget host | Linux dev host, CachyOS 7.2.9, i9-13900K (32 threads), 125.5 GiB RAM, Node v26.11.1 |
+
+Measured WAR-66 before/after (PR #24, head `e22054a`, `main` at `0e05120`, same fixture and host):
+
+| Benchmark | Before | After | Change | Budget |
+| --- | ---: | ---: | ---: | ---: |
+| `mod_index/scan/500` | 2.8200 ms | **1.5027 ms** | **−46.7%** | ≤ 2.3 ms |
+| `mod_index/scan/2000` | 14.695 ms | **6.8123 ms** | **−53.6%** | ≤ 10 ms |
+
+The budgets leave 35% / 32% headroom on the post-WAR-66 numbers. `scripts/perf/scan-budget.mjs`
+exits non-zero when either limit is missed; `--budget-500` / `--budget-2000` exist only to
+demonstrate the failure path and must not be used to accept a regression. Worked example on the dev
+host: the default run passes at `1.52 ms` / `6.82 ms`, while `--budget-500 1.0` fails with
+`SCAN BUDGET EXCEEDED` and exit code 1.
+
+Wall-clock budgets are host-specific and are **not** a required check on shared CI runners. The
+opt-in `scan-budget` job in `.github/workflows/perf-new-app.yml` runs only on a self-hosted runner
+labelled `perf-budget` after a manual dispatch with `scan_budget: true`.
+
+**Prerequisite: no `perf-budget` runner is registered.** As of 2026-10-21 the repository has no
+runner carrying the labels `self-hosted`, `linux`, `x64`, `perf-budget`
+(`gh api repos/mak8427/Warhammer_mod_manager/actions/runners --jq .total_count` returns `0`).
+A manual dispatch with `scan_budget: true` therefore stays queued until such a runner is
+registered; it does not fail fast or report an error. Until one exists, the supported gate is the
+local command above, run on the budget host. Shared-runner Criterion runs remain informational, as
+for the rest of WAR-7.
+
 ## Known limits
 
 - **Core, not WebView.** Cold start excludes window/WebView creation and paint; mod-list population
