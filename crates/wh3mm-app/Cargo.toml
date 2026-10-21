@@ -22,4 +22,4 @@ wh3mm-core = { path = "../wh3mm-core" }
 serde.workspace = true
 
 [target.'cfg(windows)'.dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["protocol-asset"] }
