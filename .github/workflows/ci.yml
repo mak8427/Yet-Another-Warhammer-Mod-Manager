@@ -1,8 +1,9 @@
 name: CI
 
 on:
+  # The QA gate (docs/QA_PLAN.md) must see every pushed branch and every PR.
   push:
-    branches: [main]
+    branches: ['**']
   pull_request:
   workflow_dispatch:
     inputs:
@@ -44,6 +45,13 @@ jobs:
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
+
+      - name: QA fixture integrity
+        run: node scripts/qa/generate-fixtures.mjs --verify
+
+      - name: QA generator guard tests
+        timeout-minutes: 5
+        run: node --test scripts/qa/*.test.mjs
 
       - name: Rust format
         run: cargo fmt --all --check

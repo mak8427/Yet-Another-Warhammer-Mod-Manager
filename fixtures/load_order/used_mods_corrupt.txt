@@ -1,0 +1,4 @@
+mod "unterminated.pack;
+mod mod_without_quotes.pack;
+garbage line with no directive
+mod "ok.pack";
