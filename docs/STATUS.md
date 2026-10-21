@@ -153,8 +153,9 @@ At the release head `0e051204`, `node scripts/parity-report.mjs` reports
 moved to done with the WAR-10 code and tests cited in `docs/PARITY.yaml`; DET-1
 stays partial for the documented Flatpak/Snap/XDG Linux roots. The four allowed
 v1.0 limitations are WS-3, LA-1, ML-4, and SET-2. DSC-1 (author parsing) and
-WS-2 (open Workshop page) also remain partial; under the WAR-79 ruling the
-parity percentage is a monitoring metric, not the ship gate.
+WS-2 (open Workshop page) also remain partial; both are named in
+`docs/PRODUCT_SCOPE.md`, so their v1.0 status is escalated to Torgrim in WAR-104.
+The parity percentage itself is a monitoring metric, not the ship gate (WAR-79).
 A `v1.0.0` tag and draft release are created only after the `release.yml`
 artifact dispatch on `main` is green and the release gates are on the branch;
 publishing waits for the WAR-12 audit of that draft.

@@ -162,8 +162,8 @@ release task.
 - [ ] M4 merged (WAR-10), including SET-4, ML-3, CF-4, PRF-2, and DET-1; `main` is green.
 - [ ] `node scripts/parity-report.mjs` reports **0 missing checks** at the release
       head. The allowed limitations are WS-3, LA-1, ML-4, SET-2, and DET-1's
-      Linux roots; DSC-1 (author) and WS-2 (Workshop open) may also remain
-      `partial` — under WAR-79 the parity percentage is monitoring, not the gate.
+      Linux roots; DSC-1 (author) and WS-2 (Workshop open) also remain partial
+      and are escalated to Torgrim in WAR-104 before the tag.
 - [ ] The generated `docs/PARITY.md` and `docs/STATUS.md` are committed at that
       head; `docs/STATUS.md` names the five limitations with their manual checks.
       Never hand-edit `docs/PARITY.md`.
