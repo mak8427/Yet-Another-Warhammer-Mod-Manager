@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core'
+import { convertFileSrc, invoke } from '@tauri-apps/api/core'
 
 /**
  * Manual mirror of the Rust IPC contract.
@@ -6,7 +6,7 @@ import { invoke } from '@tauri-apps/api/core'
  * Source of truth:
  * - `crates/wh3mm-core/src/ipc.rs` (payload structs)
  * - `crates/wh3mm-core/src/error.rs` (error envelope and codes)
- * - ADR-002 in `docs/adr/002-ipc-contract.md`
+ * - ADR-002 and ADR-005 in `docs/adr/`
  *
  * Keep this file in lockstep with Rust. Do not add filesystem or business
  * logic here; this module only marshals values across the Tauri boundary.
@@ -42,10 +42,107 @@ export interface AppInfo {
   arch: string
 }
 
-export type CommandName = 'app_info'
+export type LocationSource = 'auto' | 'manual'
 
-export async function appInfo(): Promise<AppInfo> {
-  return invokeCommand<AppInfo>('app_info')
+export interface GameLocation {
+  gamePath: string
+  dataPath: string
+  workshopPath: string
+  steamRoot: string
+  protonPrefix: string | null
+  source: LocationSource
+}
+
+export interface ModSummary {
+  id: string
+  name: string
+  humanName: string
+  author: string | null
+  isWorkshop: boolean
+  workshopId: string | null
+  isEnabled: boolean
+  loadOrder: number
+  tags: string[]
+  updatedAt: string | null
+  thumbnailPath: string | null
+  dependencies: string[]
+  packError: string | null
+  isMovie: boolean
+  sizeBytes: number
+}
+
+export interface LoadOrderReadReport {
+  path: string
+  present: boolean
+  corrupt: boolean
+  message: string | null
+  modNames: string[]
+  resolvedModIds: string[]
+  missingNames: string[]
+  duplicates: string[]
+  unmanagedDirectives: string[]
+  backupAvailable: boolean
+}
+
+export interface LoadOrderWriteReport {
+  path: string
+  backupPath: string | null
+  written: number
+  skipped: string[]
+  unmanagedDirectives: string[]
+  wouldDropUnmanaged: boolean
+  existingModCount: number
+  resultingModCount: number
+  canWrite: boolean
+  blockedReason: string | null
+  requiresEmptyConfirmation: boolean
+  requiresUnmanagedConfirmation: boolean
+  hardBlocked: boolean
+}
+
+export interface Timings {
+  startupMs: number
+  detectionMs: number
+  scanMs: number
+  loadOrderMs: number
+  totalMs: number
+}
+
+export interface ModListSnapshot {
+  mods: ModSummary[]
+  enabledCount: number
+  activeProfileId: string
+  loadOrder: LoadOrderReadReport
+  timings: Timings
+  warnings: string[]
+}
+
+export interface Profile {
+  id: string
+  name: string
+  enabledModIds: string[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ProfilesState {
+  profiles: Profile[]
+  activeProfileId: string
+}
+
+export interface Tag {
+  id: string
+  name: string
+  color: string
+}
+
+export type Density = 'comfortable' | 'compact'
+
+export interface UiPreferences {
+  density: Density
+  showAuthors: boolean
+  showThumbnails: boolean
+  lastScrollTop: number
 }
 
 /** Normalized rejection thrown by every command wrapper. */
@@ -103,6 +200,30 @@ export function toIpcError(cause: unknown): IpcError {
   })
 }
 
+export type CommandName =
+  | 'app_info'
+  | 'detect_game'
+  | 'set_game_path'
+  | 'list_mods'
+  | 'set_mod_enabled'
+  | 'set_mods_enabled'
+  | 'set_load_order'
+  | 'list_profiles'
+  | 'save_profile'
+  | 'duplicate_profile'
+  | 'delete_profile'
+  | 'apply_profile'
+  | 'list_tags'
+  | 'create_tag'
+  | 'delete_tag'
+  | 'set_mod_tags'
+  | 'get_ui_preferences'
+  | 'update_ui_preferences'
+  | 'read_load_order'
+  | 'preview_load_order'
+  | 'write_load_order'
+  | 'restore_load_order'
+
 export async function invokeCommand<T>(
   command: CommandName,
   args: Record<string, unknown> = {},
@@ -114,7 +235,141 @@ export async function invokeCommand<T>(
   }
 }
 
+export async function appInfo(): Promise<AppInfo> {
+  return invokeCommand<AppInfo>('app_info')
+}
+
+export async function detectGame(): Promise<GameLocation> {
+  return invokeCommand<GameLocation>('detect_game')
+}
+
+export async function setGamePath(gamePath: string | null): Promise<GameLocation> {
+  return invokeCommand<GameLocation>('set_game_path', { gamePath })
+}
+
+export async function listMods(): Promise<ModListSnapshot> {
+  return invokeCommand<ModListSnapshot>('list_mods')
+}
+
+export async function setModEnabled(modId: string, enabled: boolean): Promise<ModListSnapshot> {
+  return invokeCommand<ModListSnapshot>('set_mod_enabled', { modId, enabled })
+}
+
+export async function setModsEnabled(modIds: string[], enabled: boolean): Promise<ModListSnapshot> {
+  return invokeCommand<ModListSnapshot>('set_mods_enabled', { modIds, enabled })
+}
+
+export async function setLoadOrder(orderedModIds: string[]): Promise<ModListSnapshot> {
+  return invokeCommand<ModListSnapshot>('set_load_order', { orderedModIds })
+}
+
+export async function listProfiles(): Promise<ProfilesState> {
+  return invokeCommand<ProfilesState>('list_profiles')
+}
+
+export async function saveProfile(
+  name: string,
+  enabledModIds: string[],
+  profileId?: string,
+): Promise<Profile> {
+  return invokeCommand<Profile>('save_profile', { profileId, name, enabledModIds })
+}
+
+export async function duplicateProfile(profileId: string, name: string): Promise<Profile> {
+  return invokeCommand<Profile>('duplicate_profile', { profileId, name })
+}
+
+export async function deleteProfile(profileId: string): Promise<ProfilesState> {
+  return invokeCommand<ProfilesState>('delete_profile', { profileId })
+}
+
+export async function applyProfile(profileId: string): Promise<ModListSnapshot> {
+  return invokeCommand<ModListSnapshot>('apply_profile', { profileId })
+}
+
+export async function listTags(): Promise<Tag[]> {
+  return invokeCommand<Tag[]>('list_tags')
+}
+
+export async function createTag(name: string, color: string): Promise<Tag[]> {
+  return invokeCommand<Tag[]>('create_tag', { name, color })
+}
+
+export async function deleteTag(tagId: string): Promise<Tag[]> {
+  return invokeCommand<Tag[]>('delete_tag', { tagId })
+}
+
+export async function setModTags(modId: string, tagIds: string[]): Promise<ModListSnapshot> {
+  return invokeCommand<ModListSnapshot>('set_mod_tags', { modId, tagIds })
+}
+
+export async function getUiPreferences(): Promise<UiPreferences> {
+  return invokeCommand<UiPreferences>('get_ui_preferences')
+}
+
+export async function updateUiPreferences(preferences: UiPreferences): Promise<UiPreferences> {
+  return invokeCommand<UiPreferences>('update_ui_preferences', { preferences })
+}
+
+export async function readLoadOrder(): Promise<LoadOrderReadReport> {
+  return invokeCommand<LoadOrderReadReport>('read_load_order')
+}
+
+export async function previewLoadOrder(): Promise<LoadOrderWriteReport> {
+  return invokeCommand<LoadOrderWriteReport>('preview_load_order')
+}
+
+export async function writeLoadOrder(
+  allowEmpty: boolean,
+  confirmUnmanagedLoss: boolean,
+): Promise<LoadOrderWriteReport> {
+  return invokeCommand<LoadOrderWriteReport>('write_load_order', {
+    allowEmpty,
+    confirmUnmanagedLoss,
+  })
+}
+
+export async function restoreLoadOrder(): Promise<LoadOrderReadReport> {
+  return invokeCommand<LoadOrderReadReport>('restore_load_order')
+}
+
+/**
+ * The only place the frontend turns a local path into a displayable URL.
+ * Falls back to the path when the Tauri asset bridge is unavailable (tests,
+ * plain Vite dev without the shell).
+ */
+export function fileUrl(path: string): string {
+  try {
+    return convertFileSrc(path)
+  } catch {
+    return path
+  }
+}
+
 /** Typed facade used by components; one method per registered Rust command. */
 export const ipc = {
   appInfo,
+  detectGame,
+  setGamePath,
+  listMods,
+  setModEnabled,
+  setModsEnabled,
+  setLoadOrder,
+  listProfiles,
+  saveProfile,
+  duplicateProfile,
+  deleteProfile,
+  applyProfile,
+  listTags,
+  createTag,
+  deleteTag,
+  setModTags,
+  getUiPreferences,
+  updateUiPreferences,
+  readLoadOrder,
+  previewLoadOrder,
+  writeLoadOrder,
+  restoreLoadOrder,
 }
+
+export type IpcClient = typeof ipc
