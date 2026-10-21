@@ -475,7 +475,9 @@ capabilities:
           - path: crates/wh3mm-core/src/launch.rs
             test: process_matching_is_case_insensitive
           - path: crates/wh3mm-core/src/launch.rs
-            contains: "if is_game_running()?"
+            test: launch_refuses_while_the_game_is_running
+          - path: crates/wh3mm-core/src/launch.rs
+            test: launch_reports_a_detection_failure_instead_of_launching
       - id: LA-4
         title: Persist launch options per profile and expose them on the launch screen
         status: done

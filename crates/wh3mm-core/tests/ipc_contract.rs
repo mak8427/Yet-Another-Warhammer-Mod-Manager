@@ -102,6 +102,10 @@ fn error_codes_use_snake_case_on_the_wire() {
         (ErrorCode::Io, "io"),
         (ErrorCode::ConfigCorrupt, "config_corrupt"),
         (ErrorCode::SteamNotFound, "steam_not_found"),
+        (
+            ErrorCode::ProcessDetectionFailed,
+            "process_detection_failed",
+        ),
         (ErrorCode::PackParseFailed, "pack_parse_failed"),
         (ErrorCode::NotFound, "not_found"),
         (ErrorCode::Validation, "validation"),

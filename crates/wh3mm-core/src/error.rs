@@ -15,6 +15,8 @@ pub enum ErrorCode {
     GameNotFound,
     /// Steam could not be located or read.
     SteamNotFound,
+    /// Whether the game process is running could not be determined.
+    ProcessDetectionFailed,
     /// A `.pack` file is malformed or unreadable.
     PackParseFailed,
     /// A requested entity (mod, profile, tag) does not exist.
@@ -92,5 +94,15 @@ impl AppError {
 
     pub fn internal(message: impl Into<String>) -> Self {
         Self::new(ErrorCode::Internal, message)
+    }
+
+    /// Reports that the running-game probe failed, so launch must not proceed.
+    pub fn process_detection_failed(details: impl Into<String>) -> Self {
+        Self::new(
+            ErrorCode::ProcessDetectionFailed,
+            "Could not check whether Total War: Warhammer III is running; confirm the game is closed, then try again",
+        )
+        .with_details(details)
+        .retryable()
     }
 }
