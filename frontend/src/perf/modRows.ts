@@ -3,15 +3,9 @@
  *
  * The names and counts mirror `scripts/perf/generate-fixture.mjs` so the frontend guard and the
  * Rust workloads describe the same catalogue. No React import: this module is pure and cheap to
- * reuse from the real store once WAR-5 lands.
+ * reuse from the real store.
  */
-export interface PerfModRow {
-  id: string
-  name: string
-  author: string
-  enabled: boolean
-  sizeBytes: number
-}
+import type { ModSummary } from '../lib/ipc'
 
 const UNICODE_STEMS = [
   'mod_ñandú',
@@ -37,19 +31,30 @@ function makeRandom(seed: number): () => number {
   }
 }
 
-export function makeModRows(count: number, seed = 20261020): PerfModRow[] {
+export function makeModRows(count: number, seed = 20261020): ModSummary[] {
   const random = makeRandom(seed)
-  const rows: PerfModRow[] = []
+  const rows: ModSummary[] = []
   for (let index = 0; index < count; index++) {
     const unicode = index % 5 === 0
     const stem = unicode
       ? `${UNICODE_STEMS[index % UNICODE_STEMS.length]}_${String(index).padStart(4, '0')}`
       : `perf_mod_${String(index).padStart(4, '0')}`
+    const enabled = random() > 0.25
     rows.push({
       id: `mod-${index}`,
       name: `${stem}.pack`,
+      humanName: stem,
       author: `author_${index % 37}`,
-      enabled: random() > 0.25,
+      isWorkshop: index % 3 === 0,
+      workshopId: index % 3 === 0 ? String(1_000_000 + index) : null,
+      isEnabled: enabled,
+      loadOrder: enabled ? index : -1,
+      tags: [],
+      updatedAt: null,
+      thumbnailPath: null,
+      dependencies: [],
+      packError: null,
+      isMovie: false,
       sizeBytes: 256 + Math.floor(random() * 8192),
     })
   }

@@ -1,26 +1,26 @@
 import { writeFileSync } from 'node:fs'
 import { cpus } from 'node:os'
 import { performance } from 'node:perf_hooks'
-import { cleanup, render } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterAll, describe, expect, it } from 'vitest'
+import { ModList } from '../components/mod-list/ModList'
 import { makeModRows, moveRow } from './modRows'
-import { WindowedModList } from './WindowedModList'
-import { DEFAULT_VIEWPORT_HEIGHT, OVERSCAN, ROW_HEIGHT, windowRange } from './virtualWindow'
 
 /**
- * Frontend render guard (WAR-7 deliverable 3, skeleton).
+ * Frontend render guard (WAR-7 deliverable 3).
  *
- * What it measures: initial window render, scroll rerender, and reorder commit on the 5k and 20k
- * row workloads. What it does **not** do: assert wall-clock thresholds. jsdom timings are an upper
- * bound and are reported, not gated; the real scroll/paint trace is a manual Chrome run documented
- * in `docs/PERF.md`.
- *
- * The hard assertions are structural: a windowed list must keep the mounted DOM row count bounded
- * regardless of dataset size. Timing samples are only printed and (optionally) written as JSON.
+ * Runs the real M2 `ModList` over the 5k and 20k workloads and measures initial window render,
+ * scroll rerender, and reorder commit. Wall-clock numbers are reported, not gated: jsdom is an
+ * upper bound for synthetic rows and says nothing about paint. The hard assertions are structural:
+ * the mounted DOM row count must stay bounded and the window must actually follow the scroll.
  */
 const WORKLOADS = [5_000, 20_000] as const
-const MAX_MOUNTED_ROWS = 64 // 20 visible rows + 2 * 8 overscan = 36; 64 catches "forgot to virtualize".
+const ROW_HEIGHT = 40
+const VIEWPORT_HEIGHT = 560
+// 14 visible rows + 2 * 6 overscan = 26; 48 catches a list that forgot to virtualize.
+const MAX_MOUNTED_ROWS = 48
 const SAMPLES = 7
+const noop = () => {}
 
 interface Timing {
   medianMs: number
@@ -53,10 +53,28 @@ function sample(action: () => void): Timing {
   }
 }
 
-function mountedRows(container: HTMLElement): number[] {
-  return [...container.querySelectorAll<HTMLElement>('[data-testid="mod-row"]')].map((row) =>
-    Number(row.dataset.rowIndex),
-  )
+function listProps(mods: ReturnType<typeof makeModRows>, initialScrollTop = 0) {
+  return {
+    mods,
+    tags: [],
+    selection: [],
+    density: 'comfortable' as const,
+    showAuthors: true,
+    showThumbnails: true,
+    initialScrollTop,
+    viewportHeightOverride: VIEWPORT_HEIGHT,
+    onToggle: noop,
+    onSelect: noop,
+    onSelectAll: noop,
+    onClearSelection: noop,
+    onMove: noop,
+    onReorder: noop,
+    onScrollTop: noop,
+  }
+}
+
+function mountedIds(): string[] {
+  return screen.queryAllByRole('option').map((row) => row.getAttribute('data-mod-id') ?? '')
 }
 
 interface WorkloadResult {
@@ -73,8 +91,9 @@ const results: WorkloadResult[] = []
 
 afterAll(() => {
   const report = {
-    schema: 'wh3mm.perf.frontend-guard.v1',
+    schema: 'wh3mm.perf.frontend-guard.v2',
     kind: 'jsdom-upper-bound',
+    component: 'frontend/src/components/mod-list/ModList.tsx',
     measuredAt: new Date().toISOString(),
     environment: {
       platform: process.platform,
@@ -85,12 +104,11 @@ afterAll(() => {
     },
     contract: {
       rowHeight: ROW_HEIGHT,
-      overscan: OVERSCAN,
-      viewportHeight: DEFAULT_VIEWPORT_HEIGHT,
+      viewportHeight: VIEWPORT_HEIGHT,
       maxMountedRows: MAX_MOUNTED_ROWS,
     },
     timingGate: false,
-    note: 'jsdom render cost, not paint or scroll latency; no wall-clock threshold is asserted.',
+    note: 'jsdom render cost of the real ModList, not paint or scroll latency; no wall-clock threshold is asserted.',
     workloads: results,
   }
   if (process.env.WH3MM_PERF_OUT) {
@@ -106,11 +124,6 @@ afterAll(() => {
 })
 
 describe('mod list render guard', () => {
-  it('windows a small list without dropping rows', () => {
-    expect(windowRange(10, 0).mounted).toBe(10)
-    expect(windowRange(0, 0)).toEqual({ start: 0, end: 0, mounted: 0 })
-  })
-
   for (const count of WORKLOADS) {
     it(`keeps 5k/20k-scale DOM bounded and reports timings (${count} rows)`, () => {
       let rows = makeModRows(0)
@@ -119,50 +132,52 @@ describe('mod list render guard', () => {
       })
       expect(rows).toHaveLength(count)
 
-      const bottom = Math.max(0, rows.length - 1) * ROW_HEIGHT
-      const lastIndex = rows.length - 1
+      const bottom = Math.max(0, rows.length * ROW_HEIGHT - VIEWPORT_HEIGHT)
+      const lastId = rows[rows.length - 1].id
 
       // Initial render: mount, measure, unmount. A throwaway render warms the JSX path.
-      const warmup = render(<WindowedModList rows={rows.slice(0, 100)} />)
+      const warmup = render(<ModList {...listProps(rows.slice(0, 100))} />)
       warmup.unmount()
       const initialRender = sample(() => {
-        const view = render(<WindowedModList rows={rows} />)
+        const view = render(<ModList {...listProps(rows)} />)
         view.unmount()
       })
 
-      // Scroll: rerender the same mounted list at alternating offsets.
-      const view = render(<WindowedModList rows={rows} scrollTop={0} />)
-      const atTop = mountedRows(view.container)
+      // Scroll: rerender the same mounted list at alternating offsets. jsdom has no layout, so the
+      // guard drives the same scroll event the browser fires and checks which rows commit.
+      const view = render(<ModList {...listProps(rows)} />)
+      const listbox = screen.getByRole('listbox', { name: 'Mods' })
+      const atTop = mountedIds()
       let toBottom = true
       const scroll = sample(() => {
-        view.rerender(<WindowedModList rows={rows} scrollTop={toBottom ? bottom : 0} />)
+        fireEvent.scroll(listbox, { target: { scrollTop: toBottom ? bottom : 0 } })
         toBottom = !toBottom
       })
-      view.rerender(<WindowedModList rows={rows} scrollTop={bottom} />)
-      const atBottom = mountedRows(view.container)
+      fireEvent.scroll(listbox, { target: { scrollTop: bottom } })
+      const atBottom = mountedIds()
       view.unmount()
 
-      // Reorder: move row 0 to index 100, commit, and move it back so each sample does real work.
-      const reorderView = render(<WindowedModList rows={rows} />)
+      // Reorder: move row 0 to index 100, commit, and move the target back so each sample works.
+      const reorderView = render(<ModList {...listProps(rows)} />)
       const target = Math.min(100, rows.length - 1)
       let flipped = false
       const reorder = sample(() => {
         const ordered = flipped ? moveRow(rows, target, 0) : moveRow(rows, 0, target)
         flipped = !flipped
-        reorderView.rerender(<WindowedModList rows={ordered} />)
+        reorderView.rerender(<ModList {...listProps(ordered)} />)
       })
       const ordered = moveRow(rows, 0, target)
       expect(ordered).toHaveLength(rows.length)
       expect(ordered[target].id).toBe(rows[0].id)
       reorderView.unmount()
 
-      // Structural contract: bounded DOM, and the window really moved to the end of the list.
+      // Structural contract: bounded DOM, window followed the scroll, first row unmounted at the end.
       expect(atTop.length).toBeLessThanOrEqual(MAX_MOUNTED_ROWS)
       expect(atBottom.length).toBeLessThanOrEqual(MAX_MOUNTED_ROWS)
-      expect(atTop[0]).toBe(0)
-      expect(atTop).not.toContain(lastIndex)
-      expect(atBottom).toContain(lastIndex)
-      expect(atBottom).not.toContain(0)
+      expect(atTop[0]).toBe(rows[0].id)
+      expect(atTop).not.toContain(lastId)
+      expect(atBottom).toContain(lastId)
+      expect(atBottom).not.toContain(rows[0].id)
 
       results.push({
         rows: count,
@@ -174,7 +189,6 @@ describe('mod list render guard', () => {
         mountedAtBottom: atBottom.length,
       })
 
-      // Keep the global suite fast even though we just built 20k rows.
       cleanup()
     })
   }
