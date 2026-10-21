@@ -1,4 +1,7 @@
-import type { ConflictModSummary, ConflictReport, IpcError } from '../../lib/ipc'
+import { useMemo, useState } from 'react'
+import type { ConflictReport, IpcError } from '../../lib/ipc'
+import { middleEllipsis } from '../../lib/ui'
+import { EmptyState } from '../common/EmptyState'
 import { ErrorBanner } from '../shell/ErrorBanner'
 
 interface ConflictScreenProps {
@@ -9,6 +12,29 @@ interface ConflictScreenProps {
   onDismissError: () => void
 }
 
+type Filter = 'all' | 'conflicts' | 'missing' | 'duplicates'
+
+interface Row {
+  id: string
+  path: string
+  winner: string | null
+  losers: string[]
+  type: string
+  detail: string
+  subrows?: string[]
+}
+
+const FILTERS: Array<{ id: Filter; label: string }> = [
+  { id: 'all', label: 'All' },
+  { id: 'conflicts', label: 'Conflicts' },
+  { id: 'missing', label: 'Missing dependencies' },
+  { id: 'duplicates', label: 'Duplicate names' },
+]
+
+function countLabel(count: number, singular: string, plural: string): string {
+  return `${count} ${count === 1 ? singular : plural}`
+}
+
 export function ConflictScreen({
   report,
   loading,
@@ -16,213 +42,290 @@ export function ConflictScreen({
   onRefresh,
   onDismissError,
 }: ConflictScreenProps) {
-  const summaries = report?.modSummaries ?? []
-  const names = new Map(summaries.map((summary) => [summary.modId, summary.name]))
-  const conflicts = report?.conflicts ?? []
-  const missing = report?.missingDependencies ?? []
-  const duplicates = report?.duplicatePackNames ?? []
-  const disabled = report?.disabledDependencies ?? []
-  const shadows = report?.shadowedBaseTables ?? []
+  const [filter, setFilter] = useState<Filter>('all')
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+
+  const names = useMemo(
+    () => new Map((report?.modSummaries ?? []).map((summary) => [summary.modId, summary.name])),
+    [report],
+  )
+
+  const rows = useMemo<Row[]>(() => {
+    if (!report) return []
+    const conflicts: Row[] = report.conflicts.map((conflict) => ({
+      id: `conflict:${conflict.path}`,
+      path: conflict.path,
+      winner: names.get(conflict.winnerModId) ?? conflict.winnerModId,
+      losers: conflict.loserModIds.map((id) => names.get(id) ?? id),
+      type: 'Conflict',
+      detail: `Winner: ${names.get(conflict.winnerModId) ?? conflict.winnerModId}`,
+      subrows: conflict.loserModIds.map((id) => `Loses: ${names.get(id) ?? id}`),
+    }))
+    const missing: Row[] = [
+      ...report.missingDependencies.map((entry) => ({
+        id: `missing:${entry.modId}:${entry.missing.join(',')}`,
+        path: `${names.get(entry.modId) ?? entry.modId} → ${entry.missing.join(', ')}`,
+        winner: null,
+        losers: entry.missing,
+        type: 'Missing dependency',
+        detail: `${names.get(entry.modId) ?? entry.modId} requires ${entry.missing.join(', ')}`,
+      })),
+      ...report.disabledDependencies.map((entry) => ({
+        id: `disabled:${entry.modId}:${entry.dependency}`,
+        path: `${names.get(entry.modId) ?? entry.modId} → ${entry.dependency}`,
+        winner: null,
+        losers: [entry.dependency],
+        type: 'Disabled dependency',
+        detail: `${names.get(entry.modId) ?? entry.modId} requires ${
+          names.get(entry.providerModId) ?? entry.providerModId
+        }, which is disabled`,
+      })),
+    ]
+    const duplicates: Row[] = report.duplicatePackNames.map((entry) => ({
+      id: `duplicate:${entry.name}`,
+      path: entry.name,
+      winner: null,
+      losers: entry.modIds.map((id) => names.get(id) ?? id),
+      type: 'Duplicate name',
+      detail: `${entry.name} is carried by ${entry.modIds.length} packs`,
+    }))
+    if (filter === 'conflicts') return conflicts
+    if (filter === 'missing') return missing
+    if (filter === 'duplicates') return duplicates
+    return [...conflicts, ...missing, ...duplicates]
+  }, [report, names, filter])
+
+  const selected = rows.find((row) => row.id === selectedId) ?? null
+  const enabledCount = report?.modSummaries.length ?? 0
+  const summary = report
+    ? `${countLabel(report.conflicts.length, 'shared path', 'shared paths')} · ${countLabel(
+        report.missingDependencies.length,
+        'missing dependency',
+        'missing dependencies',
+      )} · ${countLabel(report.duplicatePackNames.length, 'duplicate name', 'duplicate names')}`
+    : 'Reading enabled pack indexes'
+
+  const toggle = (id: string) => {
+    setExpanded((current) => {
+      const next = new Set(current)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   return (
-    <section className="m3-screen" aria-labelledby="conflict-heading">
-      <div className="pane-heading pane-heading-tight">
-        <div>
-          <p className="eyebrow">Muster roll</p>
-          <h2 id="conflict-heading">Conflicts</h2>
+    <section className="conflict-screen" aria-labelledby="conflict-heading">
+      <div className="screen-bar">
+        <div className="screen-title">
+          <h2 id="conflict-heading" tabIndex={-1}>
+            Conflicts
+          </h2>
+          <span className="screen-count mono">{summary}</span>
         </div>
-        <div className="pane-meta">
-          Bottom of the load order wins
+        <div className="screen-actions">
           <button type="button" className="btn btn-small" onClick={onRefresh} disabled={loading}>
-            {loading ? 'Scanning…' : 'Refresh'}
+            {loading ? 'Scanning…' : 'Rescan'}
           </button>
         </div>
       </div>
 
-      {error && <ErrorBanner error={error} onDismiss={onDismissError} />}
+      {error && <ErrorBanner error={error} onDismiss={onDismissError} onRetry={onRefresh} />}
 
-      <div className="m3-stat-strip" aria-label="Conflict summary">
-        <Stat label="Shared paths" value={conflicts.length} />
-        <Stat label="Missing dependencies" value={missing.length} tone={missing.length > 0 ? 'bad' : undefined} />
-        <Stat label="Duplicate names" value={duplicates.length} tone={duplicates.length > 0 ? 'bad' : undefined} />
-        <Stat
-          label="Base-game tables shadowed"
-          value={report?.shadowedBaseTableCount ?? 0}
-          tone={(report?.shadowedBaseTableCount ?? 0) > 0 ? 'warn' : undefined}
-        />
+      <div className="filter-tabs" role="tablist" aria-label="Conflict filters">
+        {FILTERS.map((entry) => (
+          <button
+            key={entry.id}
+            type="button"
+            role="tab"
+            aria-selected={filter === entry.id}
+            className={`filter-tab${filter === entry.id ? ' is-active' : ''}`}
+            onClick={() => {
+              setFilter(entry.id)
+              setSelectedId(null)
+            }}
+          >
+            {entry.label}
+          </button>
+        ))}
       </div>
 
-      {report?.warnings.map((warning, index) => (
-        <div key={`${index}-${warning}`} className="banner banner-warning" role="status">
-          <div className="banner-body">
-            <span>{warning}</span>
-          </div>
-        </div>
-      ))}
-
-      <div className="panel">
-        <div className="panel-heading">
-          <h3>File conflicts</h3>
-          <span className="muted">{conflicts.length} shared paths</span>
-        </div>
-        {conflicts.length === 0 ? (
-          <p className="muted">
-            {loading ? 'Reading enabled pack indexes…' : 'No enabled mods share a file path.'}
-          </p>
-        ) : (
-          <div className="m3-table-wrap">
-            <table className="data-table">
+      <div className="conflict-body">
+        <div className="table-wrap conflict-table-wrap">
+          {rows.length === 0 ? (
+            <EmptyState
+              title={
+                loading
+                  ? 'Reading enabled pack indexes'
+                  : `No conflicts across ${enabledCount} enabled mod${enabledCount === 1 ? '' : 's'}.`
+              }
+              action={
+                <button type="button" className="btn" onClick={onRefresh} disabled={loading}>
+                  Rescan
+                </button>
+              }
+            >
+              {filter === 'all'
+                ? 'Enabled packs do not share paths, dependencies, or names.'
+                : 'Change the filter or rescan after enabling mods.'}
+            </EmptyState>
+          ) : (
+            <table className="data-table conflict-table">
+              <colgroup>
+                <col className="col-expand" />
+                <col />
+                <col className="col-winner" />
+                <col className="col-losers" />
+                <col className="col-type" />
+              </colgroup>
               <thead>
                 <tr>
+                  <th scope="col" aria-label="Expand" />
                   <th scope="col">Path</th>
                   <th scope="col">Winner</th>
-                  <th scope="col">Overridden</th>
+                  <th scope="col" className="align-right">
+                    Losers
+                  </th>
+                  <th scope="col">Type</th>
                 </tr>
               </thead>
               <tbody>
-                {conflicts.map((conflict) => (
-                  <tr key={conflict.path}>
-                    <td className="mono">{conflict.path}</td>
-                    <td>
-                      <span className="winner-name">{names.get(conflict.winnerModId) ?? conflict.winnerModId}</span>
-                    </td>
-                    <td className="muted">
-                      {conflict.loserModIds.map((id) => names.get(id) ?? id).join(', ')}
-                    </td>
-                  </tr>
-                ))}
+                {rows.map((row) => {
+                  const isExpanded = expanded.has(row.id)
+                  return (
+                    <FragmentRow
+                      key={row.id}
+                      row={row}
+                      expanded={isExpanded}
+                      selected={selectedId === row.id}
+                      onSelect={() => setSelectedId(row.id)}
+                      onToggle={() => toggle(row.id)}
+                    />
+                  )
+                })}
               </tbody>
             </table>
-          </div>
-        )}
-      </div>
-
-      <div className="m3-two-column">
-        <div className="panel">
-          <div className="panel-heading">
-            <h3>Dependencies</h3>
-          </div>
-          {missing.length === 0 && disabled.length === 0 ? (
-            <p className="muted">Every declared dependency is installed and enabled.</p>
-          ) : (
-            <ul className="m3-list">
-              {missing.map((entry) => (
-                <li key={`missing-${entry.modId}`}>
-                  <strong>{names.get(entry.modId) ?? entry.modId}</strong> is missing{' '}
-                  <span className="mono">{entry.missing.join(', ')}</span>
-                </li>
-              ))}
-              {disabled.map((entry) => (
-                <li key={`disabled-${entry.modId}-${entry.dependency}`}>
-                  <strong>{names.get(entry.modId) ?? entry.modId}</strong> requires{' '}
-                  <span className="mono">{entry.dependency}</span>, but{' '}
-                  {names.get(entry.providerModId) ?? entry.providerModId} is disabled
-                </li>
-              ))}
-            </ul>
           )}
         </div>
 
-        <div className="panel">
-          <div className="panel-heading">
-            <h3>Duplicate pack names</h3>
-          </div>
-          {duplicates.length === 0 ? (
-            <p className="muted">No duplicate pack names were found.</p>
-          ) : (
-            <ul className="m3-list">
-              {duplicates.map((entry) => (
-                <li key={entry.name}>
-                  <span className="mono">{entry.name}</span> is carried by {entry.modIds.length} files
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
-
-      <div className="panel">
-        <div className="panel-heading">
-          <h3>Base-game table overrides</h3>
-          <span className="muted">
-            {report?.shadowedBaseTableCount ?? 0} paths
-            {shadows.length < (report?.shadowedBaseTableCount ?? 0) ? ` · first ${shadows.length} shown` : ''}
-          </span>
-        </div>
-        {shadows.length === 0 ? (
-          <p className="muted">No enabled mod replaces a base-game database table.</p>
-        ) : (
-          <div className="m3-table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th scope="col">Mod</th>
-                  <th scope="col">Table</th>
-                  <th scope="col">Base pack</th>
-                </tr>
-              </thead>
-              <tbody>
-                {shadows.map((shadow) => (
-                  <tr key={`${shadow.modId}-${shadow.path}`}>
-                    <td>{names.get(shadow.modId) ?? shadow.modId}</td>
-                    <td className="mono">{shadow.path}</td>
-                    <td className="mono">{shadow.basePack}</td>
-                  </tr>
+        {selected && (
+          <aside className="conflict-detail" aria-label="Conflict details">
+            <h3 className="label">Detail</h3>
+            <p className="mono conflict-path">{selected.path}</p>
+            <dl className="inspector-facts">
+              <div>
+                <dt>Type</dt>
+                <dd>{selected.type}</dd>
+              </div>
+              <div>
+                <dt>Winner</dt>
+                <dd>{selected.winner ?? '—'}</dd>
+              </div>
+              <div>
+                <dt>Losers</dt>
+                <dd>{selected.losers.length}</dd>
+              </div>
+            </dl>
+            <p className="inspector-note">{selected.detail}</p>
+            {selected.losers.length > 0 && (
+              <ul className="inspector-list">
+                {selected.losers.map((loser) => (
+                  <li key={loser} className="truncate" title={loser}>
+                    {loser}
+                  </li>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      <div className="panel">
-        <div className="panel-heading">
-          <h3>Per-mod summary</h3>
-        </div>
-        {summaries.length === 0 ? (
-          <p className="muted">Enable mods to see how many files each one wins or loses.</p>
-        ) : (
-          <div className="m3-table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th scope="col">Mod</th>
-                  <th scope="col">Files</th>
-                  <th scope="col">Overrides</th>
-                  <th scope="col">Overridden on</th>
-                  <th scope="col">Base tables</th>
-                </tr>
-              </thead>
-              <tbody>
-                {summaries.map((summary) => (
-                  <SummaryRow key={summary.modId} summary={summary} />
-                ))}
-              </tbody>
-            </table>
-          </div>
+              </ul>
+            )}
+          </aside>
         )}
       </div>
     </section>
   )
 }
 
-function SummaryRow({ summary }: { summary: ConflictModSummary }) {
+function FragmentRow({
+  row,
+  expanded,
+  selected,
+  onSelect,
+  onToggle,
+}: {
+  row: Row
+  expanded: boolean
+  selected: boolean
+  onSelect: () => void
+  onToggle: () => void
+}) {
   return (
-    <tr>
-      <td>{summary.name}</td>
-      <td>{summary.fileCount}</td>
-      <td>{summary.overrides}</td>
-      <td>{summary.overriddenOn}</td>
-      <td>{summary.baseTableOverrides}</td>
-    </tr>
-  )
-}
-
-function Stat({ label, value, tone }: { label: string; value: number; tone?: 'bad' | 'warn' }) {
-  return (
-    <div className={`m3-stat ${tone ? `m3-stat-${tone}` : ''}`}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
+    <>
+      <tr
+        tabIndex={0}
+        className={selected ? 'is-selected' : undefined}
+        aria-selected={selected}
+        onClick={onSelect}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault()
+            onSelect()
+          } else if (event.key === 'ArrowRight' && row.subrows) {
+            event.preventDefault()
+            if (!expanded) onToggle()
+          } else if (event.key === 'ArrowLeft' && row.subrows) {
+            event.preventDefault()
+            if (expanded) onToggle()
+          }
+        }}
+      >
+        <td>
+          {row.subrows && row.subrows.length > 0 ? (
+            <button
+              type="button"
+              className="expand-button"
+              aria-expanded={expanded}
+              aria-label={expanded ? 'Collapse losers' : 'Expand losers'}
+              onClick={(event) => {
+                event.stopPropagation()
+                onToggle()
+              }}
+            >
+              <span aria-hidden="true">{expanded ? '▾' : '▸'}</span>
+            </button>
+          ) : (
+            <span className="state-shape" aria-hidden="true">
+              {row.type === 'Missing dependency' || row.type === 'Disabled dependency' ? '▲' : '◆'}
+            </span>
+          )}
+        </td>
+        <td className="mono conflict-path" title={row.path}>
+          {middleEllipsis(row.path, 88)}
+        </td>
+        <td>
+          {row.winner ? (
+            <>
+              <span className="winner-cell">
+                <span aria-hidden="true">✓</span> Wins
+              </span>
+              <span className="conflict-winner-name truncate" title={row.winner}>
+                {row.winner}
+              </span>
+            </>
+          ) : (
+            <span className="muted">—</span>
+          )}
+        </td>
+        <td className="align-right mono">{row.losers.length}</td>
+        <td>{row.type}</td>
+      </tr>
+      {expanded &&
+        row.subrows?.map((subrow, index) => (
+          <tr key={`${row.id}:${index}`} className="subrow">
+            <td />
+            <td colSpan={4} className="mono">
+              {subrow}
+            </td>
+          </tr>
+        ))}
+    </>
   )
 }

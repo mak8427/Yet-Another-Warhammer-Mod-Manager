@@ -32,6 +32,7 @@ export function ProfileDialog({ mode, initialName, busy, onClose, onSubmit }: Pr
             : 'The copy keeps the same enabled set and order.'
       }
       onClose={onClose}
+      width="md"
       footer={
         <>
           <button type="button" className="btn" onClick={onClose}>

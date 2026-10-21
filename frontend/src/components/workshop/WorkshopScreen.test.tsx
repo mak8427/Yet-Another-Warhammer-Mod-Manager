@@ -27,6 +27,32 @@ describe('WorkshopScreen', () => {
     expect(rows.length).toBeGreaterThan(1)
   })
 
+  it('mounts only the virtual window at 500 subscriptions', () => {
+    const items = Array.from({ length: 500 }, (_, index) => ({
+      workshopId: String(index),
+      title: `Subscription ${index}`,
+      state: 'subscribed' as const,
+      updatedAt: '2026-10-20T12:00:00Z',
+    }))
+    render(
+      <WorkshopScreen
+        items={items}
+        loading={false}
+        busy={false}
+        error={null}
+        viewportHeightOverride={320}
+        onRefresh={() => {}}
+        onDismissError={() => {}}
+        onAction={() => {}}
+      />,
+    )
+
+    const mounted = document.querySelectorAll('tbody tr[data-workshop-row]')
+    expect(mounted.length).toBeLessThanOrEqual(30)
+    expect(screen.getByText('Subscription 0')).toBeInTheDocument()
+    expect(screen.queryByText('Subscription 499')).not.toBeInTheDocument()
+  })
+
   it('shows the Steam-unavailable error state', () => {
     const error = new IpcError({
       code: 'steam_not_found',
@@ -47,6 +73,6 @@ describe('WorkshopScreen', () => {
     )
 
     expect(screen.getByRole('alert')).toHaveTextContent('Steam Workshop metadata was not found')
-    expect(screen.getByText(/No Workshop subscriptions were found/)).toBeInTheDocument()
+    expect(screen.queryByText(/No Workshop subscriptions found/)).not.toBeInTheDocument()
   })
 })

@@ -37,12 +37,12 @@ export function LoadOrderDialog({ preview, busy, onClose, onWrite }: LoadOrderDi
       onClose={onClose}
       footer={
         <>
-          <button type="button" className="btn" onClick={onClose}>
+          <button type="button" className="btn" data-autofocus onClick={onClose}>
             Cancel
           </button>
           <button
             type="button"
-            className="btn btn-primary"
+            className={`btn ${needsEmpty || needsUnmanaged ? 'btn-danger' : 'btn-primary'}`}
             disabled={!ready}
             onClick={() => onWrite(allowEmpty, confirmUnmanaged)}
           >

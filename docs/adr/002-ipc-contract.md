@@ -99,6 +99,25 @@ export interface AppInfo {
 `frontend/src/App.tsx` invokes it on mount and renders the result, proving the
 round trip. This is also the stale-build check: the UI shows both versions.
 
+`reset_to_defaults` requires `confirm: true`. It resets `UiPreferences` to
+defaults, clears the manual game-path override, clears the active profile's
+enabled set, and writes an empty `used_mods.txt` at the automatically detected
+game path. Profiles, tags, mod tags, and launch options are kept.
+
+The load-order write is preflighted before any state changes, and the typed
+`ResetLoadOrderReport` distinguishes the outcomes:
+
+- `written`: the empty order was written through the atomic writer.
+- `noGamePath`: automatic detection found no game; the config reset succeeds and
+  no load order is written.
+- `failed`: the existing file is corrupt or unreadable (the reset stops before
+  changing anything), the file changed during the reset, or the atomic write
+  failed. `message` says why.
+- `unmanagedDirectives`: the existing file contains directives this app does not
+  manage. Nothing is reset until the caller repeats the reset with
+  `confirmUnmanagedLoss: true`; `unmanagedDirectives` lists what would be
+  dropped.
+
 ### Implemented command surface (M1-M2)
 
 Payloads are fixed here so UI work and core work can proceed in parallel.
@@ -125,6 +144,7 @@ payload extensions and the load-order safety rules.
 | M2 | `set_mod_tags` | `{ modId: string, tagIds: string[] }` | `ModListSnapshot` |
 | M2 | `get_ui_preferences` | none | `UiPreferences` |
 | M2 | `update_ui_preferences` | `{ preferences: UiPreferences }` | `UiPreferences` |
+| M4 | `reset_to_defaults` | `{ confirm: boolean, confirmUnmanagedLoss: boolean }` | `ResetDefaultsReport` |
 | M2 | `read_load_order` | none | `LoadOrderReadReport` |
 | M2 | `preview_load_order` | none | `LoadOrderWriteReport` |
 | M2 | `write_load_order` | `{ allowEmpty: boolean, confirmUnmanagedLoss: boolean }` | `LoadOrderWriteReport` |
@@ -216,6 +236,23 @@ type UiPreferences = {
   showAuthors: boolean
   showThumbnails: boolean
   lastScrollTop: number
+}
+
+type ResetLoadOrderStatus =
+  | 'written'
+  | 'noGamePath'
+  | 'failed'
+  | 'unmanagedDirectives'
+
+type ResetLoadOrderReport = {
+  status: ResetLoadOrderStatus
+  message: string | null
+  unmanagedDirectives: string[]
+  requiresUnmanagedConfirmation: boolean
+}
+
+type ResetDefaultsReport = {
+  loadOrder: ResetLoadOrderReport
 }
 
 type ProfilesState = {
