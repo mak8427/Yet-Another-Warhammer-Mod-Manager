@@ -68,8 +68,17 @@ manual check in the QA pass below.
 | **WS-3** | Subscribe, unsubscribe, and update through the Steam client only. The app has no custom Steam authentication and never automates these actions. | On a clean Windows machine, subscribe to a Workshop mod in the Steam client, rescan, and confirm the mod appears; unsubscribe and confirm it disappears. Confirm the app never asks for Steam credentials. |
 | **LA-1** | Launch goes through Steam. The measured launch number is a proxy (time from the app request to the Steam process starting), not an in-game load time. | In QA step 7, launch through the app and record the result. Keep the number labelled "proxy" in any report; do not compare it to an in-game load timing. |
 | **ML-4** | Persisted scroll position and the 20k-row guard are polish, not correctness. | Scroll a long mod list, switch screens and back; a reset scroll position is accepted. Load the 20k-row fixture and confirm the guard shows a clear message instead of freezing. |
-| **SET-2** | Density, author, and thumbnail preferences persist best-effort. | Toggle density, author, and thumbnail display; restart; confirm each value survived. Record any value that did not persist. |
+| **SET-2** | Density and thumbnail preferences persist best-effort. | Toggle density and thumbnail display; restart; confirm each value survived. Record any value that did not persist. |
 | **DET-1 Linux roots** | Flatpak, Snap, and XDG game discovery is best-effort and may miss an installation. On Windows, the registry and native root are fixture-tested on WAR-10. | On a Flatpak or Snap install, confirm detection or use the manual path chooser. On Windows, confirm the registry/native detection finds the game without a manual path. |
+
+### Scope correction: pack author (WAR-104, WAR-107)
+
+The pack-author column, author sort, author search dimension, and Settings
+"Show authors" toggle are **not** in v1.0. PFH5 and the Steam ACF carry no
+author, and v1.0 forbids custom Steam authentication, so there is no supported
+source. PRODUCT_SCOPE capability 2 now covers name, type, timestamp, and
+dependencies. This is a contract correction, not a known limitation, and no
+empty column ships.
 
 ## Tag workflow (CI)
 

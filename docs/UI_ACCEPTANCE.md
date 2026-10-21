@@ -71,7 +71,6 @@ Density rules:
 | Row padding inline | 8px | 10px | 12px |
 | Title | 12/16 | 13/16 | 14/18 |
 | Meta | 11/14 | 11/14 | 12/16 |
-| Author column | hidden | visible >=1440px | visible >=1440px |
 
 - `[x]` D-01 `tokens.test.ts` passes and asserts 32/40/48 and the comfortable
   default.
@@ -125,7 +124,7 @@ These apply to every screen and every milestone.
   Evidence: capture run asserts no horizontal page scroll at 1024×720; `App.test.tsx` — `skips the closed overlay inspector in the F6 cycle below 1280px`.
 - `[x]` G-09 Truncation follows the rules below; every truncated value has a
   tooltip and a full-value path (inspector or copy).
-  Evidence: `ModRow.tsx` `title` attributes on name, meta, tags, and author; `ModInspector.tsx` shows the full pack path and author; `mods__selected-inspector__1920x1080__comfortable.png`.
+  Evidence: `ModRow.tsx` `title` attributes on name, meta, and tags; `ModInspector.tsx` shows the full pack path; `mods__selected-inspector__1920x1080__comfortable.png`.
 - `[x]` G-10 Scroll ownership is explicit: the mod list owns vertical scroll;
   the inspector scrolls independently; the page shell never scrolls the list.
   Evidence: `theme.css` `.mod-list-scroll` owns vertical scroll and `.inspector-body` scrolls independently; `ModList.test.tsx` and `virtual.test.ts` cover the windowing contract.
@@ -160,7 +159,7 @@ These apply to every screen and every milestone.
 | Content | Rule |
 |---|---|
 | Mod name / profile name / title | Single line, end ellipsis, never smaller type. Tooltip after 500ms; inspector shows the full value. |
-| Meta line (pack file, author) | Single line, end ellipsis. Author column is 140px and hidden below 1440px; the meta line then carries the author. |
+| Meta line (pack file) | Single line, end ellipsis. |
 | Tag label | Max 120px, end ellipsis. Two chips visible, then `+N`; tooltip lists all tags. |
 | Order number | Never truncated. |
 | Warning/conflict text | Never truncated. Icon + accessible label in the row; full text in the inspector. |
@@ -168,9 +167,9 @@ These apply to every screen and every milestone.
 | Button labels | Never truncated; grow the button to its content. |
 | Tooltip | Max 360px and 3 lines; never the only place a warning or required instruction appears. |
 
-- `[x]` T-01 Long names (>=120 chars), long authors, long pack paths, and long
-  unicode names truncate as specified and expose the full value.
-  Evidence: `ModRow.tsx` end-ellipsis with `title` attributes; `ModInspector.tsx` shows full name, author, pack path, and tags; long-name/unicode fixture in the capture run and the inspector screenshots.
+- `[x]` T-01 Long names (>=120 chars), long pack paths, and long unicode names
+  truncate as specified and expose the full value.
+  Evidence: `ModRow.tsx` end-ellipsis with `title` attributes; `ModInspector.tsx` shows full name, pack path, and tags; long-name/unicode fixture in the capture run and the inspector screenshots.
 - `[ ]` T-02 A 200% Windows text scale does not clip row titles or controls;
   rows may grow only if the density contract explicitly allows it, otherwise
   text truncates and the tooltip/inspector path remains.
@@ -218,8 +217,8 @@ These apply to every screen and every milestone.
   1px bottom border; no row is shorter than its density token.
   Evidence: `tokens.css` row heights are 32/40/48 including the 1px border; `ModList.test.tsx` and the capture run confirm the rendered heights.
 - `[x]` S02-03 Row anatomy is present in order: order, enable, thumbnail
-  (optional), name/meta, tags, author (where width allows), status, menu.
-  Evidence: `ModRow.tsx` order, enable, thumbnail, name/meta, tags, author, status, menu; `shell__mods__1920x1080__comfortable.png`.
+  (optional), name/meta, tags, status, menu.
+  Evidence: `ModRow.tsx` order, enable, thumbnail, name/meta, tags, status, menu; `shell__mods__1920x1080__comfortable.png`.
 - `[x]` S02-04 The order number is 1-based, tabular, right-aligned, and doubles
   as the drag handle; it is never truncated.
   Evidence: `ModRow.tsx` renders `loadOrder + 1` in a tabular right-aligned `.row-order` cell and the row is draggable; `store.test.ts` reorder tests.
@@ -271,19 +270,19 @@ These apply to every screen and every milestone.
 - `[x]` S03-01 The search field is 280px preferred, 28px high, has a
   visible `Ctrl+F` hint, and focuses/selects its text on `Ctrl+F`.
   Evidence: `ModToolbar.tsx` search is 280px preferred, 28px high, with a `Ctrl+F` hint; `App.test.tsx` Ctrl+F tests assert view switch, focus, and text selection.
-- `[x]` S03-02 Search is live, case-insensitive, matches human name, pack name,
-  and author, and never reorders rows by itself.
-  Evidence: `store.test.ts` — `filters by search, author, and tags`; `visibleMods` filters without reordering in `load-order` mode.
+- `[x]` S03-02 Search is live, case-insensitive, matches human name and pack
+  name, and never reorders rows by itself.
+  Evidence: `store.test.ts` — `filters by search and tags without an author dimension`; `visibleMods` filters without reordering in `load-order` mode.
 - `[x]` S03-03 The active filter chips are visible in the toolbar, each has a
   2px faction accent and a remove button, and `Clear filters` resets all.
   Evidence: `ModToolbar.tsx` filter chips with a 2px faction accent and remove button plus `Clear filters`; `mods__filtered-tag__*`; `store.test.ts` tag filter.
 - `[x]` S03-04 Tag chips are never colour-only: the tag name is always visible;
   at most two chips show before `+N`; the tooltip and inspector list all tags.
   Evidence: `ModRow.tsx` shows at most two tag chips and `+N`, with the full tag list in `title`; `ModInspector.tsx` lists every tag; screenshots.
-- `[x]` S03-05 Sort choices are `Name A–Z`, `Author A–Z`, `Updated newest`, and
-  `Load order`; the current sort is visible in the toolbar and exposed as
-  `aria-sort` on the header.
-  Evidence: `ModToolbar.tsx` sort select exposes the four modes; `ModRow.tsx` header sets `aria-sort`; `store.test.ts` — deterministic sort with an id tie-break.
+- `[x]` S03-05 Sort choices are `Name A–Z`, `Updated newest`, and `Load order`;
+  the current sort is visible in the toolbar and exposed as `aria-sort` on the
+  header.
+  Evidence: `ModToolbar.tsx` sort select exposes the three modes; `ModRow.tsx` header sets `aria-sort`; `store.test.ts` — deterministic sort with an id tie-break.
 - `[x]` S03-06 A zero-result filter shows the <=200px empty state with
   `Clear filters` as the resolving action.
   Evidence: `ModList.tsx` zero-result state is an `EmptyState` with `Clear filters`; `ModList.test.tsx` — `renders an empty state when the filter has no matches`.
@@ -390,9 +389,9 @@ These apply to every screen and every milestone.
 - `[x]` S07-04 Density offers Compact, Comfortable, Roomy and applies
   immediately (or on save with a clear dirty state).
   Evidence: `SettingsScreen.tsx` density select applies immediately; `App.test.tsx` — `changes density from settings and persists it`; `config.rs` round-trip tests.
-- `[x]` S07-05 Show authors and show thumbnails options change the list within
-  one render and preserve scroll and selection.
-  Evidence: `SettingsScreen.tsx` checkboxes call the store, which preserves snapshot/selection; `ModList.test.tsx` density-preservation test and `store.ts` setters.
+- `[x]` S07-05 Show thumbnails changes the list within one render and preserves
+  scroll and selection.
+  Evidence: `SettingsScreen.tsx` checkbox calls the store, which preserves snapshot/selection; `ModList.test.tsx` density-preservation test and `store.ts` setters.
 - `[x]` S07-06 Backup/restore load order and reset to defaults are present;
   reset requires a 480px confirmation with an explicit danger action.
   Evidence: `SettingsScreen.tsx` has Backup/Restore and Reset; reset uses a `width="sm"` danger confirmation with Cancel focused; `App.test.tsx` reset test.

@@ -39,8 +39,8 @@ that directory's README).
   rules in `theme.css`; screenshots show text/icon state channels.
 - G-07/G-08: capture run asserts no horizontal page scroll at 1920×1080,
   1366×768 and 1024×720 for Mods, Profiles, Conflicts, Workshop and Settings.
-- G-09/T-01: long name, long author, long pack path and unicode row in the mod
-  list; inspector shows the full pack path and author.
+- G-09/T-01: long name, long pack path and unicode row in the mod list;
+  inspector shows the full pack path.
 - G-10: `.mod-list-scroll` owns scrolling; the inspector scrolls separately.
 - G-16/S11-02: empty states are text + one action and ≤200px tall.
 - S01/S02/S03/S04/S05/S06/S07/S08/S09/S10/S11: screenshot pairs in

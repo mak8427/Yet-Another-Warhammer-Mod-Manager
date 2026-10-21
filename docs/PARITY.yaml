@@ -11,6 +11,14 @@ snapshot:
     over-claimed; QA corrected both to partial.
   history:
     - date: "2026-10-21"
+      index: 87.125
+      reason: >-
+        WAR-107 contract correction. WAR-104 cut the author requirement from
+        DSC-1, so the parser's name, type, timestamp, and dependency evidence is
+        done against the corrected PRODUCT_SCOPE. This reverses the -1.250
+        author correction and lifts the verified index from 85.875 to 87.125;
+        the index remains 0.125 below the WAR-3 87.250 figure.
+    - date: "2026-10-21"
       index: 88.125
       reason: >-
         Superseded first WAR-68 pass. DSC-1 and WS-2 were over-claimed as done;
@@ -37,10 +45,10 @@ snapshot:
     QA audits PR evidence; the script can only validate its shape.
 
 corrections:
-  - id: discovery-author-missing
-    claim: "DSC-1 (header including author) was done."
-    verified: "The pack author is hardcoded None in crates/wh3mm-core/src/pack.rs:165 and crates/wh3mm-core/src/mod_index.rs:254; the cited test asserts header.author == None. No code path assigns a parsed author."
-    effect: "Discovery 4.0 -> 3.5; contributes -1.250 to the index. DSC-1 is partial until an author source exists."
+  - id: dsc-1-author-requirement-cut
+    claim: "DSC-1 required the pack author."
+    verified: "WAR-104 ruling B: the PFH5 header and the Steam ACF carry no author, and v1.0 forbids custom Steam auth. WAR-107 removed the author column, sort, search dimension, toggle, preference, and IPC fields; PRODUCT_SCOPE capability 2 now requires name, type, timestamp, and dependencies."
+    effect: "Discovery 3.5 -> 4.0; DSC-1 is done against the corrected contract and contributes +1.250 to the index. This reverses the author-driven -1.250 recorded for the WAR-3 snapshot."
   - id: workshop-open-untested
     claim: "WS-2 (open a Workshop item through Steam) was done."
     verified: "The cited test asserts only the Subscribe and Update URL strings. WorkshopAction::Open is never called by a test and spawn_steam_url (workshop.rs:294) has no test; the UI test clicks Unsubscribe only."
@@ -133,19 +141,17 @@ capabilities:
     weight: 10
     checks:
       - id: DSC-1
-        title: Parse the PFH5 header, including name, type, author, timestamp, and dependencies
-        status: partial
+        title: Parse the PFH5 header fields (name, type, timestamp, dependencies)
+        status: done
         evidence:
           - path: crates/wh3mm-core/src/pack.rs
             test: parses_valid_header_and_unicode_dependencies
           - path: crates/wh3mm-core/src/pack.rs
+            test: keeps_the_timestamp_supplied_by_the_file_reader
+          - path: crates/wh3mm-core/src/pack.rs
             test: movie_mask_is_reported
           - path: crates/wh3mm-core/tests/pack_fixtures.rs
             test: parses_every_valid_fixture_through_the_product_parser
-        need: >-
-          A source for the pack author and a test that asserts a parsed value. The
-          header parser hardcodes author: None (pack.rs:165) and the index does the
-          same (mod_index.rs:254); the cited header test asserts None.
       - id: DSC-2
         title: Reject malformed and truncated packs without panicking or hiding valid packs
         status: done
@@ -206,10 +212,12 @@ capabilities:
           - path: frontend/src/App.test.tsx
             test: filters the list from the search box
           - path: frontend/src/store.test.ts
-            test: filters by search, author, and tags
+            test: filters by search and tags without an author dimension
+          - path: frontend/src/store.test.ts
+            test: sorts deterministically with an id tie-break in every non-drag mode
         need: >-
-          A sort control (name, author, or enabled state) and its test. Search and tag
-          filtering exist; sort was not ported from the legacy modSortingHelpers.
+          A UI test that changing the sort control reorders the visible list. The
+          store-level sort logic is tested; the toolbar-to-list path is not.
       - id: ML-4
         title: Virtualized rows and persisted scroll
         status: partial
@@ -457,18 +465,18 @@ capabilities:
           - path: crates/wh3mm-core/src/config.rs
             contains: "pub game_path_override"
       - id: SET-2
-        title: Density, author, and thumbnail preferences are applied and persisted
+        title: Density and thumbnail preferences are applied and persisted
         status: partial
         evidence:
           - path: crates/wh3mm-core/src/config.rs
             test: round_trips_profiles_tags_and_ui_preferences
           - path: crates/wh3mm-core/tests/session_flow.rs
             test: ui_preferences_round_trip
-          - path: frontend/src/components/mod-list/ModToolbar.tsx
-            contains: "onShowAuthors"
+          - path: frontend/src/components/settings/SettingsScreen.tsx
+            contains: "store.setShowThumbnails"
         need: >-
-          An end-to-end test of the density, author, and thumbnail toggles in the UI
-          and their application on the next boot. The persistence layer is tested; the
+          An end-to-end test of the density and thumbnail toggles in the UI and
+          their application on the next boot. The persistence layer is tested; the
           toggle path is not.
       - id: SET-3
         title: Back up on write and restore the load order from the UI, gated on a present backup
@@ -697,11 +705,12 @@ oracle:
       disposition: rewritten
       reason: >-
         Substring search and tag filtering are ported. Regex search, natural
-        alphanumeric sort, title/author sort, and load-order-rule sort are not
-        ported; sort is the ML-3 gap, so this file is the oracle for that gap.
+        alphanumeric sort, title sort, and load-order-rule sort are not ported;
+        author sort is cut with the author surface (WAR-104). The sort-control UI
+        path is the ML-3 gap, so this file is the oracle for that gap.
       evidence:
         - path: frontend/src/store.test.ts
-          test: filters by search, author, and tags
+          test: filters by search and tags without an author dimension
         - path: frontend/src/App.test.tsx
           test: filters the list from the search box
     - path: test/modRowSorting.node.test.ts
@@ -733,7 +742,7 @@ oracle:
         collapse are not in v1; tag filtering is covered by the store and App tests.
       evidence:
         - path: frontend/src/store.test.ts
-          test: filters by search, author, and tags
+          test: filters by search and tags without an author dimension
         - path: frontend/src/App.test.tsx
           test: renders the mod list, counts, tags, and the active profile after boot
     - path: test/categories.node.test.ts
@@ -748,7 +757,7 @@ oracle:
         - path: crates/wh3mm-core/src/config.rs
           test: round_trips_profiles_tags_and_ui_preferences
         - path: frontend/src/store.test.ts
-          test: filters by search, author, and tags
+          test: filters by search and tags without an author dimension
     - path: test/categories.dom.test.tsx
       capability: mod-list
       assertions: 12

@@ -143,8 +143,17 @@ These are accepted for v1.0; the full manual scripts are in `docs/RELEASE.md`.
 | WS-3 | Steam subscribe/unsubscribe/update is manual; the app has no custom Steam auth and never automates it. | Subscribe and unsubscribe in Steam, rescan, confirm the mod list follows; confirm the app never asks for Steam credentials. |
 | LA-1 | Launch through Steam is measured as a proxy, not an in-game load time. | Launch in the Windows QA pass and keep the number labelled "proxy". |
 | ML-4 | Persisted scroll position and the 20k-row guard are polish. | A reset scroll is accepted; the 20k fixture must show the guard, not freeze. |
-| SET-2 | Density, author, and thumbnail preferences persist best-effort. | Toggle each, restart, confirm persistence, and record any failure. |
+| SET-2 | Density and thumbnail preferences persist best-effort. | Toggle each, restart, confirm persistence, and record any failure. |
 | DET-1 Linux roots | Flatpak/Snap/XDG discovery is best-effort; Windows registry and native root are fixture-tested on WAR-10. | Detect on Linux Flatpak/Snap or use the manual path; confirm Windows detection without a manual path. |
+
+### Scope correction: pack author (WAR-104, WAR-107)
+
+The pack-author column, author sort, author search dimension, and Settings
+"Show authors" toggle are removed from v1.0, together with the unused `author`
+fields in the pack header and mod summary. PFH5 and the Steam ACF carry no
+author, and v1.0 forbids custom Steam authentication, so there is no supported
+source. PRODUCT_SCOPE capability 2 covers name, type, timestamp, and
+dependencies. This is a contract correction, not a known limitation.
 
 The capability-parity index in `docs/PARITY.md` is generated from
 `docs/PARITY.yaml`; only WS-3, LA-1, ML-4, and SET-2 may remain `partial` there.

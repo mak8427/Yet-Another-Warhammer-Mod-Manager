@@ -170,7 +170,6 @@ type ModSummary = {
   id: string                 // opaque, core-assigned; never a UI-owned path
   name: string               // pack file name, e.g. "mymod.pack"
   humanName: string          // pack stem until M3 adds Workshop titles
-  author: string | null
   isWorkshop: boolean
   workshopId: string | null
   isEnabled: boolean
@@ -233,7 +232,6 @@ type Timings = {
 
 type UiPreferences = {
   density: 'comfortable' | 'compact'
-  showAuthors: boolean
   showThumbnails: boolean
   lastScrollTop: number
 }

@@ -174,7 +174,7 @@ System fonts only; no web-font downloads and no external assets.
 | Section title | 16–18 / 20 | 400 display | Dialog title, inspector heading |
 | Row title | 13 / 16 | 500 body | Mod name, profile name |
 | Body | 13 / 18 | 400 body | Paragraphs, help text |
-| Meta | 11 / 14 | 400 body | Author, pack name, timestamps |
+| Meta | 11 / 14 | 400 body | Pack name, timestamps |
 | Label | 11 / 14 | 600 body, uppercase, `0.08em` | Column headers, section labels |
 | Data | 12 / 16 | 400 mono, tabular | Order numbers, counts, paths, shortcuts |
 | Micro | 11 / 14 | 400 body | Status bar, badge text; never smaller |
@@ -232,7 +232,6 @@ the default and the persisted fallback.
 | `--control-h-lg` | 32px | Rail items, primary buttons in dialogs |
 | `--row-order-w` | 36px | Order number/drag handle |
 | `--row-check-w` | 32px | Enable checkbox |
-| `--row-author-w` | 140px | Author column |
 | `--row-tags-w` | 132px | Tag column |
 | `--row-status-w` | 28px | Conflict/dependency icon |
 | `--row-menu-w` | 28px | Row menu |
@@ -359,9 +358,9 @@ the order and enable columns are always visible.
 - Sections are separated by 1px rules, not cards. Section labels use the label
   role; values use body/mono. Paths wrap with `overflow-wrap: anywhere`, are
   selectable, and have a copy button.
-- Content: name, pack file, author, source (local/Workshop + workshop id),
-  updated, tags, dependencies (present/missing), conflicts (wins/loses),
-  enabled state, load-order position.
+- Content: name, pack file, source (local/Workshop + workshop id), updated,
+  tags, dependencies (present/missing), conflicts (wins/loses), enabled state,
+  load-order position.
 - Empty: one 12px muted line, `Select a mod to inspect.` at the top of the
   body. No illustration, no large empty block.
 - Multi-select: `N mods selected` and only bulk actions that exist (enable,
@@ -404,12 +403,12 @@ line and never scrolls.
 
 ### 3.9 Responsive and resize behaviour
 
-| Width | Inspector | Author column | Tags |
-|---|---|---|---|
-| >=1440px | Docked 320px | Visible | Column, 132px |
-| 1280–1439px | Docked 300px | Hidden | Column, 132px |
-| 1100–1279px | Overlay 320px | Hidden | Column, 132px |
-| 1024–1099px | Overlay 320px | Hidden | Inline in the name cell |
+| Width | Inspector | Tags |
+|---|---|---|
+| >=1440px | Docked 320px | Column, 132px |
+| 1280–1439px | Docked 300px | Column, 132px |
+| 1100–1279px | Overlay 320px | Column, 132px |
+| 1024–1099px | Overlay 320px | Inline in the name cell |
 
 No horizontal page scroll at any width >=1024px. The name column has a 180px
 minimum and absorbs all remaining width. The rail never collapses to icons at
@@ -424,25 +423,22 @@ Column template (comfortable/roomy, >=1440px):
 ```css
 grid-template-columns:
   var(--row-order-w) var(--row-check-w) var(--row-thumb)
-  minmax(180px, 1fr) var(--row-tags-w) var(--row-author-w)
+  minmax(180px, 1fr) var(--row-tags-w)
   var(--row-status-w) var(--row-menu-w);
 column-gap: var(--space-4);
 padding-inline: var(--row-pad-x);
 ```
 
-Below 1440px, and in compact density at any width, drop `--row-author-w` from
-the template; the meta line carries the author. Below 1100px also drop
-`--row-tags-w` and render tags inline in the name cell. The header uses the
-same template at every breakpoint.
+Below 1100px drop `--row-tags-w` and render tags inline in the name cell. The
+header uses the same template at every breakpoint.
 
 | Cell | Width | Content |
 |---|---:|---|
 | Order | 36px | 1-based number, mono 12, right-aligned, tabular. Doubles as the drag handle. |
 | Enable | 32px | 16px checkbox in a full-height 32px hit area. |
 | Thumb | row thumb | Square, `object-fit: cover`, 1px border subtle. If missing, 2-letter pack-type abbreviation in mono 10, muted. Collapses when thumbnails are disabled. |
-| Name | >=180px, 1fr | Title 13/16 medium; meta 11/14 muted on a second line: pack filename, then author when the author column is hidden. Single-line ellipsis on both. |
+| Name | >=180px, 1fr | Title 13/16 medium; meta 11/14 muted on a second line: pack filename. Single-line ellipsis on both. |
 | Tags | 132px | Up to 2 chips, 20px high, 2px faction accent on the left, 11px label; `+N` for the rest. |
-| Author | 140px | Single line, ellipsis. Hidden below 1440px and in compact density. |
 | Status | 28px | Conflict diamond, missing-dependency triangle, or both. Accessible label is mandatory. |
 | Menu | 28px | 24px overflow button, always visible but muted until hover/focus. |
 
@@ -501,14 +497,14 @@ flash is removed; the announcement remains.
 
 ### 4.5 Search, filters, tags
 
-- Search is live, case-insensitive substring over human name, pack name, and
-  author. Debounce 120ms. It never reorders rows by itself; it filters.
+- Search is live, case-insensitive substring over human name and pack name.
+  Debounce 120ms. It never reorders rows by itself; it filters.
 - Filter chips are additive (AND across types, OR within tags). Active chips
   are visible in the toolbar; overflow collapses into `+N filters`.
 - Tag chips use the faction accent slot only as a 2px left rule. The tag name
   is always visible; colour is never the only identity.
-- Sort: Name A–Z, Author A–Z, Updated newest, Load order. The active sort is
-  shown in the toolbar, not hidden in a menu-only state.
+- Sort: Name A–Z, Updated newest, Load order. The active sort is shown in the
+  toolbar, not hidden in a menu-only state.
 - No filter may remove the header or the toolbar. The empty result state must
   fit in 200px and keep `Clear filters` visible.
 

@@ -33,6 +33,16 @@ audit; see `docs/RELEASE.md`.
   installer, uploads the artifact, and opens a draft release, and this release
   guide plus changelog.
 
+### Removed
+
+- **Pack-author surface.** The author column, author sort, author search
+  dimension, Settings "Show authors" toggle, and `showAuthors` preference are
+  removed, along with the unused `author` fields in the pack header and mod
+  summary. PFH5 and the Steam ACF carry no author, and v1.0 forbids custom
+  Steam authentication, so the column could only be permanently empty
+  (WAR-104, WAR-107). PRODUCT_SCOPE capability 2 now requires name, type,
+  timestamp, and dependencies.
+
 ### Known limitations
 
 v1.0 accepts these limitations; the exact manual checks are in `docs/RELEASE.md`.
@@ -47,7 +57,7 @@ v1.0 accepts these limitations; the exact manual checks are in `docs/RELEASE.md`
 - **ML-4 — scroll persistence and the 20k-row guard are polish.** A reset scroll
   position is accepted; the 20k fixture must show the guard instead of freezing.
   Manual check in the Windows QA pass.
-- **SET-2 — density/author/thumbnail preferences are best-effort.** Manual
+- **SET-2 — density/thumbnail preferences are best-effort.** Manual
   check: toggle each, restart, confirm the values persist, and record any that
   do not.
 - **DET-1 — Linux Flatpak/Snap/XDG discovery is best-effort.** Windows registry

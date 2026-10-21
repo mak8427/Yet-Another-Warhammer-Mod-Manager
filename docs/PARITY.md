@@ -8,22 +8,22 @@ Snapshot: **2026-10-21** · weighted scope: `docs/PRODUCT_SCOPE.md`
 
 | Metric | Value |
 |---|---:|
-| **Capability Parity Index** | **85.875%** |
+| **Capability Parity Index** | **87.125%** |
 | Previous snapshot | 87.250% |
-| Change | -1.375 points |
-| Checks | 29 done / 10 partial / 1 missing (40 total) |
+| Change | -0.125 points |
+| Checks | 30 done / 9 partial / 1 missing (40 total) |
 | Legacy oracle coverage | 29/29 (100.0%) |
 | Oracle dispositions | 2 ported / 26 rewritten / 1 not-applicable |
 | Cut-feature scan | 0 findings in 35 UI/IPC files |
-| Rust tests on this tree | 134 |
-| Frontend assertions on this tree | 72 in 9 files |
+| Rust tests on this tree | 135 |
+| Frontend assertions on this tree | 74 in 9 files |
 
 ## Capability table
 
 | # | Capability | Weight | Done | Partial | Missing | Score | Weighted |
 |---:|---|---:|---:|---:|---:|---:|---:|
 | 1 | Game & Steam detection | 12 | 3 | 1 | 0 | 3.50/4 | 10.50 |
-| 2 | Mod discovery | 10 | 3 | 1 | 0 | 3.50/4 | 8.75 |
+| 2 | Mod discovery | 10 | 4 | 0 | 0 | 4.00/4 | 10.00 |
 | 3 | Mod list | 15 | 2 | 2 | 0 | 3.00/4 | 11.25 |
 | 4 | Load order write | 15 | 4 | 0 | 0 | 4.00/4 | 15.00 |
 | 5 | Profiles | 10 | 3 | 1 | 0 | 3.50/4 | 8.75 |
@@ -32,15 +32,15 @@ Snapshot: **2026-10-21** · weighted scope: `docs/PRODUCT_SCOPE.md`
 | 8 | Launch | 8 | 3 | 1 | 0 | 3.50/4 | 7.00 |
 | 9 | Settings | 5 | 2 | 1 | 1 | 2.50/4 | 3.13 |
 | 10 | Safety | 5 | 4 | 0 | 0 | 4.00/4 | 5.00 |
-| | **Total** | **100** | **29** | **10** | **1** | | **85.875** |
+| | **Total** | **100** | **30** | **9** | **1** | | **87.125** |
 
 ## Corrections to the WAR-3 snapshot
 
-**Recorded index change:** First QA-verified index. Net -1.375 from the WAR-3 87.250 snapshot: CF-3 +1.500, SET-4 -0.625, DSC-1 -1.250, and WS-2 -1.000. DSC-1 is partial because the pack author is hardcoded None; WS-2 is partial because WorkshopAction::Open and spawn_steam_url are untested.
+**Recorded index change:** WAR-107 contract correction. WAR-104 cut the author requirement from DSC-1, so the parser's name, type, timestamp, and dependency evidence is done against the corrected PRODUCT_SCOPE. This reverses the -1.250 author correction and lifts the verified index from 85.875 to 87.125; the index remains 0.125 below the WAR-3 87.250 figure.
 
 | Correction | Claim | Verified | Effect |
 |---|---|---|---|
-| discovery-author-missing | DSC-1 (header including author) was done. | The pack author is hardcoded None in crates/wh3mm-core/src/pack.rs:165 and crates/wh3mm-core/src/mod_index.rs:254; the cited test asserts header.author == None. No code path assigns a parsed author. | Discovery 4.0 -> 3.5; contributes -1.250 to the index. DSC-1 is partial until an author source exists. |
+| dsc-1-author-requirement-cut | DSC-1 required the pack author. | WAR-104 ruling B: the PFH5 header and the Steam ACF carry no author, and v1.0 forbids custom Steam auth. WAR-107 removed the author column, sort, search dimension, toggle, preference, and IPC fields; PRODUCT_SCOPE capability 2 now requires name, type, timestamp, and dependencies. | Discovery 3.5 -> 4.0; DSC-1 is done against the corrected contract and contributes +1.250 to the index. This reverses the author-driven -1.250 recorded for the WAR-3 snapshot. |
 | workshop-open-untested | WS-2 (open a Workshop item through Steam) was done. | The cited test asserts only the Subscribe and Update URL strings. WorkshopAction::Open is never called by a test and spawn_steam_url (workshop.rs:294) has no test; the UI test clicks Unsubscribe only. | Workshop 3.5 -> 3.0; contributes -1.000 to the index. WS-2 is partial until Open is tested or manually verified on Windows. |
 | set-4-reset-defaults | Reset-to-defaults was Partial. | Missing: no reset command, screen, or test exists. | Settings 3.0 -> 2.5; contributes -0.625 to the index. |
 | detection-partial-reason | The remaining detection gap is real Windows install detection plus manual override. | Manual override and no-game recovery are tested. The untested part is the platform root candidate list (Windows registry, Flatpak, Snap, XDG). | Score unchanged at 3.5; partial reason corrected. |
