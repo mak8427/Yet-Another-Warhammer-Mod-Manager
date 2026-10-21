@@ -1,0 +1,205 @@
+      26 | 
+     363 | (node:3256) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+     363 | (Use `wh3mm --trace-deprecation ...` to show where the warning was created)
+     371 | DISABLED HARDWARE ACCELERATION
+     429 | 
+     429 | DevTools listening on ws://127.0.0.1:9231/devtools/browser/cd45d01a-65aa-4173-a503-2a7bca8c02bc
+     436 | [3256:1020/162846.120:WARNING:electron\shell\common\api\electron_api_native_image.cc:201] Failed to load image from path './assets/modmanager.ico'
+     592 | 16:28:46.276 > OS Locale: en-US, Primary Language: en, Using: en
+     594 | 16:28:46.279 > I18N initialized with language: en
+     647 | 16:28:46.331 > isAdmin: true
+     679 | 16:28:46.362 > [startup] GPU diagnostics {
+     679 |   hardwareAccelerationEnabled: false,
+     679 |   featureStatus: {
+     679 |     '2d_canvas': 'unavailable_software',
+     679 |     direct_rendering_display_compositor: 'disabled_off_ok',
+     679 |     gpu_compositing: 'disabled_software',
+     679 |     multiple_raster_threads: 'disabled_off',
+     679 |     opengl: 'disabled_off',
+     679 |     rasterization: 'disabled_software',
+     679 |     raw_draw: 'disabled_off_ok',
+     679 |     skia_graphite: 'disabled_off',
+     679 |     trees_in_viz: 'disabled_off',
+     679 |     video_decode: 'disabled_software',
+     679 |     video_encode: 'disabled_software',
+     679 |     webgl: 'unavailable_software',
+     679 |     webgl2: 'unavailable_software',
+     679 |     webgpu: 'unavailable_software',
+     679 |     webnn: 'unavailable_software'
+     679 |   },
+     679 |   gpuInfo: {
+     679 |     auxAttributes: {
+     679 |       amdSwitchable: false,
+     679 |       canSupportThreadedTextureMailbox: false,
+     679 |       directMLFeatureLevel: 'Not supported',
+     679 |       dx12FeatureLevel: 'Not supported',
+     679 |       glImplementationParts: '(gl=none,angle=none)',
+     679 |       glResetNotificationStrategy: 0,
+     679 |       inProcessGpu: true,
+     679 |       initializationTime: 0,
+     679 |       isAsan: false,
+     679 |       isClangCoverage: false,
+     679 |       jpegDecodeAcceleratorSupported: false,
+     679 |       optimus: false,
+     679 |       overlayInfo: [Object],
+     679 |       passthroughCmdDecoder: false,
+     679 |       sandboxed: false,
+     679 |       skiaBackendType: 'None',
+     679 |       subpixelFontRendering: true,
+     679 |       supportsD3dSharedImages: false,
+     679 |       supportsDirectML: false,
+     679 |       supportsDx12: false,
+     679 |       supportsVulkan: false,
+     679 |       targetCpuBits: 64,
+     679 |       visibilityCallbackCallCount: 0,
+     679 |       vulkanVersion: 'Not supported'
+     679 |     },
+     679 |     gpuDevice: [ [Object], [Object] ]
+     679 |   }
+     679 | }
+     770 | 16:28:46.453 > canCreateSymbolicLinks: true
+    1540 | 16:28:47.221 > Error: ENOENT: no such file or directory, scandir 'C:\Users\runneradmin\AppData\Roaming\The Creative Assembly\Warhammer3\save_games'
+    1540 |     at Object.readdirSync (node:fs:1597:26)
+    1540 |     at t.readdirSync (node:electron/js2c/node_init:2:16044)
+    1540 |     at D:\a\_temp\legacy\app\resources\app\.webpack\main\index.js:2:1443969
+    1540 |     at Generator.next (<anonymous>)
+    1540 |     at D:\a\_temp\legacy\app\resources\app\.webpack\main\index.js:2:1442827
+    1540 |     at new Promise (<anonymous>)
+    1540 |     at u (D:\a\_temp\legacy\app\resources\app\.webpack\main\index.js:2:1442647)
+    1540 |     at D:\a\_temp\legacy\app\resources\app\.webpack\main\index.js:2:1443911
+    1540 |     at D:\a\_temp\legacy\app\resources\app\.webpack\main\index.js:2:1595250
+    1540 |     at Generator.next (<anonymous>)
+    1540 |     at D:\a\_temp\legacy\app\resources\app\.webpack\main\index.js:2:1485485
+    1540 |     at new Promise (<anonymous>)
+    1540 |     at kt (D:\a\_temp\legacy\app\resources\app\.webpack\main\index.js:2:1485305)
+    1540 |     at IpcMainImpl.<anonymous> (D:\a\_temp\legacy\app\resources\app\.webpack\main\index.js:2:1595166)
+    1540 |     at IpcMainImpl.emit (node:events:519:28)
+    1540 |     at Session.<anonymous> (node:electron/js2c/browser_init:2:112437)
+    1548 | 16:28:47.225 > [startup] Main renderer DOM ready after 1063ms
+    1551 | 16:28:47.233 > [startup] Main renderer finished loading after 1071ms
+    1551 | 16:28:47.229 > API now exists
+    1551 | [3256:1020/162847.235:INFO:CONSOLE:1] "API now exists", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/12/index.js (1)
+    1551 | [3256:1020/162847.235:INFO:CONSOLE:2] "16:28:47.229 › API now exists", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/356/index.js (2)
+    1579 | 16:28:47.241 > read app config from: D:\a\Warhammer_mod_manager\Warhammer_mod_manager\docs\perf\.legacy-baseline-1792513691629\userdata\config.json
+    1581 | 16:28:47.264 > appState.currentLanguage: en
+    1581 | 16:28:47.264 > checking game: wh3
+    1616 | 16:28:47.287 > SENDING setAppFolderPaths D:\a\Warhammer_mod_manager\Warhammer_mod_manager\perf-fixture\wh3-500 D:\a\Warhammer_mod_manager\Warhammer_mod_manager\perf-fixture\wh3-500\content
+    1616 | 16:28:47.288 > NUM MODS IN APPDATA wh3 0
+    1616 | 16:28:47.278 > requestFolderPathsForGame: null
+    1616 | [3256:1020/162847.295:INFO:CONSOLE:1] "requestFolderPathsForGame: undefined", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/12/index.js (1)
+    1624 | 16:28:47.295 > window.api?.getCustomizableMods from modsrows
+    1624 | [3256:1020/162847.302:INFO:CONSOLE:1] "window.api?.getCustomizableMods from modsrows", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/12/index.js (1)
+    1642 | 16:28:47.326 > [startup] Main renderer React mounted after 1164ms
+    1855 | 16:28:47.396 > requestFolderPathsForGame: null
+    1855 | 16:28:47.399 > window.api?.getCustomizableMods from modsrows
+    1855 | 16:28:47.412 > joyride: start
+    1855 | 16:28:47.423 > joyride: start
+    1855 | 16:28:47.430 > joyride: update
+    1855 | 16:28:47.442 > requestFolderPathsForGame: null
+    1855 | 16:28:47.444 > window.api?.getCustomizableMods from modsrows
+    1855 | 16:28:47.445 > appslice setCurrentLanguage: en
+    1855 | [3256:1020/162847.519:INFO:CONSOLE:1] "requestFolderPathsForGame: undefined", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/12/index.js (1)
+    1855 | [3256:1020/162847.520:INFO:CONSOLE:1] "window.api?.getCustomizableMods from modsrows", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/12/index.js (1)
+    1855 | [3256:1020/162847.520:INFO:CONSOLE:1] "joyride: start", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/12/index.js (1)
+    1855 | [3256:1020/162847.520:INFO:CONSOLE:2] "16:28:47.278 › requestFolderPathsForGame: undefined", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/356/index.js (2)
+    1855 | [3256:1020/162847.520:INFO:CONSOLE:2] "16:28:47.295 › window.api?.getCustomizableMods from modsrows", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/356/index.js (2)
+    1855 | [3256:1020/162847.520:INFO:CONSOLE:1] "joyride: start", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/12/index.js (1)
+    1855 | [3256:1020/162847.521:INFO:CONSOLE:1] "joyride: update", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/12/index.js (1)
+    1855 | [3256:1020/162847.521:INFO:CONSOLE:2] "16:28:47.396 › requestFolderPathsForGame: undefined", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/356/index.js (2)
+    1855 | [3256:1020/162847.521:INFO:CONSOLE:2] "16:28:47.399 › window.api?.getCustomizableMods from modsrows", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/356/index.js (2)
+    1855 | [3256:1020/162847.521:INFO:CONSOLE:2] "16:28:47.412 › joyride: start", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/356/index.js (2)
+    1855 | [3256:1020/162847.522:INFO:CONSOLE:1] "requestFolderPathsForGame: undefined", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/12/index.js (1)
+    1855 | [3256:1020/162847.522:INFO:CONSOLE:1] "window.api?.getCustomizableMods from modsrows", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/12/index.js (1)
+    1855 | [3256:1020/162847.523:INFO:CONSOLE:1] "appslice setCurrentLanguage: en", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/12/index.js (1)
+    1857 | 16:28:47.542 > translateAllStatic handler, language is en
+    1902 | [3256:1020/162847.586:INFO:CONSOLE:2] "16:28:47.423 › joyride: start", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/356/index.js (2)
+    1902 | [3256:1020/162847.586:INFO:CONSOLE:2] "16:28:47.430 › joyride: update", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/356/index.js (2)
+    1902 | [3256:1020/162847.586:INFO:CONSOLE:2] "16:28:47.442 › requestFolderPathsForGame: undefined", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/356/index.js (2)
+    1902 | [3256:1020/162847.586:INFO:CONSOLE:2] "16:28:47.444 › window.api?.getCustomizableMods from modsrows", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/356/index.js (2)
+    1902 | [3256:1020/162847.586:INFO:CONSOLE:2] "16:28:47.445 › appslice setCurrentLanguage: en", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/356/index.js (2)
+    1923 | 16:28:47.597 > requestFolderPathsForGame: null
+    1923 | [3256:1020/162847.606:INFO:CONSOLE:1] "requestFolderPathsForGame: undefined", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/12/index.js (1)
+    1939 | [3256:1020/162847.616:INFO:CONSOLE:2] "16:28:47.597 › requestFolderPathsForGame: undefined", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/356/index.js (2)
+    2148 | getSubscribedIds
+    2156 | Steam is unavailable. Start Steam before using Workshop features. Error: Could not determine Steam client install directory.
+    2156 |     at module.exports.init (D:\a\_temp\legacy\app\resources\app\.webpack\steamworks\index.js:1:782)
+    2156 |     at Object.init (D:\a\_temp\legacy\app\resources\app\.webpack\main\sub.js:1:2838)
+    2156 |     at Object.<anonymous> (D:\a\_temp\legacy\app\resources\app\.webpack\main\sub.js:1:3396)
+    2156 |     at Module._compile (node:internal/modules/cjs/loader:1714:14)
+    2156 |     at Module._extensions..js (node:internal/modules/cjs/loader:1848:10)
+    2156 |     at Module.load (node:internal/modules/cjs/loader:1448:32)
+    2156 |     at Module._load (node:internal/modules/cjs/loader:1270:12)
+    2156 |     at c._load (node:electron/js2c/node_init:2:17993)
+    2156 |     at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    2156 |     at wrapModuleLoad (node:internal/modules/cjs/loader:244:24) {
+    2156 |   code: 'GenericFailure'
+    2156 | }
+    2171 | justRun
+    2183 | Steam is unavailable. Start Steam before using Workshop features. Error: Could not determine Steam client install directory.
+    2183 |     at module.exports.init (D:\a\_temp\legacy\app\resources\app\.webpack\steamworks\index.js:1:782)
+    2183 |     at Object.init (D:\a\_temp\legacy\app\resources\app\.webpack\main\sub.js:1:2838)
+    2183 |     at Object.<anonymous> (D:\a\_temp\legacy\app\resources\app\.webpack\main\sub.js:1:3231)
+    2183 |     at Module._compile (node:internal/modules/cjs/loader:1714:14)
+    2183 |     at Module._extensions..js (node:internal/modules/cjs/loader:1848:10)
+    2183 |     at Module.load (node:internal/modules/cjs/loader:1448:32)
+    2183 |     at Module._load (node:internal/modules/cjs/loader:1270:12)
+    2183 |     at c._load (node:electron/js2c/node_init:2:17993)
+    2183 |     at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    2183 |     at wrapModuleLoad (node:internal/modules/cjs/loader:244:24) {
+    2183 |   code: 'GenericFailure'
+    2183 | }
+    2205 | 16:28:47.890 > Unable to find InstallPath in Windows registry
+    2255 | 16:28:47.940 > Steam worker exited unexpectedly (D:\a\_temp\legacy\app\resources\app\.webpack\main\sub.js) { code: 1, signal: null }
+    2261 | 16:28:47.946 > DATA MODS THAT ARE SIMLINKS: []
+    2311 | 16:28:47.996 > Unable to find InstallPath in Windows registry
+    6664 | 16:28:52.349 > before subscription filter: 492
+    6665 | 16:28:52.350 > after subscription filter: 492
+    6677 | 16:28:52.353 > appSlice/setMods: SETTING CURRENT PRESET
+    6677 | 16:28:52.357 > sorting as in preset from config in setMods
+    6677 | [3256:1020/162852.359:INFO:CONSOLE:1] "appSlice/setMods: SETTING CURRENT PRESET", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/12/index.js (1)
+    6677 | [3256:1020/162852.359:INFO:CONSOLE:1] "sorting as in preset from config in setMods", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/12/index.js (1)
+    6799 | 16:28:52.473 > window.api?.getCustomizableMods from modsrows
+    6799 | [3256:1020/162852.474:INFO:CONSOLE:1] "window.api?.getCustomizableMods from modsrows", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/12/index.js (1)
+    6896 | [3256:1020/162852.562:INFO:CONSOLE:2] "16:28:52.353 › appSlice/setMods: SETTING CURRENT PRESET", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/356/index.js (2)
+    6896 | [3256:1020/162852.562:INFO:CONSOLE:2] "16:28:52.357 › sorting as in preset from config in setMods", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/356/index.js (2)
+    6896 | [3256:1020/162852.562:INFO:CONSOLE:2] "16:28:52.473 › window.api?.getCustomizableMods from modsrows", source: file:///D:/a/_temp/legacy/app/resources/app/.webpack/renderer/356/index.js (2)
+    6972 | (node:3256) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.
+    7070 | 16:28:52.754 > Skipping readMods, all are already in the customizable mods cache!
+    7232 | 16:28:52.902 > Error: ENOENT: no such file or directory, scandir 'C:\Users\runneradmin\AppData\Roaming\The Creative Assembly\Warhammer3\save_games'
+    7232 |     at Object.readdirSync (node:fs:1597:26)
+    7232 |     at t.readdirSync (node:electron/js2c/node_init:2:16044)
+    7232 |     at D:\a\_temp\legacy\app\resources\app\.webpack\main\index.js:2:1443969
+    7232 |     at Generator.next (<anonymous>)
+    7232 |     at D:\a\_temp\legacy\app\resources\app\.webpack\main\index.js:2:1442827
+    7232 |     at new Promise (<anonymous>)
+    7232 |     at u (D:\a\_temp\legacy\app\resources\app\.webpack\main\index.js:2:1442647)
+    7232 |     at D:\a\_temp\legacy\app\resources\app\.webpack\main\index.js:2:1443911
+    7232 |     at D:\a\_temp\legacy\app\resources\app\.webpack\main\index.js:2:1582320
+    7232 |     at Generator.next (<anonymous>)
+    7232 |     at o (D:\a\_temp\legacy\app\resources\app\.webpack\main\index.js:2:1485343)
+    7234 | 16:28:52.918 > VANILLA PACK CACHE HIT: D:\a\Warhammer_mod_manager\Warhammer_mod_manager\perf-fixture\wh3-500\data\data.pack
+    7234 | 16:28:52.919 > appendPacksData: appending data.pack
+    7234 | 16:28:52.919 > appendPacksData: is existingPack: false
+    7235 | 16:28:52.920 > outdatedPackFiles {}
+    7242 | 16:28:52.923 > READING DATA PACK
+    7242 | 16:28:52.925 > Error: ENOENT: no such file or directory, stat 'D:\a\Warhammer_mod_manager\Warhammer_mod_manager\perf-fixture\wh3-500\data\db.pack'
+    7242 | 16:28:52.926 > Error: ENOENT: no such file or directory, open 'D:\a\Warhammer_mod_manager\Warhammer_mod_manager\perf-fixture\wh3-500\data\db.pack'
+    7242 |     at Object.openSync (node:fs:560:18)
+    7242 |     at Object.func [as openSync] (node:electron/js2c/node_init:2:2617)
+    7242 |     at D:\a\_temp\legacy\app\resources\app\.webpack\main\index.js:2:2026377
+    7242 |     at Generator.next (<anonymous>)
+    7242 |     at o (D:\a\_temp\legacy\app\resources\app\.webpack\main\index.js:2:1979806)
+    7242 | 16:28:52.927 > appendPacksData: appending db.pack
+    7243 | 16:28:52.927 > appendPacksData: is existingPack: false
+    7243 | 16:28:52.927 > outdatedPackFiles {}
+    7247 | 16:28:52.932 > READING DATA PACK
+    7249 | 16:28:52.934 > Error: ENOENT: no such file or directory, stat 'D:\a\Warhammer_mod_manager\Warhammer_mod_manager\perf-fixture\wh3-500\data\data_script.pack'
+    7250 | 16:28:52.934 > Error: ENOENT: no such file or directory, open 'D:\a\Warhammer_mod_manager\Warhammer_mod_manager\perf-fixture\wh3-500\data\data_script.pack'
+    7250 |     at Object.openSync (node:fs:560:18)
+    7250 |     at Object.func [as openSync] (node:electron/js2c/node_init:2:2617)
+    7250 |     at D:\a\_temp\legacy\app\resources\app\.webpack\main\index.js:2:2026377
+    7250 |     at Generator.next (<anonymous>)
+    7250 |     at o (D:\a\_temp\legacy\app\resources\app\.webpack\main\index.js:2:1979806)
+    7252 | 16:28:52.935 > appendPacksData: appending data_script.pack
+    7252 | 16:28:52.935 > appendPacksData: is existingPack: false
+    7252 | 16:28:52.935 > outdatedPackFiles {}
