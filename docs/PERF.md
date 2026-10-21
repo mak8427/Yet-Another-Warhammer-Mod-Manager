@@ -3,7 +3,6 @@
 This file records how we measure the paths users feel, on which machine, and with which command.
 A number without an environment and a command does not belong here.
 
-<<<<<<< HEAD
 ## Legacy baseline
 
 Target: the unmodified WH3 Mod Manager release build, used as the A/B reference for the rebuild.
