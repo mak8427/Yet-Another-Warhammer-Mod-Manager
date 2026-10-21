@@ -5,16 +5,23 @@ snapshot:
   previous_index: 87.25
   previous_label: "WAR-3 parity document rev 2 (2026-10-21T11:25Z), reported as 87.3%"
   drop_reason: >-
-    Net change +0.875: SET-4 (reset to defaults) is Missing, not Partial (-0.625);
-    the disabled-dependency conflict check is done on PR #18 (QA-approved at b6696e5, merged as bb306d4)
-    (+1.500). No other check changed score.
+    Net change -1.375 vs the WAR-3 snapshot: CF-3 (disabled dependency) +1.500,
+    SET-4 (reset to defaults) -0.625, DSC-1 (author) -1.250, WS-2 (Workshop open)
+    -1.000. The first WAR-68 pass reported 88.125 because DSC-1 and WS-2 were
+    over-claimed; QA corrected both to partial.
   history:
     - date: "2026-10-21"
       index: 88.125
       reason: >-
-        Net change +0.875: SET-4 (reset to defaults) is Missing, not Partial (-0.625);
-        the disabled-dependency conflict check is done on PR #18 (QA-approved at b6696e5, merged as bb306d4)
-        (+1.500). No other check changed score.
+        Superseded first WAR-68 pass. DSC-1 and WS-2 were over-claimed as done;
+        QA review corrected them and the verified index to 85.875.
+    - date: "2026-10-21"
+      index: 85.875
+      reason: >-
+        First QA-verified index. Net -1.375 from the WAR-3 87.250 snapshot:
+        CF-3 +1.500, SET-4 -0.625, DSC-1 -1.250, and WS-2 -1.000. DSC-1 is
+        partial because the pack author is hardcoded None; WS-2 is partial
+        because WorkshopAction::Open and spawn_steam_url are untested.
   scoring: >-
     Each capability has four binary checks. A check scores 1.0 when it is done, 0.5 when
     it is partial, and 0.0 when it is missing. The capability score is the mean of its
@@ -30,6 +37,14 @@ snapshot:
     QA audits PR evidence; the script can only validate its shape.
 
 corrections:
+  - id: discovery-author-missing
+    claim: "DSC-1 (header including author) was done."
+    verified: "The pack author is hardcoded None in crates/wh3mm-core/src/pack.rs:165 and crates/wh3mm-core/src/mod_index.rs:254; the cited test asserts header.author == None. No code path assigns a parsed author."
+    effect: "Discovery 4.0 -> 3.5; contributes -1.250 to the index. DSC-1 is partial until an author source exists."
+  - id: workshop-open-untested
+    claim: "WS-2 (open a Workshop item through Steam) was done."
+    verified: "The cited test asserts only the Subscribe and Update URL strings. WorkshopAction::Open is never called by a test and spawn_steam_url (workshop.rs:294) has no test; the UI test clicks Unsubscribe only."
+    effect: "Workshop 3.5 -> 3.0; contributes -1.000 to the index. WS-2 is partial until Open is tested or manually verified on Windows."
   - id: set-4-reset-defaults
     claim: "Reset-to-defaults was Partial."
     verified: "Missing: no reset command, screen, or test exists."
@@ -54,10 +69,18 @@ corrections:
     claim: "92 Rust tests and 45 frontend assertions in 8 files."
     verified: "The snapshot counted the M3 branch. The current tree, with M3 and the UI tokens merged, has 120 Rust tests and 58 frontend assertions in 10 files; docs/PARITY.md prints the exact counts. Test counts are informational and are not scored."
     effect: "No index effect; counts are generated from the current tree."
+  - id: oracle-set-rebuilt
+    claim: "The 39-file oracle map covered the relevant legacy tests."
+    verified: "The first map padded six cut load-order-rules files (71 assertions) and omitted modSortingHelpers, modRowSorting, modSources and other in-scope files. The set is rebuilt from docs/PRODUCT_SCOPE.md: 29 files and 204 assertions, with membership pinned in scripts/parity-report.test.mjs."
+    effect: "No index effect; oracle total 39 -> 29 and assertions 272 -> 204. Cut-feature files are excluded instead of counted not-applicable."
+  - id: ported-dispositions
+    claim: "compatScope and compatIndexedAlgorithms were ported."
+    verified: "compatScope tests request-scoped pack selection, which v1 does not have; compatIndexedAlgorithms tests pairwise database-table key collisions, which v1 does not compute. Both are now rewritten with precise reasons. Every remaining ported entry points at a test that asserts the same legacy behaviour."
+    effect: "No index effect; dispositions corrected to 2 ported / 26 rewritten / 1 not-applicable."
   - id: oracle-count
     claim: "39 relevant legacy files / 2,437 legacy tests."
-    verified: "The 39-file subset contains 272 it() assertions in the pinned checkout. 2,437 is the whole legacy suite."
-    effect: "No index effect; the oracle map uses 272 for the selected subset."
+    verified: "The pinned tree has 292 recursive *.test.ts(x) files, 194 of them at test/ top level. 2,437 lines begin with it( or test(; the raw 2,447 it/test matches include 10 RegExp.test() calls, which are not assertions. The selected 29-file subset contains 204 assertion lines."
+    effect: "No index effect; oracle assertions are 204 for the selected subset, not 2,437 or 2,447."
 
 capabilities:
   - id: detection
@@ -111,7 +134,7 @@ capabilities:
     checks:
       - id: DSC-1
         title: Parse the PFH5 header, including name, type, author, timestamp, and dependencies
-        status: done
+        status: partial
         evidence:
           - path: crates/wh3mm-core/src/pack.rs
             test: parses_valid_header_and_unicode_dependencies
@@ -119,6 +142,10 @@ capabilities:
             test: movie_mask_is_reported
           - path: crates/wh3mm-core/tests/pack_fixtures.rs
             test: parses_every_valid_fixture_through_the_product_parser
+        need: >-
+          A source for the pack author and a test that asserts a parsed value. The
+          header parser hardcodes author: None (pack.rs:165) and the index does the
+          same (mod_index.rs:254); the cited header test asserts None.
       - id: DSC-2
         title: Reject malformed and truncated packs without panicking or hiding valid packs
         status: done
@@ -261,6 +288,10 @@ capabilities:
             test: deleting_the_active_profile_activates_a_sibling
           - path: crates/wh3mm-core/tests/session_flow.rs
             test: profiles_create_switch_duplicate_and_delete
+          - path: frontend/src/App.test.tsx
+            test: renames a non-active profile without replacing its enabled set
+          - path: frontend/src/store.test.ts
+            test: renames a non-active profile with its saved set, not the visible one
       - id: PRF-2
         title: Restore both the enabled set and its saved order
         status: partial
@@ -341,10 +372,18 @@ capabilities:
             test: parses_installed_update_pending_and_subscribed_states
       - id: WS-2
         title: Open a Workshop item page through the Steam client
-        status: done
+        status: partial
         evidence:
           - path: crates/wh3mm-core/src/workshop.rs
             test: workshop_actions_use_the_steam_client_url
+          - path: crates/wh3mm-core/src/workshop.rs
+            contains: "WorkshopAction::Open"
+          - path: crates/wh3mm-core/src/workshop.rs
+            contains: "fn spawn_steam_url"
+        need: >-
+          A test that WorkshopAction::Open spawns Steam with the item URL, or a
+          recorded manual Windows open. The cited test covers Subscribe and Update
+          URL strings only; Open and spawn_steam_url have no test.
       - id: WS-3
         title: Subscribe, unsubscribe, and update through the Steam client without custom auth
         status: partial
@@ -387,11 +426,13 @@ capabilities:
           - path: crates/wh3mm-core/src/launch.rs
             test: user_owned_script_logging_marker_is_not_deleted
       - id: LA-3
-        title: Verify the game is not already running
+        title: Detect a running game process and refuse to launch while it is running
         status: done
         evidence:
           - path: crates/wh3mm-core/src/launch.rs
             test: process_matching_is_case_insensitive
+          - path: crates/wh3mm-core/src/launch.rs
+            contains: "if is_game_running()?"
       - id: LA-4
         title: Persist launch options per profile and expose them on the launch screen
         status: done
@@ -406,13 +447,15 @@ capabilities:
     weight: 5
     checks:
       - id: SET-1
-        title: Paths are configurable and a manual game path survives a session restart
+        title: Paths are configurable and a manual game path recovers a no-game session
         status: done
         evidence:
           - path: crates/wh3mm-core/tests/session_flow.rs
             test: no_game_session_returns_typed_error_and_recovers_when_a_path_is_set
           - path: crates/wh3mm-core/src/session.rs
             contains: "game_path_override"
+          - path: crates/wh3mm-core/src/config.rs
+            contains: "pub game_path_override"
       - id: SET-2
         title: Density, author, and thumbnail preferences are applied and persisted
         status: partial
@@ -428,13 +471,15 @@ capabilities:
           and their application on the next boot. The persistence layer is tested; the
           toggle path is not.
       - id: SET-3
-        title: Back up and restore the load order from the UI
+        title: Back up on write and restore the load order from the UI, gated on a present backup
         status: done
         evidence:
           - path: crates/wh3mm-core/tests/load_order_fixtures.rs
             test: successful_write_creates_a_byte_exact_backup_and_restore_brings_it_back
           - path: frontend/src/components/load-order/LoadOrderBanner.test.tsx
             test: enables explicit backup restore only when a backup exists
+          - path: frontend/src/App.tsx
+            contains: "store.restoreLoadOrder"
       - id: SET-4
         title: Reset settings and load order to documented defaults
         status: missing
@@ -561,232 +606,332 @@ oracle:
   source_repo: https://github.com/Shazbot/WH3-Mod-Manager
   pinned_ref: 07fcf3ea1428fe3aa88282ba7aed44d9947ef103
   test_root: reference/WH3-Mod-Manager/test
-  total: 39
-  legacy_assertions: 272
+  total: 29
+  legacy_assertions: 204
+  inclusion: >-
+    A legacy file is in the oracle when its primary subject is one of the ten v1.0
+    capabilities in docs/PRODUCT_SCOPE.md. Files devoted to cut features are
+    excluded rather than counted not-applicable. rewritten means the behaviour was
+    reimplemented for the Rust/Tauri architecture; not-applicable means the legacy
+    mechanism has no v1 counterpart and the gap is named here.
+  assertion_method: >-
+    assertions counts lines that begin with it( or test( in the pinned checkout.
+    Raw it(/test( matches also catch RegExp.test() calls, so they are not used for
+    the total.
   files:
+    - path: test/steamPaths.node.test.ts
+      capability: detection
+      assertions: 3
+      disposition: rewritten
+      reason: >-
+        VDF parsing, secondary-library discovery, and relative paths are covered by
+        the new detection tests. The legacy Flatpak/Snap root candidate list is not
+        tested; DET-1 stays partial for that reason.
+      evidence:
+        - path: crates/wh3mm-core/tests/detection.rs
+          test: vdf_fixture_parses_modern_and_legacy_paths
+        - path: crates/wh3mm-core/tests/detection.rs
+          test: discovers_two_libraries_and_reports_the_missing_one
+    - path: test/packFileHeader.node.test.ts
+      capability: discovery
+      assertions: 9
+      disposition: rewritten
+      reason: >-
+        The PFH5 header and dependency table are parsed by the Rust parser. The
+        legacy startpos and load-order-rules scan belongs to cut pack tooling, not
+        v1 discovery.
+      evidence:
+        - path: crates/wh3mm-core/tests/pack_fixtures.rs
+          test: parses_every_valid_fixture_through_the_product_parser
+        - path: crates/wh3mm-core/src/pack.rs
+          test: parses_valid_header_and_unicode_dependencies
+    - path: test/packHeaderStartup.node.test.ts
+      capability: discovery
+      assertions: 3
+      disposition: rewritten
+      reason: >-
+        Startup reads pack headers directly in Rust; the legacy shared cache and
+        concurrency helper were removed. The scan path is covered by the mod-index
+        test.
+      evidence:
+        - path: crates/wh3mm-core/src/mod_index.rs
+          test: scans_local_and_workshop_mods_with_thumbnails
+    - path: test/modSources.node.test.ts
+      capability: discovery
+      assertions: 10
+      disposition: rewritten
+      reason: >-
+        v1 has Data and Workshop sources only. Custom folders, Modding-folder
+        synchronization, and configurable source priority are cut; Data-wins
+        duplicate handling is ported.
+      evidence:
+        - path: crates/wh3mm-core/src/mod_index.rs
+          test: deduplicates_pack_names_with_data_winning_over_workshop
+    - path: test/appSlice.modSources.node.test.ts
+      capability: discovery
+      assertions: 5
+      disposition: rewritten
+      reason: >-
+        The renderer reconciliation reducer was replaced by the Rust mod index.
+        Duplicate winners and stable ids are covered by the index tests.
+      evidence:
+        - path: crates/wh3mm-core/src/mod_index.rs
+          test: deduplicates_pack_names_with_data_winning_over_workshop
+        - path: crates/wh3mm-core/src/mod_index.rs
+          test: stable_ids_are_separator_normalized_and_absolute
     - path: test/appSlice.loadOrder.node.test.ts
       capability: mod-list
-      disposition: ported
-      ported_to:
+      assertions: 9
+      disposition: rewritten
+      reason: >-
+        Enable/disable, complete-order reorder, and reload persistence are ported.
+        Shared-mod import and the Workshop-ID fallback are not in v1.
+      evidence:
         - path: crates/wh3mm-core/tests/session_flow.rs
           test: toggles_and_reorder_persist_across_reload
-      note: "Visual-list replacement, stale-order handling, and persistence."
-    - path: test/appSlice.loadOrderRules.node.test.ts
+        - path: frontend/src/store.test.ts
+          test: moves the selected enabled mods and sends the complete order
+    - path: test/modSortingHelpers.node.test.ts
       capability: mod-list
-      disposition: not-applicable
-      reason: "The load-order rule engine is not in the v1.0 scope (docs/PRODUCT_SCOPE.md)."
-    - path: test/loadOrderRulesFile.node.test.ts
+      assertions: 24
+      disposition: rewritten
+      reason: >-
+        Substring search and tag filtering are ported. Regex search, natural
+        alphanumeric sort, title/author sort, and load-order-rule sort are not
+        ported; sort is the ML-3 gap, so this file is the oracle for that gap.
+      evidence:
+        - path: frontend/src/store.test.ts
+          test: filters by search, author, and tags
+        - path: frontend/src/App.test.tsx
+          test: filters the list from the search box
+    - path: test/modRowSorting.node.test.ts
       capability: mod-list
+      assertions: 11
       disposition: not-applicable
-      reason: "Pack-embedded load-order rules are a cut feature."
-    - path: test/loadOrderRules.node.test.ts
-      capability: mod-list
-      disposition: not-applicable
-      reason: "The load-order rule engine is a cut feature."
-    - path: test/modRows.loadOrderRules.dom.test.tsx
-      capability: mod-list
-      disposition: not-applicable
-      reason: "Rule-driven re-sorting is a cut feature."
-    - path: test/loadOrderRulesTab.dom.test.tsx
-      capability: mod-list
-      disposition: not-applicable
-      reason: "The load-order rules tab is a cut feature."
-    - path: test/loadOrderRulesView.dom.test.tsx
-      capability: mod-list
-      disposition: not-applicable
-      reason: "The load-order rules editor is a cut feature."
+      reason: >-
+        The legacy compact-column sort-step cycle has no v1 counterpart. v1 has no
+        sort control yet; the missing sort is recorded as ML-3's gap, not hidden by
+        this disposition.
     - path: test/modRows.loadOrderScroll.dom.test.tsx
       capability: mod-list
+      assertions: 2
       disposition: rewritten
-      reason: "The virtualized list replaces legacy row anchoring; scroll position is a persisted preference, not DOM restoration."
+      reason: >-
+        The virtualized window replaces legacy DOM row anchoring. Persisted-scroll
+        restore is still unproven and stays in ML-4.
       evidence:
         - path: frontend/src/lib/virtual.test.ts
           test: moves the window as the user scrolls
         - path: frontend/src/components/mod-list/ModList.test.tsx
           test: mounts the scrolled-to rows and keeps the virtualization contract
+    - path: test/modListCategoryGrouping.node.test.ts
+      capability: mod-list
+      assertions: 9
+      disposition: rewritten
+      reason: >-
+        Legacy category headings were replaced by v1 tag filters. Grouping and
+        collapse are not in v1; tag filtering is covered by the store and App tests.
+      evidence:
+        - path: frontend/src/store.test.ts
+          test: filters by search, author, and tags
+        - path: frontend/src/App.test.tsx
+          test: renders the mod list, counts, tags, and the active profile after boot
+    - path: test/categories.node.test.ts
+      capability: mod-list
+      assertions: 4
+      disposition: rewritten
+      reason: >-
+        Tags replace legacy categories. Always-enabled category semantics and cached
+        unavailable-mod categories are not in v1; tag persistence and filtering are
+        covered by the config and store tests.
+      evidence:
+        - path: crates/wh3mm-core/src/config.rs
+          test: round_trips_profiles_tags_and_ui_preferences
+        - path: frontend/src/store.test.ts
+          test: filters by search, author, and tags
+    - path: test/categories.dom.test.tsx
+      capability: mod-list
+      assertions: 12
+      disposition: rewritten
+      reason: >-
+        The category screen was replaced by tag chips. Grouping, collapse, and
+        category checkboxes are not in v1; tag rendering and filtering are covered
+        by the App tests.
+      evidence:
+        - path: frontend/src/App.test.tsx
+          test: renders the mod list, counts, tags, and the active profile after boot
+        - path: frontend/src/App.test.tsx
+          test: filters the list from the search box
+    - path: test/modListGridTemplates.node.test.ts
+      capability: settings
+      assertions: 3
+      disposition: rewritten
+      reason: >-
+        Legacy compact and wide grid constants were replaced by density tokens. Row
+        heights and the default density are asserted by the token test.
+      evidence:
+        - path: frontend/src/styles/tokens.test.ts
+          test: keeps row heights ordered and comfortable as the default density
     - path: test/usedMods.node.test.ts
       capability: load-order
+      assertions: 6
       disposition: ported
       ported_to:
         - path: crates/wh3mm-core/tests/load_order_fixtures.rs
           test: parses_every_committed_variant_exactly_as_documented
-      note: "File order, BOM/CRLF, duplicates, and unmanaged directives."
+      note: "File order, BOM/CRLF, duplicates, Unicode, and unmanaged directives."
     - path: test/appSlice.usedMods.node.test.ts
       capability: load-order
-      disposition: ported
-      ported_to:
+      assertions: 3
+      disposition: rewritten
+      reason: >-
+        First-run import is ported. The legacy user choice between automatic and
+        custom order was removed; v1 imports in file order.
+      evidence:
         - path: crates/wh3mm-core/tests/session_flow.rs
           test: manual_first_run_imports_used_mods_in_file_order
-      note: "First-run import and corrupt-file recovery."
     - path: test/appSlice.presets.node.test.ts
       capability: profiles
+      assertions: 5
       disposition: ported
       ported_to:
         - path: crates/wh3mm-core/src/config.rs
           test: round_trips_profiles_tags_and_ui_preferences
         - path: crates/wh3mm-core/tests/session_flow.rs
           test: profiles_create_switch_duplicate_and_delete
-      note: "Enabled set and order are stored per profile."
+      note: "Enabled set and order are stored per profile and round-trip."
     - path: test/presetsTab.dom.test.tsx
       capability: profiles
+      assertions: 3
       disposition: rewritten
-      reason: "The profiles screen was rebuilt; the legacy preset-tab interactions do not map one-to-one."
+      reason: >-
+        The preset tab was rebuilt as the profile screen; the legacy
+        add-and-highlight workflow is not in v1. Rename of a non-active profile is
+        covered by the App test.
       evidence:
         - path: frontend/src/App.test.tsx
           test: renames a non-active profile without replacing its enabled set
     - path: test/config/presetEntries.node.test.ts
       capability: profiles
+      assertions: 6
       disposition: rewritten
-      reason: "The new profile model stores ordered mod ids, not legacy per-game preset entries."
+      reason: >-
+        Profiles store ordered mod ids; the legacy preset-entry resolution and
+        missing-mod skipping were replaced by the Rust profile load. Duplicate
+        copies the enabled order.
       evidence:
         - path: crates/wh3mm-core/src/config.rs
           test: duplicate_profile_copies_the_enabled_order
-    - path: test/packFileHeader.node.test.ts
-      capability: discovery
-      disposition: ported
-      ported_to:
-        - path: crates/wh3mm-core/tests/pack_fixtures.rs
-          test: parses_every_valid_fixture_through_the_product_parser
-      note: "PFH5 header, dependency table, and malformed inputs."
-    - path: test/packHeaderStartup.node.test.ts
-      capability: discovery
-      disposition: rewritten
-      reason: "The startup scan reads headers directly; the legacy shared cache and concurrency model were removed."
-      evidence:
-        - path: crates/wh3mm-core/src/mod_index.rs
-          test: scans_local_and_workshop_mods_with_thumbnails
-    - path: test/steamPaths.node.test.ts
-      capability: detection
-      disposition: ported
-      ported_to:
-        - path: crates/wh3mm-core/tests/detection.rs
-          test: vdf_fixture_parses_modern_and_legacy_paths
-      note: "Modern and legacy libraryfolders.vdf, multi-library, and relative paths."
-    - path: test/steamWorker.node.test.ts
-      capability: detection
-      disposition: not-applicable
-      reason: "The legacy Steam worker error aggregator was removed; Tauri has no renderer worker process."
     - path: test/compatViewModels.node.test.ts
       capability: conflicts
-      disposition: ported
-      ported_to:
+      assertions: 6
+      disposition: rewritten
+      reason: >-
+        Legacy directional record and table-key view models were replaced by
+        file-index conflicts. Winner selection and the summary are covered by the
+        Rust and UI tests.
+      evidence:
         - path: crates/wh3mm-core/src/conflicts.rs
           test: three_overlapping_mods_use_the_bottom_of_the_order_as_winner
-      note: "Collapsed directional file records and bottom-of-order winner."
+        - path: frontend/src/components/conflicts/ConflictScreen.test.tsx
+          test: renders the winner, loser, dependency, and per-mod summary
     - path: test/compatIndexedAlgorithms.node.test.ts
       capability: conflicts
-      disposition: ported
-      ported_to:
+      assertions: 3
+      disposition: rewritten
+      reason: >-
+        The pairwise file-collision pass is ported as one index read per pack.
+        Database-table key collisions and the legacy progress reporter are not
+        computed in v1.
+      evidence:
         - path: crates/wh3mm-core/src/conflicts.rs
           test: reads_the_pack_file_index_without_file_bodies
-      note: "Index-only collision detection; no file bodies are read."
+        - path: crates/wh3mm-core/src/conflicts.rs
+          test: malformed_index_is_a_typed_pack_error
     - path: test/compatPackReuse.node.test.ts
       capability: conflicts
+      assertions: 3
       disposition: rewritten
-      reason: "Conflict analysis reads pack indexes on demand; the legacy parsed-row reuse cache is not part of v1."
+      reason: >-
+        The legacy parsed-row reuse cache was removed. v1 reads each pack index on
+        demand; malformed indexes are typed errors.
       evidence:
         - path: crates/wh3mm-core/src/conflicts.rs
           test: reads_the_pack_file_index_without_file_bodies
     - path: test/compatScope.node.test.ts
       capability: conflicts
-      disposition: ported
-      ported_to:
-        - path: crates/wh3mm-core/src/conflicts.rs
-          test: three_overlapping_mods_use_the_bottom_of_the_order_as_winner
-      note: "Only the enabled order is analysed."
-    - path: test/compatReportExport.node.test.ts
-      capability: conflicts
-      disposition: not-applicable
-      reason: "Conflict report export is not in the v1.0 scope."
-    - path: test/importConflictsModal.dom.test.tsx
-      capability: conflicts
-      disposition: not-applicable
-      reason: "Pack import and the pack editor are cut features."
-    - path: test/compactPackIndex.node.test.ts
-      capability: conflicts
-      disposition: not-applicable
-      reason: "The searchable pack index belongs to the cut pack viewer."
-    - path: test/startposConflicts.node.test.ts
-      capability: conflicts
-      disposition: not-applicable
-      reason: "Startpos ordering rules are not part of the v1.0 conflict contract."
+      assertions: 7
+      disposition: rewritten
+      reason: >-
+        v1 analyses the enabled order directly; request-scoped selectPacksToCheck
+        and disabled-pack exclusion have no v1 counterpart and no test locally.
     - path: test/missingModDependencies.node.test.ts
       capability: conflicts
-      disposition: ported
-      ported_to:
+      assertions: 4
+      disposition: rewritten
+      reason: >-
+        Missing and disabled dependency detection is ported. The legacy ignore-list
+        workflow was cut.
+      evidence:
         - path: crates/wh3mm-core/src/conflicts.rs
           test: detects_missing_and_disabled_dependencies
-      note: "Missing and disabled dependency warnings."
     - path: test/workshopSubscriptions.node.test.ts
       capability: workshop
-      disposition: ported
-      ported_to:
+      assertions: 3
+      disposition: rewritten
+      reason: >-
+        v1 reads installed, update-pending, and subscribed state from the Steam
+        manifests. The legacy per-item VDF subscription timestamps are not carried.
+      evidence:
         - path: crates/wh3mm-core/src/workshop.rs
           test: parses_installed_update_pending_and_subscribed_states
-      note: "Steam subscription timestamps and ACF state."
-    - path: test/workshopModStaging.node.test.ts
-      capability: workshop
-      disposition: not-applicable
-      reason: "Mod staging and compression are cut features; v1 uses the Steam Workshop content directly."
-    - path: test/appSlice.workshopModStaging.node.test.ts
-      capability: workshop
-      disposition: not-applicable
-      reason: "Staging settings are a cut feature."
-    - path: test/appSlice.subbedTimeColumn.node.test.ts
-      capability: settings
-      disposition: not-applicable
-      reason: "The subscribed-time column is not in the v1.0 settings scope."
-    - path: test/workshopMetadataRetry.node.test.ts
-      capability: workshop
-      disposition: not-applicable
-      reason: "The legacy metadata worker retry batch was removed with the worker architecture."
-    - path: test/workshopGameStartProgress.dom.test.tsx
-      capability: workshop
-      disposition: not-applicable
-      reason: "The staging progress modal belongs to the cut staging feature."
     - path: test/gameLaunch.node.test.ts
       capability: launch
+      assertions: 16
       disposition: rewritten
-      reason: "v1 launches through the Steam client URL; the legacy direct/Flatpak/Snap/protontricks executable fallback chain was cut."
+      reason: >-
+        v1 launches through the Steam client URL. The legacy direct/Flatpak/Snap
+        executable fallback chain and protontricks path were cut.
       evidence:
         - path: crates/wh3mm-core/src/launch.rs
           test: launch_command_uses_the_steam_app_id_and_carries_options
-    - path: test/nativePatchLaunchReview.node.test.ts
-      capability: launch
-      disposition: not-applicable
-      reason: "The native patch editor is a cut feature."
     - path: test/config/applyConfigSavePayload.node.test.ts
       capability: settings
+      assertions: 5
       disposition: rewritten
-      reason: "The renderer/main config merge is gone; Rust owns one atomic config save."
+      reason: >-
+        The renderer/main config merge was removed; Rust owns one atomic save. The
+        in-scope preferences round-trip through the new config.
       evidence:
         - path: crates/wh3mm-core/src/config.rs
           test: round_trips_profiles_tags_and_ui_preferences
     - path: test/config/buildAppConfig.node.test.ts
       capability: settings
+      assertions: 5
       disposition: rewritten
-      reason: "The renderer/main split was removed; the new schema has one owner and one save path."
+      reason: >-
+        Multi-game slots were removed; v1 has one versioned schema and one save
+        path. A valid schema-v1 fixture loads without writes.
       evidence:
         - path: crates/wh3mm-core/tests/config_fixtures.rs
           test: valid_schema_v1_fixture_loads_without_writes
     - path: test/config/configSavePayload.node.test.ts
       capability: settings
+      assertions: 9
       disposition: rewritten
-      reason: "Viewer, skills, and unit-viewer fields are cut; the in-scope preferences are covered by the new config round-trip."
+      reason: >-
+        Viewer, skills, and unit-viewer fields are cut; the in-scope preferences are
+        covered by the new config round-trip.
       evidence:
         - path: crates/wh3mm-core/src/config.rs
           test: round_trips_profiles_tags_and_ui_preferences
     - path: test/config/migrateAppConfig.node.test.ts
       capability: settings
+      assertions: 16
       disposition: rewritten
-      reason: "The multi-game migration was replaced by a versioned v1 schema with future-schema refusal and backup recovery."
+      reason: >-
+        The multi-game migration was replaced by a versioned v1 schema with
+        future-schema refusal and backup recovery.
       evidence:
         - path: crates/wh3mm-core/tests/config_fixtures.rs
           test: future_schema_is_refused_and_never_overwritten
-    - path: test/appSlice.modSources.node.test.ts
-      capability: discovery
-      disposition: ported
-      ported_to:
-        - path: crates/wh3mm-core/src/mod_index.rs
-          test: deduplicates_pack_names_with_data_winning_over_workshop
-      note: "Data wins over Workshop on duplicate pack names."

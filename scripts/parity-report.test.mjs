@@ -4,6 +4,7 @@ import { dirname, join, resolve } from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 import {
+  comparableReport,
   evaluate,
   loadConfig,
   renderMarkdown,
@@ -14,6 +15,38 @@ import {
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url))
 const fixturesDir = join(scriptsDir, 'fixtures', 'parity')
+
+const ORACLE_MEMBERSHIP = new Map([
+  ['test/appSlice.loadOrder.node.test.ts', 'rewritten'],
+  ['test/appSlice.modSources.node.test.ts', 'rewritten'],
+  ['test/appSlice.presets.node.test.ts', 'ported'],
+  ['test/appSlice.usedMods.node.test.ts', 'rewritten'],
+  ['test/categories.dom.test.tsx', 'rewritten'],
+  ['test/categories.node.test.ts', 'rewritten'],
+  ['test/compatIndexedAlgorithms.node.test.ts', 'rewritten'],
+  ['test/compatPackReuse.node.test.ts', 'rewritten'],
+  ['test/compatScope.node.test.ts', 'rewritten'],
+  ['test/compatViewModels.node.test.ts', 'rewritten'],
+  ['test/config/applyConfigSavePayload.node.test.ts', 'rewritten'],
+  ['test/config/buildAppConfig.node.test.ts', 'rewritten'],
+  ['test/config/configSavePayload.node.test.ts', 'rewritten'],
+  ['test/config/migrateAppConfig.node.test.ts', 'rewritten'],
+  ['test/config/presetEntries.node.test.ts', 'rewritten'],
+  ['test/gameLaunch.node.test.ts', 'rewritten'],
+  ['test/missingModDependencies.node.test.ts', 'rewritten'],
+  ['test/modListCategoryGrouping.node.test.ts', 'rewritten'],
+  ['test/modListGridTemplates.node.test.ts', 'rewritten'],
+  ['test/modRowSorting.node.test.ts', 'not-applicable'],
+  ['test/modRows.loadOrderScroll.dom.test.tsx', 'rewritten'],
+  ['test/modSortingHelpers.node.test.ts', 'rewritten'],
+  ['test/modSources.node.test.ts', 'rewritten'],
+  ['test/packFileHeader.node.test.ts', 'rewritten'],
+  ['test/packHeaderStartup.node.test.ts', 'rewritten'],
+  ['test/presetsTab.dom.test.tsx', 'rewritten'],
+  ['test/steamPaths.node.test.ts', 'rewritten'],
+  ['test/usedMods.node.test.ts', 'ported'],
+  ['test/workshopSubscriptions.node.test.ts', 'rewritten'],
+])
 
 function issuesFor(config) {
   const scan = scanCutFeatures(config)
@@ -34,16 +67,16 @@ test('PARITY.yaml is a complete 10 x 4 scorecard with weights summing to 100', (
 
 test('the verified index and oracle coverage match the committed snapshot', () => {
   const result = evaluate(loadConfig())
-  assert.equal(Number(result.index.toFixed(3)), 88.125)
-  assert.equal(result.done, 31)
-  assert.equal(result.partial, 8)
+  assert.equal(Number(result.index.toFixed(3)), 85.875)
+  assert.equal(result.done, 29)
+  assert.equal(result.partial, 10)
   assert.equal(result.missing, 1)
   assert.equal(result.checks, 40)
-  assert.equal(result.oracle.mapped, 39)
-  assert.equal(result.oracle.total, 39)
-  assert.equal(result.oracle.ported, 12)
-  assert.equal(result.oracle.rewritten, 10)
-  assert.equal(result.oracle.notApplicable, 17)
+  assert.equal(result.oracle.mapped, 29)
+  assert.equal(result.oracle.total, 29)
+  assert.equal(result.oracle.ported, 2)
+  assert.equal(result.oracle.rewritten, 26)
+  assert.equal(result.oracle.notApplicable, 1)
 })
 
 test('docs/PARITY.md is reproducible from PARITY.yaml', () => {
@@ -53,6 +86,19 @@ test('docs/PARITY.md is reproducible from PARITY.yaml', () => {
   const expected = renderMarkdown(config, result, { scan })
   const committed = readFileSync(join(repoRoot, 'docs', 'PARITY.md'), 'utf8')
   assert.equal(committed, expected)
+})
+
+test('the check ignores the live test-count rows', () => {
+  const config = loadConfig()
+  const expected = renderMarkdown(config, evaluate(config), { scan: scanCutFeatures(config) })
+  const older = expected
+    .replace(/\| Rust tests on this tree \| \d+ \|/, '| Rust tests on this tree | 1 |')
+    .replace(
+      /\| Frontend assertions on this tree \| \d+ in \d+ files \|/,
+      '| Frontend assertions on this tree | 2 in 1 files |',
+    )
+  assert.notEqual(older, expected)
+  assert.equal(comparableReport(older), comparableReport(expected))
 })
 
 test('the cut-feature scan passes a known-good UI and IPC fixture', () => {
@@ -119,11 +165,19 @@ test('an index drop needs a matching history reason', () => {
   assert.ok(!issues.some((issue) => issue.includes('without a matching snapshot.history reason')))
 })
 
-test('the oracle map covers all 39 files and ported entries point at real paths', () => {
+test('the oracle map is the pinned in-scope set and ported entries point at real paths', () => {
   const config = loadConfig()
-  assert.equal(config.oracle.files.length, 39)
-  assert.equal(config.oracle.total, 39)
-  assert.equal(config.oracle.legacy_assertions, 272)
+  assert.equal(config.oracle.files.length, 29)
+  assert.equal(config.oracle.total, 29)
+  assert.equal(config.oracle.legacy_assertions, 204)
+  assert.equal(
+    config.oracle.files.reduce((sum, entry) => sum + entry.assertions, 0),
+    204,
+  )
+  assert.deepEqual(
+    new Map(config.oracle.files.map((entry) => [entry.path, entry.disposition])),
+    ORACLE_MEMBERSHIP,
+  )
   const ported = config.oracle.files.filter((entry) => entry.disposition === 'ported')
   assert.ok(ported.length > 0)
   for (const entry of ported) {

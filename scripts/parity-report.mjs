@@ -2,10 +2,11 @@
 /**
  * Capability-parity scorecard for WH3 Mod Manager.
  *
- * Reads docs/PARITY.yaml, validates the 40 checks and the 39-file legacy
- * oracle map, scans the UI/IPC surface for cut features, prints the
- * capability table and weighted index, and checks that docs/PARITY.md is in
- * sync with the YAML.
+ * Reads docs/PARITY.yaml, validates the 40 checks and the legacy oracle map,
+ * scans the UI/IPC surface for cut features, prints the capability table and
+ * weighted index, and checks that docs/PARITY.md is in sync with the YAML.
+ * The check ignores the two live test-count rows so an unrelated test addition
+ * does not make the snapshot stale.
  *
  * Usage:
  *   node scripts/parity-report.mjs            # print + verify docs/PARITY.md
@@ -27,7 +28,7 @@ const CONFIG_SCHEMA = 'wh3mm.parity.v1'
 const CAPABILITY_COUNT = 10
 const CHECKS_PER_CAPABILITY = 4
 const CHECK_COUNT = CAPABILITY_COUNT * CHECKS_PER_CAPABILITY
-const ORACLE_TOTAL = 39
+const ORACLE_TOTAL = 29
 const STATUSES = new Set(['done', 'partial', 'missing'])
 const DISPOSITIONS = new Set(['ported', 'rewritten', 'not-applicable'])
 const WEIGHTS = {
@@ -312,6 +313,7 @@ export function validateConfig(config, { root = repoRoot, scanFindings = [] } = 
       issues.push(`oracle map must contain ${ORACLE_TOTAL} files, found ${files.length}`)
     }
     const seenFiles = new Set()
+    let assertionSum = 0
     for (const entry of files) {
       if (!entry || typeof entry !== 'object') {
         issues.push('oracle entry is not an object')
@@ -324,6 +326,11 @@ export function validateConfig(config, { root = repoRoot, scanFindings = [] } = 
       }
       if (seenFiles.has(path)) issues.push(`duplicate oracle file ${path}`)
       seenFiles.add(path)
+      if (!Number.isInteger(entry.assertions) || entry.assertions <= 0) {
+        issues.push(`${path}: assertions must be a positive integer`)
+      } else {
+        assertionSum += entry.assertions
+      }
       if (!seenCapabilities.has(entry.capability)) {
         issues.push(`${path}: unknown capability ${entry.capability}`)
       }
@@ -356,6 +363,11 @@ export function validateConfig(config, { root = repoRoot, scanFindings = [] } = 
     }
     if (seenFiles.size !== ORACLE_TOTAL) {
       issues.push(`oracle map has ${seenFiles.size} unique files, expected ${ORACLE_TOTAL}`)
+    }
+    if (assertionSum !== oracle.legacy_assertions) {
+      issues.push(
+        `oracle.legacy_assertions is ${oracle.legacy_assertions}, but the entries sum to ${assertionSum}`,
+      )
     }
   }
 
@@ -589,6 +601,10 @@ export function renderMarkdown(config, result, { scan = { findings: [], scanned:
   lines.push('```')
   lines.push('')
   lines.push(
+    '`--check` ignores the two live test-count rows; a PR that only adds tests does not need to regenerate this snapshot.',
+  )
+  lines.push('')
+  lines.push(
     `Scope is the v1.0 contract, not legacy feature parity. Cut features score zero. Source: [docs/PRODUCT_SCOPE.md](PRODUCT_SCOPE.md).`,
   )
   return `${lines.join('\n')}\n`
@@ -631,6 +647,18 @@ function renderConsole(config, result, scan) {
   lines.push(`Cut-feature scan: ${scan.findings.length} findings in ${scan.scanned.length} UI/IPC files`)
   lines.push(`Rust tests: ${result.metrics.rust} · Frontend assertions: ${result.metrics.frontend} in ${result.metrics.frontendFiles} files`)
   return `${lines.join('\n')}\n`
+}
+
+export function comparableReport(markdown) {
+  return markdown
+    .replace(
+      /^\| Rust tests on this tree \| \d+ \|$/m,
+      '| Rust tests on this tree | <live count> |',
+    )
+    .replace(
+      /^\| Frontend assertions on this tree \| \d+ in \d+ files \|$/m,
+      '| Frontend assertions on this tree | <live count> in <live files> files |',
+    )
 }
 
 function readReport() {
@@ -685,7 +713,7 @@ export function main(argv = process.argv.slice(2)) {
     console.error('docs/PARITY.md is missing; run node scripts/parity-report.mjs --write')
     return 1
   }
-  if (existing !== markdown) {
+  if (comparableReport(existing) !== comparableReport(markdown)) {
     console.error('docs/PARITY.md is stale; run node scripts/parity-report.mjs --write')
     return 1
   }
