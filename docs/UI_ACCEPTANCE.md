@@ -71,7 +71,7 @@ Density rules:
 | Row padding inline | 8px | 10px | 12px |
 | Title | 12/16 | 13/16 | 14/18 |
 | Meta | 11/14 | 11/14 | 12/16 |
-| Author column | hidden | visible >=1280px | visible >=1280px |
+| Author column | hidden | visible >=1440px | visible >=1440px |
 
 - `[ ]` D-01 `tokens.test.ts` passes and asserts 32/40/48 and the comfortable
   default.
@@ -137,7 +137,7 @@ These apply to every screen and every milestone.
 | Content | Rule |
 |---|---|
 | Mod name / profile name / title | Single line, end ellipsis, never smaller type. Tooltip after 500ms; inspector shows the full value. |
-| Meta line (pack file, author) | Single line, end ellipsis. Author column is 140px and hidden below 1280px; the meta line then carries the author. |
+| Meta line (pack file, author) | Single line, end ellipsis. Author column is 140px and hidden below 1440px; the meta line then carries the author. |
 | Tag label | Max 120px, end ellipsis. Two chips visible, then `+N`; tooltip lists all tags. |
 | Order number | Never truncated. |
 | Warning/conflict text | Never truncated. Icon + accessible label in the row; full text in the inspector. |
@@ -169,8 +169,9 @@ These apply to every screen and every milestone.
   reverses; focus never escapes to a hidden element.
 - `[ ]` S01-06 Status bar is one line, shows readiness and counts, and reports
   `Unsaved changes` when the load order is dirty.
-- `[ ]` S01-07 At 1280px and above the inspector is docked (320px, 300px from
-  1280–1439); below 1280px it is an overlay and `Escape` closes it.
+- `[ ]` S01-07 At 1280px and above the inspector is docked (320px, 300px via
+  `--inspector-w-narrow` from 1280–1439); below 1280px it is an overlay and
+  `Escape` closes it.
 - `[ ]` S01-08 The app enforces a 1024×720 minimum window and never shows a
   mobile layout.
 

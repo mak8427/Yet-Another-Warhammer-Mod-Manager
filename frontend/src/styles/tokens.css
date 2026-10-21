@@ -20,6 +20,7 @@
   --iron-750: #252c33;
   --iron-700: #2d353d;
   --iron-650: #39424c;
+  --iron-600: #454f5a;
 
   --parchment-50: #f6efe0;
   --parchment-100: #e8dcc4;
@@ -110,6 +111,7 @@
   --list-header-h: 28px;
   --rail-w: 208px;
   --inspector-w: 320px;
+  --inspector-w-narrow: 300px;
   --inspector-min-w: 280px;
   --inspector-max-w: 420px;
   --dialog-w-sm: 480px;

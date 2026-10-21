@@ -111,7 +111,7 @@ State fills: `--color-state-success-bg` `#1c2418`,
 | `--color-text-link` | `#d7b45f` | Same as accent; underline on hover |
 | `--color-text-success` | `#a3c178` | 7.95:1 on success fill |
 | `--color-text-warning` | `#e0b45c` | 8.03:1 on warning fill |
-| `--color-text-danger` | `#e07a63` | 5.58:1 on danger fill, 5.94:1 on surface |
+| `--color-text-danger` | `#e07a63` | 5.58:1 on danger fill, 5.70:1 on surface |
 | `--color-text-info` | `#7fb0d0` | 6.80:1 on info fill |
 
 Disabled row text uses `--color-text-muted`, not `--color-text-disabled`:
@@ -225,6 +225,7 @@ the default and the persisted fallback.
 | `--list-header-h` | 28px | Column header |
 | `--rail-w` | 208px | Left rail |
 | `--inspector-w` | 320px | Inspector docked width |
+| `--inspector-w-narrow` | 300px | Inspector docked width at 1280–1439px |
 | `--inspector-min-w` / `max-w` | 280 / 420px | Resize bounds (M4) |
 | `--control-h-sm` | 24px | Chips, small icon buttons |
 | `--control-h-md` | 28px | Inputs, buttons, selects |
@@ -349,9 +350,10 @@ the order and enable columns are always visible.
 
 ### 3.5 Inspector (320px)
 
-- Docked on the right at >=1280px wide; 320px (300px at 1280–1439). Overlay
-  drawer at <1280px, opened by `Enter` on a row or the row menu. Closed by
-  `Escape` or the close button.
+- Docked on the right at >=1280px wide; `--inspector-w` (320px), or
+  `--inspector-w-narrow` (300px) at 1280–1439. Overlay drawer at <1280px,
+  opened by `Enter` on a row or the row menu. Closed by `Escape` or the close
+  button.
 - Header 36px: `Inspector` label + close 24px button. Body scrolls
   independently, 12–16px padding. Footer 44px for actions.
 - Sections are separated by 1px rules, not cards. Section labels use the label
@@ -417,7 +419,7 @@ v1.0; 208px is affordable at 1024px.
 
 ### 4.1 Row anatomy
 
-Column template (comfortable/roomy, >=1280px):
+Column template (comfortable/roomy, >=1440px):
 
 ```css
 grid-template-columns:
@@ -428,6 +430,11 @@ column-gap: var(--space-4);
 padding-inline: var(--row-pad-x);
 ```
 
+Below 1440px, and in compact density at any width, drop `--row-author-w` from
+the template; the meta line carries the author. Below 1100px also drop
+`--row-tags-w` and render tags inline in the name cell. The header uses the
+same template at every breakpoint.
+
 | Cell | Width | Content |
 |---|---:|---|
 | Order | 36px | 1-based number, mono 12, right-aligned, tabular. Doubles as the drag handle. |
@@ -435,7 +442,7 @@ padding-inline: var(--row-pad-x);
 | Thumb | row thumb | Square, `object-fit: cover`, 1px border subtle. If missing, 2-letter pack-type abbreviation in mono 10, muted. Collapses when thumbnails are disabled. |
 | Name | >=180px, 1fr | Title 13/16 medium; meta 11/14 muted on a second line: pack filename, then author when the author column is hidden. Single-line ellipsis on both. |
 | Tags | 132px | Up to 2 chips, 20px high, 2px faction accent on the left, 11px label; `+N` for the rest. |
-| Author | 140px | Single line, ellipsis. Hidden below 1280px and in compact density. |
+| Author | 140px | Single line, ellipsis. Hidden below 1440px and in compact density. |
 | Status | 28px | Conflict diamond, missing-dependency triangle, or both. Accessible label is mandatory. |
 | Menu | 28px | 24px overflow button, always visible but muted until hover/focus. |
 
@@ -714,9 +721,11 @@ The following are review failures:
 - `tokens.css` is imported by `theme.css`; `main.tsx` imports `theme.css`.
   Components may import only `theme.css` (or future component stylesheets that
   themselves consume tokens).
-- No raw hex, `rgb()`, `hsl()`, font stacks, or magic pixel values in component
-  styles or inline styles, except data-driven faction accent values assigned to
-  `--faction-accent`.
+- No raw hex, `rgb()`, `hsl()`, font stacks, or magic values for spacing, row
+  heights, shell geometry, or type sizes in component styles or inline styles,
+  except data-driven faction accent values assigned to `--faction-accent` and
+  optical details such as 1px rules, icon and dot sizes, and uppercase label
+  tracking.
 - Density is read from `data-density` on `<html>`; do not duplicate row heights
   in component CSS.
 - Row grids are defined once per breakpoint and shared by header and rows.

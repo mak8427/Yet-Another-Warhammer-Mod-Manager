@@ -131,6 +131,7 @@ const REQUIRED_TOKENS = [
   '--list-header-h',
   '--rail-w',
   '--inspector-w',
+  '--inspector-w-narrow',
   '--row-h-compact',
   '--row-h-comfortable',
   '--row-h-roomy',
@@ -167,6 +168,17 @@ describe('design tokens', () => {
   it('declares the semantic contract', () => {
     for (const token of REQUIRED_TOKENS) {
       expect(tokens.has(token), `missing ${token}`).toBe(true)
+    }
+  })
+
+  it('resolves every var() reference in every stylesheet', () => {
+    for (const { file, css } of allStyles) {
+      const pattern = /var\(\s*(--[a-z0-9-]+)/gi
+      let match = pattern.exec(css)
+      while (match) {
+        expect(tokens.has(match[1]), `${file} references missing ${match[1]}`).toBe(true)
+        match = pattern.exec(css)
+      }
     }
   })
 
