@@ -137,7 +137,7 @@ export function ProfilesScreen({
           Create a profile to save an enabled set and its load order.
         </EmptyState>
       ) : (
-        <div className="table-wrap profile-table-wrap">
+        <div className="table-wrap">
           <table className="data-table profile-table">
             <colgroup>
               <col className="col-active" />

@@ -12,7 +12,7 @@ import { convertFileSrc, invoke } from '@tauri-apps/api/core'
  * logic here; this module only marshals values across the Tauri boundary.
  */
 
-export const ERROR_CODES = [
+const ERROR_CODES = [
   'io',
   'config_corrupt',
   'game_not_found',
@@ -295,7 +295,7 @@ export function toIpcError(cause: unknown): IpcError {
   })
 }
 
-export type CommandName =
+type CommandName =
   | 'app_info'
   | 'detect_game'
   | 'set_game_path'
@@ -326,7 +326,7 @@ export type CommandName =
   | 'set_launch_options'
   | 'launch_game'
 
-export async function invokeCommand<T>(
+async function invokeCommand<T>(
   command: CommandName,
   args: Record<string, unknown> = {},
 ): Promise<T> {
@@ -337,39 +337,39 @@ export async function invokeCommand<T>(
   }
 }
 
-export async function appInfo(): Promise<AppInfo> {
+async function appInfo(): Promise<AppInfo> {
   return invokeCommand<AppInfo>('app_info')
 }
 
-export async function detectGame(): Promise<GameLocation> {
+async function detectGame(): Promise<GameLocation> {
   return invokeCommand<GameLocation>('detect_game')
 }
 
-export async function setGamePath(gamePath: string | null): Promise<GameLocation> {
+async function setGamePath(gamePath: string | null): Promise<GameLocation> {
   return invokeCommand<GameLocation>('set_game_path', { gamePath })
 }
 
-export async function listMods(): Promise<ModListSnapshot> {
+async function listMods(): Promise<ModListSnapshot> {
   return invokeCommand<ModListSnapshot>('list_mods')
 }
 
-export async function setModEnabled(modId: string, enabled: boolean): Promise<ModListSnapshot> {
+async function setModEnabled(modId: string, enabled: boolean): Promise<ModListSnapshot> {
   return invokeCommand<ModListSnapshot>('set_mod_enabled', { modId, enabled })
 }
 
-export async function setModsEnabled(modIds: string[], enabled: boolean): Promise<ModListSnapshot> {
+async function setModsEnabled(modIds: string[], enabled: boolean): Promise<ModListSnapshot> {
   return invokeCommand<ModListSnapshot>('set_mods_enabled', { modIds, enabled })
 }
 
-export async function setLoadOrder(orderedModIds: string[]): Promise<ModListSnapshot> {
+async function setLoadOrder(orderedModIds: string[]): Promise<ModListSnapshot> {
   return invokeCommand<ModListSnapshot>('set_load_order', { orderedModIds })
 }
 
-export async function listProfiles(): Promise<ProfilesState> {
+async function listProfiles(): Promise<ProfilesState> {
   return invokeCommand<ProfilesState>('list_profiles')
 }
 
-export async function saveProfile(
+async function saveProfile(
   name: string,
   enabledModIds: string[],
   profileId?: string,
@@ -377,58 +377,58 @@ export async function saveProfile(
   return invokeCommand<Profile>('save_profile', { profileId, name, enabledModIds })
 }
 
-export async function duplicateProfile(profileId: string, name: string): Promise<Profile> {
+async function duplicateProfile(profileId: string, name: string): Promise<Profile> {
   return invokeCommand<Profile>('duplicate_profile', { profileId, name })
 }
 
-export async function deleteProfile(profileId: string): Promise<ProfilesState> {
+async function deleteProfile(profileId: string): Promise<ProfilesState> {
   return invokeCommand<ProfilesState>('delete_profile', { profileId })
 }
 
-export async function applyProfile(profileId: string): Promise<ModListSnapshot> {
+async function applyProfile(profileId: string): Promise<ModListSnapshot> {
   return invokeCommand<ModListSnapshot>('apply_profile', { profileId })
 }
 
-export async function listTags(): Promise<Tag[]> {
+async function listTags(): Promise<Tag[]> {
   return invokeCommand<Tag[]>('list_tags')
 }
 
-export async function createTag(name: string, color: string): Promise<Tag[]> {
+async function createTag(name: string, color: string): Promise<Tag[]> {
   return invokeCommand<Tag[]>('create_tag', { name, color })
 }
 
-export async function deleteTag(tagId: string): Promise<Tag[]> {
+async function deleteTag(tagId: string): Promise<Tag[]> {
   return invokeCommand<Tag[]>('delete_tag', { tagId })
 }
 
-export async function setModTags(modId: string, tagIds: string[]): Promise<ModListSnapshot> {
+async function setModTags(modId: string, tagIds: string[]): Promise<ModListSnapshot> {
   return invokeCommand<ModListSnapshot>('set_mod_tags', { modId, tagIds })
 }
 
-export async function getUiPreferences(): Promise<UiPreferences> {
+async function getUiPreferences(): Promise<UiPreferences> {
   return invokeCommand<UiPreferences>('get_ui_preferences')
 }
 
-export async function updateUiPreferences(preferences: UiPreferences): Promise<UiPreferences> {
+async function updateUiPreferences(preferences: UiPreferences): Promise<UiPreferences> {
   return invokeCommand<UiPreferences>('update_ui_preferences', { preferences })
 }
 
-export async function resetToDefaults(
+async function resetToDefaults(
   confirm: boolean,
   confirmUnmanagedLoss = false,
 ): Promise<ResetDefaultsReport> {
   return invokeCommand<ResetDefaultsReport>('reset_to_defaults', { confirm, confirmUnmanagedLoss })
 }
 
-export async function readLoadOrder(): Promise<LoadOrderReadReport> {
+async function readLoadOrder(): Promise<LoadOrderReadReport> {
   return invokeCommand<LoadOrderReadReport>('read_load_order')
 }
 
-export async function previewLoadOrder(): Promise<LoadOrderWriteReport> {
+async function previewLoadOrder(): Promise<LoadOrderWriteReport> {
   return invokeCommand<LoadOrderWriteReport>('preview_load_order')
 }
 
-export async function writeLoadOrder(
+async function writeLoadOrder(
   allowEmpty: boolean,
   confirmUnmanagedLoss: boolean,
 ): Promise<LoadOrderWriteReport> {
@@ -438,34 +438,34 @@ export async function writeLoadOrder(
   })
 }
 
-export async function restoreLoadOrder(): Promise<LoadOrderReadReport> {
+async function restoreLoadOrder(): Promise<LoadOrderReadReport> {
   return invokeCommand<LoadOrderReadReport>('restore_load_order')
 }
 
-export async function getConflicts(): Promise<ConflictReport> {
+async function getConflicts(): Promise<ConflictReport> {
   return invokeCommand<ConflictReport>('get_conflicts')
 }
 
-export async function listWorkshopItems(): Promise<WorkshopItem[]> {
+async function listWorkshopItems(): Promise<WorkshopItem[]> {
   return invokeCommand<WorkshopItem[]>('list_workshop_items')
 }
 
-export async function workshopAction(
+async function workshopAction(
   action: WorkshopAction,
   workshopId: string,
 ): Promise<SteamActionResult> {
   return invokeCommand<SteamActionResult>('workshop_action', { action, workshopId })
 }
 
-export async function getLaunchOptions(): Promise<LaunchOptions> {
+async function getLaunchOptions(): Promise<LaunchOptions> {
   return invokeCommand<LaunchOptions>('get_launch_options')
 }
 
-export async function setLaunchOptions(options: LaunchOptions): Promise<LaunchOptions> {
+async function setLaunchOptions(options: LaunchOptions): Promise<LaunchOptions> {
   return invokeCommand<LaunchOptions>('set_launch_options', { options })
 }
 
-export async function launchGame(skipIntro: boolean, scriptLogging: boolean): Promise<LaunchResult> {
+async function launchGame(skipIntro: boolean, scriptLogging: boolean): Promise<LaunchResult> {
   return invokeCommand<LaunchResult>('launch_game', { skipIntro, scriptLogging })
 }
 

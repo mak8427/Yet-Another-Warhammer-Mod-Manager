@@ -1,12 +1,15 @@
 import { useMemo } from 'react'
-import { store, useAppStore, visibleMods } from '../../store'
+import { store, visibleMods, type AppState } from '../../store'
 import { LoadOrderBanner } from '../load-order/LoadOrderBanner'
 import { ModInspector } from './ModInspector'
 import { ModList } from './ModList'
 import { ModToolbar } from './ModToolbar'
 
-export function ModsScreen() {
-  const state = useAppStore()
+interface ModsScreenProps {
+  state: AppState
+}
+
+export function ModsScreen({ state }: ModsScreenProps) {
   const snapshot = state.snapshot
 
   const visible = useMemo(() => visibleMods(state), [state])

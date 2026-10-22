@@ -85,7 +85,7 @@ export function makeSnapshot(mods: ModSummary[], overrides: Partial<ModListSnaps
   }
 }
 
-export const PROFILE_DEFAULT: Profile = {
+const PROFILE_DEFAULT: Profile = {
   id: 'profile-default',
   name: 'Default',
   enabledModIds: [],
@@ -171,12 +171,12 @@ export const WORKSHOP_ITEMS: WorkshopItem[] = [
   },
 ]
 
-export const LAUNCH_OPTIONS: LaunchOptions = {
+const LAUNCH_OPTIONS: LaunchOptions = {
   skipIntro: false,
   scriptLogging: false,
 }
 
-export const LAUNCH_RESULT: LaunchResult = {
+const LAUNCH_RESULT: LaunchResult = {
   launched: true,
   method: 'steam',
   message: 'Warhammer III launch requested through Steam.',
