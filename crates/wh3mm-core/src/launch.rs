@@ -370,7 +370,8 @@ impl Session {
             ),
         };
         #[cfg(not(target_os = "linux"))]
-        let (command, fallback_reason) = (steam_launch_command(&location, options)?, None);
+        let (command, fallback_reason) =
+            (steam_launch_command(&location, options)?, None::<String>);
         spawn_launch_command(&command)?;
         Ok(LaunchResult {
             launched: true,
