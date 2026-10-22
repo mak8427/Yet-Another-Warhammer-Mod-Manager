@@ -8,6 +8,7 @@ backend and a TypeScript frontend.
 - QA plan and release gate: [docs/QA_PLAN.md](docs/QA_PLAN.md)
 - Capability parity scorecard: [docs/PARITY.md](docs/PARITY.md)
 - Bug report template: [docs/BUG_REPORT_TEMPLATE.md](docs/BUG_REPORT_TEMPLATE.md)
+- Contributing, review gates, and credit: [CONTRIBUTING.md](CONTRIBUTING.md)
 - Legacy reference (Electron, not copied): https://github.com/Shazbot/WH3-Mod-Manager
 
 ## Status
