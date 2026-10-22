@@ -7,6 +7,7 @@
 //! does not leave a hidden override behind.
 
 use serde::{Deserialize, Serialize};
+use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -102,7 +103,10 @@ pub struct LaunchResult {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LaunchCommand {
     pub executable: PathBuf,
-    pub args: Vec<String>,
+    pub args: Vec<OsString>,
+    pub env: Vec<(OsString, OsString)>,
+    pub working_dir: Option<PathBuf>,
+    pub method: LaunchMethod,
     pub options: LaunchOptions,
 }
 
@@ -115,7 +119,10 @@ pub struct AppliedLaunchTweaks {
 pub fn build_launch_command(steam: &Path, options: LaunchOptions) -> LaunchCommand {
     LaunchCommand {
         executable: steam.to_path_buf(),
-        args: vec!["-applaunch".to_string(), WH3_APP_ID.to_string()],
+        args: vec![OsString::from("-applaunch"), OsString::from(WH3_APP_ID)],
+        env: Vec::new(),
+        working_dir: None,
+        method: LaunchMethod::Steam,
         options,
     }
 }
@@ -256,17 +263,54 @@ pub fn is_game_running() -> Result<bool, AppError> {
 }
 
 pub fn spawn_launch_command(command: &LaunchCommand) -> Result<u32, AppError> {
-    let child = Command::new(&command.executable)
+    let mut process = Command::new(&command.executable);
+    process
         .args(&command.args)
-        .spawn()
-        .map_err(|error| {
-            AppError::new(
-                ErrorCode::SteamNotFound,
-                "Steam could not be started; check that Steam is installed and running",
-            )
+        .envs(command.env.iter().map(|(key, value)| (key, value)));
+    if let Some(directory) = &command.working_dir {
+        process.current_dir(directory);
+    }
+    let child = process.spawn().map_err(|error| {
+        let message = match command.method {
+            LaunchMethod::Direct => {
+                "The game could not be started through Proton; launch Warhammer III once from Steam, then try again"
+            }
+            LaunchMethod::Steam => {
+                "Steam could not be started; check that Steam is installed and running"
+            }
+        };
+        AppError::new(ErrorCode::SteamNotFound, message)
             .with_details(format!("{}: {error}", command.executable.display()))
-        })?;
+    })?;
     Ok(child.id())
+}
+
+fn steam_launch_command(
+    location: &GameLocation,
+    options: LaunchOptions,
+) -> Result<LaunchCommand, AppError> {
+    let steam = crate::workshop::find_steam_executable(location).ok_or_else(|| {
+        AppError::new(
+            ErrorCode::SteamNotFound,
+            "Steam was not found; install Steam or point the manager at a Steam library",
+        )
+    })?;
+    Ok(build_launch_command(&steam, options))
+}
+
+fn launch_message(method: LaunchMethod, fallback_reason: Option<&str>) -> String {
+    match (method, fallback_reason) {
+        (LaunchMethod::Direct, _) => {
+            "Warhammer III launch requested through Proton; the game receives used_mods.txt with the current load order."
+                .to_string()
+        }
+        (LaunchMethod::Steam, Some(reason)) => format!(
+            "Warhammer III launch requested through Steam, but the preset may not reach the game: {reason}. Creative Assembly's launcher can replace used_mods.txt."
+        ),
+        (LaunchMethod::Steam, None) => {
+            "Warhammer III launch requested through Steam.".to_string()
+        }
+    }
 }
 
 impl Session {
@@ -317,18 +361,21 @@ impl Session {
         }
         self.set_launch_options(options)?;
         prepare_launch_tweaks(&location, &options)?;
-        let steam = crate::workshop::find_steam_executable(&location).ok_or_else(|| {
-            AppError::new(
-                ErrorCode::SteamNotFound,
-                "Steam was not found; install Steam or point the manager at a Steam library",
-            )
-        })?;
-        let command = build_launch_command(&steam, options);
+        #[cfg(target_os = "linux")]
+        let (command, fallback_reason) = match crate::proton::resolve_from_disk(&location) {
+            Ok(toolchain) => (toolchain.command(options), None),
+            Err(error) => (
+                steam_launch_command(&location, options)?,
+                Some(error.reason),
+            ),
+        };
+        #[cfg(not(target_os = "linux"))]
+        let (command, fallback_reason) = (steam_launch_command(&location, options)?, None);
         spawn_launch_command(&command)?;
         Ok(LaunchResult {
             launched: true,
-            method: LaunchMethod::Steam,
-            message: Some("Warhammer III launch requested through Steam.".to_string()),
+            method: command.method,
+            message: Some(launch_message(command.method, fallback_reason.as_deref())),
         })
     }
 }
@@ -382,9 +429,125 @@ mod tests {
                 script_logging: true,
             },
         );
-        assert_eq!(command.args, vec!["-applaunch", "1142710"]);
+        assert_eq!(
+            command.args,
+            vec![OsString::from("-applaunch"), OsString::from("1142710")]
+        );
+        assert_eq!(command.method, LaunchMethod::Steam);
+        assert!(command.env.is_empty());
+        assert_eq!(command.working_dir, None);
         assert!(command.options.skip_intro);
         assert!(command.options.script_logging);
+    }
+
+    #[cfg(target_os = "linux")]
+    fn linux_launch_fixture(dir: &TempDir, with_proton: bool) -> Session {
+        let root = dir.path().join("Steam");
+        let game = root
+            .join("steamapps")
+            .join("common")
+            .join("Total War WARHAMMER III");
+        fs::create_dir_all(game.join("data")).unwrap();
+        fs::write(game.join("Warhammer3.exe"), b"exe").unwrap();
+        fs::create_dir_all(
+            root.join("steamapps")
+                .join("compatdata")
+                .join("1142710")
+                .join("pfx"),
+        )
+        .unwrap();
+        std::os::unix::fs::symlink("/bin/true", root.join("steam.sh")).unwrap();
+        if with_proton {
+            let common = root.join("steamapps").join("common");
+            let proton = common.join("Proton 9.0").join("proton");
+            fs::create_dir_all(proton.parent().unwrap()).unwrap();
+            fs::write(&proton, b"#!/bin/sh\n").unwrap();
+            let runtime = common
+                .join("SteamLinuxRuntime_sniper")
+                .join("_v2-entry-point");
+            fs::create_dir_all(runtime.parent().unwrap()).unwrap();
+            std::os::unix::fs::symlink("/bin/true", &runtime).unwrap();
+            fs::create_dir_all(root.join("config")).unwrap();
+            fs::write(
+                root.join("config").join("config.vdf"),
+                r#""InstallConfigStore" { "Software" { "Valve" { "Steam" { "CompatToolMapping" { "1142710" { "name" "proton_9" } } } } } }"#,
+            )
+            .unwrap();
+        }
+        Session::initialize(SessionOptions {
+            config_path: dir.path().join("config.json"),
+            steam_root_candidates: Some(Vec::new()),
+            manual_game_path: Some(game),
+            log_timings: false,
+        })
+        .unwrap()
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn launch_uses_proton_directly_when_the_toolchain_resolves() {
+        let dir = TempDir::new("launch-direct");
+        let mut session = linux_launch_fixture(&dir, true);
+        let result = session
+            .launch_game_with_probe(LaunchOptions::default(), &StubProbe(Ok(false)))
+            .unwrap();
+        assert_eq!(result.method, LaunchMethod::Direct);
+        let message = result.message.unwrap();
+        assert!(message.contains("through Proton"), "{message}");
+        assert!(message.contains("used_mods.txt"), "{message}");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn launch_falls_back_to_steam_with_the_reason_when_proton_is_missing() {
+        let dir = TempDir::new("launch-fallback");
+        let mut session = linux_launch_fixture(&dir, false);
+        let result = session
+            .launch_game_with_probe(LaunchOptions::default(), &StubProbe(Ok(false)))
+            .unwrap();
+        assert_eq!(result.method, LaunchMethod::Steam);
+        let message = result.message.unwrap();
+        assert!(
+            message.contains("preset may not reach the game"),
+            "{message}"
+        );
+        assert!(message.contains("no Proton installation"), "{message}");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn spawn_applies_the_environment_and_working_directory() {
+        let dir = TempDir::new("launch-spawn");
+        let output = dir.path().join("spawn.txt");
+        let script = format!(
+            "pwd > '{}'; printf '%s' \"$WH3MM_TEST\" >> '{}'",
+            output.display(),
+            output.display()
+        );
+        let command = LaunchCommand {
+            executable: PathBuf::from("/bin/sh"),
+            args: vec![OsString::from("-c"), OsString::from(script)],
+            env: vec![(
+                OsString::from("WH3MM_TEST"),
+                OsString::from("direct-launch"),
+            )],
+            working_dir: Some(dir.path().to_path_buf()),
+            method: LaunchMethod::Direct,
+            options: LaunchOptions::default(),
+        };
+
+        spawn_launch_command(&command).unwrap();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while !output.is_file() {
+            assert!(
+                std::time::Instant::now() < deadline,
+                "spawned command did not write its output"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        let text = fs::read_to_string(&output).unwrap();
+        assert!(text.contains(dir.path().to_str().unwrap()));
+        assert!(text.ends_with("direct-launch"));
     }
 
     #[test]

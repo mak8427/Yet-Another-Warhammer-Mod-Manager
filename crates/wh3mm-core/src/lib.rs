@@ -14,6 +14,7 @@ pub mod load_order;
 pub mod mod_index;
 pub mod pack;
 pub mod paths;
+pub mod proton;
 pub mod session;
 pub mod test_support;
 pub mod timing;
