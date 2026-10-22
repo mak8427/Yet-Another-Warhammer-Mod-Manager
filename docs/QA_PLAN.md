@@ -18,25 +18,31 @@ evidence.
 Run on a clean checkout with Node 24+, pnpm 12, and stable Rust.
 
 ```bash
+# Frontend build first: the Tauri shell embeds frontend/dist at compile time
+pnpm install --frozen-lockfile
+pnpm build
+
 # Rust
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
+cargo build -p wh3mm-app --release --locked
 
 # Fixtures and QA script tests (also run in CI)
 node scripts/qa/generate-fixtures.mjs --verify
 node --test scripts/qa/*.test.mjs
 
-# Frontend
-pnpm install --frozen-lockfile
+# Frontend checks
 pnpm typecheck
 pnpm lint
 pnpm test
-pnpm build
 
 # Release-time performance gate (requires docs/perf/comparison.json; see §7)
 node scripts/qa/verify-perf-gate.mjs
 ```
+
+`cargo test -p wh3mm-core --locked` stays usable without the frontend build or
+a desktop stack.
 
 A release candidate passes only when **all** of the following are true:
 
@@ -72,6 +78,7 @@ fixed seeds, `tempfile::TempDir`, and mocked IPC only.
 | QA scripts | `scripts/qa/*.test.mjs` | `node --test` | Fixture guard and performance-gate validator | < 1 s |
 | Frontend component | `frontend/src/**/*.test.tsx` | Vitest + Testing Library + jsdom | Rendering, interaction contracts, error states | < 10 s |
 | Manual Windows | `docs/MANUAL_QA_WINDOWS.md` | Human | Install detection, first run, recovery, launch | per script |
+| Manual Linux | `docs/MANUAL_QA_LINUX.md` | Human | Native Steam/Proton detection, mod list, load order, launch | per script |
 | Performance | `benches/`, `docs/PERF.md` | Criterion + scripted Windows runs | Cold start, 500-mod load, persist, profile switch, launch | release build |
 
 Unit tests prove logic; integration tests prove the filesystem contract;
@@ -224,7 +231,7 @@ hook; the gate accepts it only with FI-03 covering the pre-rename failure.
 | K6 | The 500-mod list is slow or unvirtualized | Medium | High | F2, R16, P1–P3 |
 | K7 | Flaky suite erodes trust in the gate | Medium | Medium | Deterministic fixtures, no network/time, bounded CI; §1 |
 | K8 | Fixtures drift from the documented format | Medium | Medium | `--verify` in CI + R17 + manifest |
-| K9 | Windows-only shell regressions escape Linux CI | High | Medium | Manual script (M1) + M5 packaging CI |
+| K9 | Desktop shell regressions escape Linux CI | Medium | Medium | Linux CI builds the shell (ADR-007); Windows shell remains manual + M5 packaging CI |
 | K10 | A cut feature leaks into v1.0 UI/IPC | Low | High | F9 + M3 |
 | K11 | "Faster than legacy" is asserted without a valid A/B | Medium | Critical | P1–P3, §7; a guessed number fails the gate |
 | K12 | CI waits hang in a post-step and stall review | Medium | Medium | Bounded checks, no bare watch (WAR-16) |
@@ -366,7 +373,7 @@ the gate fails until the decrease is explained and approved.
 | G1 | Product suites could not be written before M1/M2. **Resolved.** | WAR-5 merged as `c1a9cdd`; R1–R11/R15–R17 and F1–F8 now run against the real APIs | Closed |
 | G2 | WAR-6 names `appworkshop_3247630.acf`; WH3's Steam app id is 1142710 | `reference/.../supportedGames.ts` (`wh3: "1142710"`), `docs/PRODUCT_SCOPE.md` §1 | Fixtures use 1142710; brief owner to correct |
 | G3 | Perf gate cannot be verified. **Resolved.** | `docs/perf/comparison.json` on `main`; `node scripts/qa/verify-perf-gate.mjs --json` reports `ok: true`; §7.3 | WAR-98; P1–P3 PASS |
-| G4 | Windows shell and packaging are manual (`workflow_dispatch`) until M5 | `.github/workflows/ci.yml` | WAR-11 promotes them; M1/M2 stay manual |
+| G4 | Windows shell and packaging are manual (`workflow_dispatch`) until M5; the Linux shell is built in CI | `.github/workflows/ci.yml`, ADR-007 | WAR-11 promotes Windows packaging; Linux binary artifact is already uploaded |
 | G5 | Conflict winner, dependency warning, and duplicate-name proof are missing | `conflicts.rs` does not exist on `main`; WAR-9 PR #12 is closed and conflicting, issue `in_review` | R12–R14 stay BLOCKED until M3 lands |
 | G6 | Future config is overwritten by a stale v1 backup. **Resolved.** | WAR-47 fixed by PR #15 (`76dd0b9`); `config_fixtures.rs::future_schema_with_a_stale_backup_must_still_not_overwrite` is un-ignored and asserts both `config.json` and `config.json.bak` are byte-identical | Closed |
 | G7 | No navigation/cut-feature audit yet | F9 blocked on WAR-8 (PR #10 open) and WAR-9 | WAR-8/WAR-9; M3 stays BLOCKED |

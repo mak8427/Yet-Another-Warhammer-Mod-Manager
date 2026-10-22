@@ -14,16 +14,18 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 name = "wh3mm"
 path = "src/main.rs"
 
-[target.'cfg(windows)'.build-dependencies]
+[target.'cfg(any(windows, target_os = "linux"))'.build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
 wh3mm-core = { path = "../wh3mm-core" }
 serde.workspace = true
 
-[target.'cfg(windows)'.dependencies]
-tauri = { version = "2", features = ["protocol-asset"] }
+[target.'cfg(any(windows, target_os = "linux"))'.dependencies]
+# custom-protocol makes cargo-built binaries use the embedded frontend instead
+# of `devUrl`; this repository does not run the Tauri CLI dev server.
+tauri = { version = "2", features = ["protocol-asset", "custom-protocol"] }
 
-# Backs the blocking seam in Linux tests; the Windows shell uses Tauri's runtime.
+# Backs the blocking seam in tests; the desktop shell uses Tauri's runtime.
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "time"] }

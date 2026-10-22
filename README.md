@@ -6,22 +6,23 @@ backend and a TypeScript frontend.
 - Product scope and v1.0 acceptance criteria: [docs/PRODUCT_SCOPE.md](docs/PRODUCT_SCOPE.md)
 - Architecture decisions: [docs/adr/](docs/adr/)
 - QA plan and release gate: [docs/QA_PLAN.md](docs/QA_PLAN.md)
+- Linux manual QA: [docs/MANUAL_QA_LINUX.md](docs/MANUAL_QA_LINUX.md)
 - Capability parity scorecard: [docs/PARITY.md](docs/PARITY.md)
 - Bug report template: [docs/BUG_REPORT_TEMPLATE.md](docs/BUG_REPORT_TEMPLATE.md)
+- Contributing, review gates, and credit: [CONTRIBUTING.md](CONTRIBUTING.md)
 - Legacy reference (Electron, not copied): https://github.com/Shazbot/WH3-Mod-Manager
 
 ## Status
 
-M0 (bootstrap) is implemented: Rust workspace, Windows-gated Tauri 2 shell,
-React + Vite UI, typed IPC round trip (`app_info`), ADRs 001-004, and CI.
-Current progress and evidence live in [docs/STATUS.md](docs/STATUS.md). Mod
-discovery and the mod list land in M1/M2.
+The v1.0 feature set is implemented. The Tauri 2 desktop shell builds and runs
+on Windows and Linux (native Steam/Proton); macOS is not supported. Current
+progress and evidence live in [docs/STATUS.md](docs/STATUS.md).
 
 ## Layout
 
 ```
 crates/wh3mm-core/   pure domain logic (no Tauri/WebView; testable on Linux)
-crates/wh3mm-app/    Tauri 2 command layer and `wh3mm` binary (Windows-gated)
+crates/wh3mm-app/    Tauri 2 command layer and `wh3mm` binary (Windows + Linux)
 frontend/            React + TypeScript + Vite UI
 docs/adr/            architecture decisions
 fixtures/            synthetic QA fixtures (see fixtures/README.md)
@@ -60,8 +61,6 @@ version globally with `npm install -g pnpm@12.14.0`.
 
 ### Windows (desktop shell)
 
-The Tauri shell is built and run on Windows only in M0.
-
 - Windows 10 or 11.
 - Microsoft C++ Build Tools with the **Desktop development with C++** workload
   (MSVC compiler, Windows SDK) and the Rust MSVC toolchain
@@ -69,22 +68,43 @@ The Tauri shell is built and run on Windows only in M0.
 - WebView2 Runtime. It ships with Windows 11 and current Windows 10; otherwise
   install the Evergreen runtime from Microsoft.
 
-### Linux
+### Linux (desktop shell)
 
-Linux builds and tests the Rust workspace without a desktop stack; the Tauri
-shell does not run here in M0.
+The Tauri shell builds and runs on Linux against native Steam and Proton
+installs. Flatpak and Snap Steam launches are not covered by this build.
 
-- A C linker for Rust (for example `build-essential` on Debian/Ubuntu).
-- No WebKitGTK or GTK packages are needed: `tauri` and `tauri-build` are
-  Windows-target-only dependencies (see
-  [ADR-001](docs/adr/001-architecture.md)).
+- A C linker and `pkg-config` (`build-essential pkg-config` on Debian/Ubuntu).
+- WebKitGTK 4.1 and GTK3 development/runtime packages. On Debian/Ubuntu:
+
+  ```bash
+  sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev \
+    libayatana-appindicator3-dev librsvg2-dev libssl-dev libdbus-1-dev
+  ```
+
+  On Arch-based distributions:
+
+  ```bash
+  sudo pacman -S --needed base-devel webkit2gtk-4.1 \
+    libayatana-appindicator librsvg openssl dbus
+  ```
+
+- A running X11 or Wayland desktop session.
 
 ## Rust backend
 
 Run Rust commands from the repository root. `Cargo.toml` is the workspace root
 for `wh3mm-core` (domain logic) and `wh3mm-app` (Tauri command layer plus the
-`wh3mm` binary). M0 defines no feature flags; `--locked` matches CI and keeps
-`Cargo.lock` authoritative.
+`wh3mm` binary). `--locked` matches CI and keeps `Cargo.lock` authoritative.
+
+The desktop shell embeds `frontend/dist` at compile time. On a clean checkout,
+build the frontend before any workspace-wide `cargo` command:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm build
+```
+
+`cargo test -p wh3mm-core --locked` stays WebView- and frontend-free.
 
 ```bash
 # Fetch dependencies without changing Cargo.lock
@@ -107,8 +127,7 @@ cargo fmt --all --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 ```
 
-On Linux, `cargo build` compiles `wh3mm-app` as a stub because the Tauri
-dependencies are gated to Windows.
+On Linux, the workspace build compiles the Tauri shell and links WebKitGTK.
 
 ## TypeScript frontend
 
@@ -141,9 +160,9 @@ node scripts/qa/verify-perf-gate.mjs
 ## Run the app end to end
 
 There is no separate backend process: the Tauri window and the Rust command
-layer start together. On Windows, from a clean checkout in PowerShell:
+layer start together. From a clean checkout:
 
-```powershell
+```bash
 git clone https://github.com/mak8427/Warhammer_mod_manager.git
 cd Warhammer_mod_manager
 corepack enable
@@ -156,28 +175,32 @@ cargo run -p wh3mm-app --locked
 Order matters: `generate_context!` embeds `frontend/dist` when the Rust shell
 compiles, so build the frontend before `cargo run`. The `beforeDevCommand` and
 `devUrl` entries in `crates/wh3mm-app/tauri.conf.json` belong to the Tauri CLI,
-which M0 does not install; the sequence above is the M0 path.
+which this repository does not install; the sequence above is the supported
+path. The app enables Tauri's `custom-protocol` feature so cargo-built binaries
+serve the embedded frontend instead of the Vite dev server.
 
-On Linux, `cargo run -p wh3mm-app` exits with:
+On Linux, `cargo build -p wh3mm-app --release --locked` produces
+`target/release/wh3mm`. The binary embeds the frontend and requires the
+WebKitGTK 4.1 runtime at run time. CI uploads the same binary as the
+`wh3mm-linux-x64` artifact; there is no Linux installer yet.
 
-```text
-wh3mm: the Tauri desktop shell is Windows-only in M0; use `cargo test` for headless work.
-```
-
-Use `cargo test --workspace --locked` and `pnpm dev` for headless work; the full
-application requires Windows.
+Use `cargo test -p wh3mm-core --locked` and `pnpm dev` for headless work.
 
 ## Troubleshooting
 
-- **`wh3mm: the Tauri desktop shell is Windows-only in M0`** — expected on
-  Linux and macOS. The shell is gated to Windows by ADR-001. Run the workspace
-  tests, or run the app on Windows.
-- **Windows build cannot find `frontend/dist`** — run `pnpm build` from the
-  repository root before `cargo build -p wh3mm-app` or `cargo run -p wh3mm-app`.
-  Tauri embeds that directory at compile time.
+- **The build cannot find `frontend/dist`** — run `pnpm build` from the
+  repository root before any workspace-wide `cargo` command. Tauri embeds that
+  directory at compile time.
+- **Linux build cannot find `webkit2gtk-4.1`** — install the Linux desktop
+  packages listed above. `pkg-config --modversion webkit2gtk-4.1` must succeed.
+- **`wh3mm` exits with a shared-library error on Linux** — the WebKitGTK 4.1
+  runtime is missing. Install the runtime packages for your distribution.
+- **Steam actions fail on Linux** — this build supports a native Steam client
+  (`steam.sh`/`steam`); Flatpak and Snap Steam clients are not covered.
 
 ## CI
 
-CI runs all Linux gates on every push and pull request. The Windows Tauri build
-job is manual (`workflow_dispatch`) until packaging lands in M5. See
+CI runs all Linux gates plus a Linux Tauri shell build and binary artifact on
+every push and pull request. The Windows Tauri build job is manual
+(`workflow_dispatch`) until packaging lands in M5. See
 `.github/workflows/ci.yml`.

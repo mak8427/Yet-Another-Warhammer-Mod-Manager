@@ -27,7 +27,7 @@ jobs:
   linux:
     name: Linux quality gates
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -49,12 +49,34 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
+      # The workspace now compiles the Tauri shell on Linux, so the desktop
+      # libraries must be present before any cargo command.
+      - name: Install Linux desktop dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libssl-dev \
+            libdbus-1-dev
+
       - name: Fixture integrity (committed + perf workloads)
         run: pnpm fixtures:verify
 
       - name: QA generator guard tests
         timeout-minutes: 5
         run: node --test scripts/qa/fixture-target.test.mjs scripts/qa/verify-perf-gate.test.mjs
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      # generate_context! embeds frontend/dist at compile time, so the frontend
+      # must exist before clippy or tests build the app crate.
+      - name: Build frontend
+        run: pnpm build
 
       - name: Rust format
         run: cargo fmt --all --check
@@ -65,9 +87,6 @@ jobs:
       - name: Rust tests
         run: cargo test --workspace --locked
 
-      - name: Install frontend dependencies
-        run: pnpm install --frozen-lockfile
-
       - name: Typecheck
         run: pnpm typecheck
 
@@ -77,8 +96,32 @@ jobs:
       - name: Frontend tests
         run: pnpm test
 
-      - name: Frontend build
-        run: pnpm build
+      - name: Build Linux desktop binary
+        run: cargo build -p wh3mm-app --release --locked
+
+      # cargo does not enable Tauri's custom-protocol feature automatically.
+      # Without it the WebView loads devUrl (localhost:1420) and the embedded
+      # asset names never reach the binary, so a standalone start fails.
+      - name: Verify production assets are embedded
+        run: grep -a -q 'assets/index-' target/release/wh3mm
+
+      - name: Stage Linux binary and checksum
+        run: |
+          mkdir -p dist
+          tar -czf dist/wh3mm-linux-x64.tar.gz -C target/release wh3mm
+          cd dist
+          sha256sum wh3mm-linux-x64.tar.gz > SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
+
+      - name: Upload Linux binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: wh3mm-linux-x64
+          path: |
+            dist/wh3mm-linux-x64.tar.gz
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
 
   parity:
     name: Capability parity

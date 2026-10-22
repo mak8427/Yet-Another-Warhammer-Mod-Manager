@@ -4,8 +4,16 @@ import type { IpcError } from '../../lib/ipc'
 interface GameSetupProps {
   error: IpcError | null
   busy: string | null
+  platform?: string | null
   onSubmit: (path: string) => void
   onDetect: () => void
+}
+
+const WINDOWS_PLACEHOLDER = 'D:\\SteamLibrary\\steamapps\\common\\Total War WARHAMMER III'
+const LINUX_PLACEHOLDER = '/mnt/games/SteamLibrary/steamapps/common/Total War WARHAMMER III'
+
+function pathPlaceholder(platform?: string | null): string {
+  return platform === 'linux' ? LINUX_PLACEHOLDER : WINDOWS_PLACEHOLDER
 }
 
 function stateTitle(error: IpcError | null): string {
@@ -24,7 +32,7 @@ function stateMessage(error: IpcError | null): string {
   return 'The manager checked the usual Steam, Flatpak, and Snap locations. Choose the folder that contains data and Warhammer3.exe, or retry detection.'
 }
 
-export function GameSetup({ error, busy, onSubmit, onDetect }: GameSetupProps) {
+export function GameSetup({ error, busy, platform, onSubmit, onDetect }: GameSetupProps) {
   const [path, setPath] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -68,7 +76,7 @@ export function GameSetup({ error, busy, onSubmit, onDetect }: GameSetupProps) {
             ref={inputRef}
             autoFocus
             spellCheck={false}
-            placeholder="D:\SteamLibrary\steamapps\common\Total War WARHAMMER III"
+            placeholder={pathPlaceholder(platform)}
             value={path}
             onChange={(event) => setPath(event.target.value)}
           />
