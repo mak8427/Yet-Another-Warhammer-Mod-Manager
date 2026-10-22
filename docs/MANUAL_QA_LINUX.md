@@ -1,7 +1,8 @@
-# Manual Linux QA script — v1.0
+# Manual Linux QA script — v1.1
 
-Owner: Boris Todbringer. Executed on a Linux x86_64 desktop with a **native**
-Steam client and Total War: Warhammer III running through Proton. This script
+Owner: the Linux desktop workstream (WAR-139). Executed on a Linux x86_64
+desktop with a **native** Steam client and Total War: Warhammer III running
+through Proton. This script
 covers what the Linux CI gate cannot: the real Steam/Proton paths, the desktop
 window, and a launch on a real user profile. Automation evidence still comes
 from `docs/QA_PLAN.md` §1.
@@ -98,8 +99,8 @@ disabled dependencies are reported separately.
 1. Open **Workshop** and compare the rows with
    `steamapps/workshop/appworkshop_3247630.acf` (fallback
    `appworkshop_1142710.acf`).
-2. Click **Open** for one item. Expected: Steam opens the item page; the app
-   reports that it opened Steam, not that a subscription changed.
+2. Click **Open page** for one item. Expected: Steam opens the item page; the
+   app reports that it opened Steam, not that a subscription changed.
 3. Change a subscription in Steam, close and reopen the manager, and refresh.
 4. Rename the ACF file and refresh. Expected: a `steam_not_found` error lists
    the checked paths; the app does not show an empty list as success.

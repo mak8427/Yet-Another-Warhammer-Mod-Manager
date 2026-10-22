@@ -196,8 +196,8 @@ The result must match the SHA-256 printed in the release notes.
 ## Build locally on Linux
 
 Linux builds the same Tauri shell for native Steam and Proton. This path
-produces a binary, not an installer; Linux packaging is not part of the v1.0
-release workflow.
+produces a binary, not an installer; Linux packaging is not part of the release
+workflow yet.
 
 Prerequisites:
 
@@ -229,7 +229,8 @@ Output:
 - CI publishes the same binary as the `wh3mm-linux-x64` workflow artifact,
   with a `SHA256SUMS.txt`.
 
-The Linux path is verified in [`docs/MANUAL_QA_LINUX.md`](MANUAL_QA_LINUX.md).
+The Linux acceptance script is [`docs/MANUAL_QA_LINUX.md`](MANUAL_QA_LINUX.md);
+it must be executed on a real Linux desktop before Linux packaging ships.
 Flatpak/Snap Steam launch, Linux installers, and macOS remain out of scope.
 
 ## Known limitations (v1.0)

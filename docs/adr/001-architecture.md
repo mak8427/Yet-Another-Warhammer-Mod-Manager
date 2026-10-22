@@ -104,7 +104,8 @@ Linux is now a supported desktop target for native Steam and Proton. The Tauri
 dependency and command cfg is `any(windows, target_os = "linux")`; macOS keeps
 the unsupported fallback. Linux CI installs WebKitGTK 4.1/GTK3, builds the
 frontend before the workspace cargo gates because `generate_context!` embeds
-`frontend/dist`, and produces the `wh3mm-linux-x64` binary artifact.
+`frontend/dist`, and produces the `wh3mm-linux-x64` tarball artifact with a
+checksum.
 `wh3mm-core` remains WebView-free; `cargo test -p wh3mm-core` stays usable
 without a desktop stack.
 

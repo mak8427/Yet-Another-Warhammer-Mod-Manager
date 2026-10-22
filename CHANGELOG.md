@@ -4,6 +4,16 @@ All notable changes to the WH3 Mod Manager rebuild are recorded here. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - unreleased
+
+### Added
+
+- **Linux desktop shell** (`#48`, ADR-007): the Tauri shell now builds and runs
+  on Linux against native Steam and Proton. The Linux CI job installs WebKitGTK
+  4.1/GTK3, builds the shell, and uploads the `wh3mm-linux-x64` tarball with a
+  checksum. Contribution by @Genny4Real1. Flatpak/Snap launch, Linux installer
+  packaging, and macOS remain out of scope.
+
 ## [1.0.0] - unreleased
 
 This entry describes the scope merged on `main` as of 2026-10-21. The `v1.0.0`
@@ -39,11 +49,6 @@ See `docs/RELEASE.md`.
   configuration at version 1.0.0, a `v*` tag workflow that builds the
   installer, uploads the artifact, and opens a draft release, and this release
   guide plus changelog.
-- **Linux desktop shell** (ADR-007): the Tauri shell now builds and runs on
-  Linux against native Steam and Proton. The Linux CI job installs WebKitGTK
-  4.1/GTK3, builds the shell, and uploads the `wh3mm-linux-x64` binary artifact.
-  Flatpak/Snap launch and Linux installer packaging remain out of scope.
-
 ### Removed
 
 - **Pack-author surface** (`WAR-104`, `WAR-107`): the author column, author

@@ -2,7 +2,9 @@
 
 - Status: accepted
 - Date: 2026-10-22
-- Owner: Boris Todbringer
+- Owner: Katerina Zarina (tech lead)
+- Author: @Genny4Real1 (contribution on PR #48)
+- Accepted by: Katerina Zarina (tech lead), 2026-10-22
 - Amends: ADR-001 (shell gating), ADR-004 (test layers and Linux gates)
 - Product contract: `docs/PRODUCT_SCOPE.md`
 
@@ -15,9 +17,11 @@ wh3mm-app` print a Windows-only stub on Linux even though the core already had
 Unix Steam discovery, Proton-prefix detection, `/proc` game-process detection,
 and `steam.sh`/`steam` launch support.
 
-`docs/PRODUCT_SCOPE.md` already says Linux is supported where Steam/Proton
-detection is reliable. The remaining gap is the desktop shell itself, not the
-game, pack, load-order, or Workshop logic.
+`docs/PRODUCT_SCOPE.md` sets Windows as the v1.0 desktop target and says Linux
+is supported where Steam/Proton detection is reliable. The v1.1 workstream
+(WAR-3, tracked for this change as WAR-139) extends the supported desktop
+target to Linux. The remaining gap was the desktop shell itself, not the game,
+pack, load-order, or Workshop logic.
 
 The supported Linux configuration is a native Steam client with Total War:
 Warhammer III running through Proton. Flatpak and Snap Steam clients are out of
@@ -45,12 +49,18 @@ runtime or opening a window.
 
 ### Build and CI
 
-This repository builds the shell with cargo, not the Tauri CLI, so the `tauri`
-dependency enables the `custom-protocol` feature. Without it Tauri treats the
-build as development mode and the WebView loads `devUrl`
-(`http://localhost:1420`) instead of the embedded frontend. The feature applies
-to cargo-built debug and release binaries; the supported path is always
-`pnpm build` followed by cargo.
+The development and CI paths build the shell with cargo; only the Windows
+release workflow uses the Tauri CLI. The `tauri` dependency therefore enables
+the `custom-protocol` feature so cargo-built binaries serve the embedded
+frontend. Without it Tauri treats the build as development mode and the WebView
+loads `devUrl` (`http://localhost:1420`) instead of the embedded assets.
+
+The feature is attached to the `cfg(any(windows, target_os = "linux"))`
+dependency, so it also applies to Windows cargo builds. That does not change
+the documented Windows path: it already runs `pnpm build` before cargo and runs
+the embedded assets, and this repository does not use `tauri dev`. The manual
+Windows dispatch builds with the same feature and remains the Windows compile
+check.
 
 `generate_context!` embeds `frontend/dist` at compile time, so every
 workspace-wide cargo command now needs the frontend built first:
@@ -65,9 +75,10 @@ cargo test --workspace --locked
 
 The Linux CI job installs the Tauri v2 desktop packages (WebKitGTK 4.1, GTK3,
 libayatana-appindicator, librsvg, OpenSSL, D-Bus), builds the frontend before
-clippy and tests, and builds the release shell. It uploads
-`target/release/wh3mm` as the `wh3mm-linux-x64` artifact. The Windows shell job
-remains manual until packaging CI changes in a separate task.
+clippy and tests, and builds the release shell. It packages
+`target/release/wh3mm` as `wh3mm-linux-x64.tar.gz` with `SHA256SUMS.txt` and
+uploads both as the `wh3mm-linux-x64` artifact. The Windows shell job remains
+manual until packaging CI changes in a separate task.
 
 ### UI
 
