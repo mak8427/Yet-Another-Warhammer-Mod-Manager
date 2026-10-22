@@ -1,5 +1,53 @@
 # Development setup
 
+## Linux desktop development flow
+
+The shell is built with cargo on Linux; this repository does not run the Tauri
+CLI dev server. Install the Linux desktop packages from the
+[README prerequisites](../README.md#linux-desktop-shell) first.
+
+Build the frontend, then the shell:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm build
+cargo build -p wh3mm-app --locked
+```
+
+Run the binary:
+
+```bash
+./target/debug/wh3mm
+```
+
+`generate_context!` embeds `frontend/dist` at compile time, so the frontend must
+be built before the shell. `cargo build` tracks `frontend/dist` and rebuilds the
+app crate after `pnpm build`.
+
+The shell does not use Vite HMR. `devUrl` and `beforeDevCommand` in
+`crates/wh3mm-app/tauri.conf.json` are Tauri CLI settings, and this repository
+does not run the Tauri CLI that reads them. The `tauri` dependency enables
+`custom-protocol` for every cargo build (there is no `linux-desktop` feature),
+so the binary serves the embedded frontend from the app scheme. After a
+frontend change, run `pnpm build` and `cargo build -p wh3mm-app --locked`
+again, then restart `wh3mm`. `pnpm dev` is for UI work in a browser, where
+Tauri IPC is unavailable.
+
+Because the shell always serves the frontend from the app scheme, the
+`asset://` protocol used for pack thumbnails works in this flow. A `devUrl`
+document is an `http://` origin, and WebKitGTK does not deliver custom-scheme
+requests from one. See
+[issue #46](https://github.com/mak8427/Warhammer_mod_manager/issues/46) for the
+probe that established this.
+
+For a release build (the CI artifact):
+
+```bash
+pnpm build
+cargo build -p wh3mm-app --release --locked
+./target/release/wh3mm
+```
+
 ## Legacy WH3 Mod Manager reference
 
 The legacy application ([`Shazbot/WH3-Mod-Manager`](https://github.com/Shazbot/WH3-Mod-Manager))
