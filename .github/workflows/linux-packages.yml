@@ -1,0 +1,365 @@
+name: Linux packages
+
+# Builds the Linux release artifacts. release.yml calls this on a v* tag or
+# dispatch, and the pull_request/push triggers below run it directly when a
+# change can affect a shipped Linux artifact, so AppImage, .deb, tarball, and
+# the Arch package are proven before a release.
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'Release version (X.Y.Z). Empty resolves from tauri.conf.json.'
+        required: false
+        type: string
+        default: ''
+  pull_request:
+    paths:
+      - .github/workflows/linux-packages.yml
+      - .github/workflows/release.yml
+      - packaging/**
+      - crates/**
+      - frontend/**
+      - Cargo.toml
+      - Cargo.lock
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - docs/RELEASE.md
+  push:
+    branches: ['**']
+    paths:
+      - .github/workflows/linux-packages.yml
+      - .github/workflows/release.yml
+      - packaging/**
+      - crates/**
+      - frontend/**
+      - Cargo.toml
+      - Cargo.lock
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - docs/RELEASE.md
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (X.Y.Z). Empty resolves from tauri.conf.json.'
+        required: false
+        type: string
+        default: ''
+
+concurrency:
+  group: linux-packages-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  bundles:
+    name: AppImage, .deb, and tarball
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      # The Tauri shell links WebKitGTK, and the bundler invokes patchelf.
+      - name: Install Linux desktop and bundling dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libssl-dev \
+            libdbus-1-dev
+
+      - name: Resolve release version
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [ -n "$INPUT_VERSION" ]; then
+            version="${INPUT_VERSION#v}"
+          elif [ "$REF_TYPE" = "tag" ]; then
+            version="${REF_NAME#v}"
+          else
+            version=$(node -p "require('./crates/wh3mm-app/tauri.conf.json').version")
+          fi
+          configured=$(node -p "require('./crates/wh3mm-app/tauri.conf.json').version")
+          if [ "$version" != "$configured" ]; then
+            echo "::error::version $version does not match tauri.conf.json $configured"
+            exit 1
+          fi
+          echo "version=$version" >>"$GITHUB_OUTPUT"
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Frontend gates
+        run: |
+          pnpm typecheck
+          pnpm lint
+          pnpm test
+          pnpm build
+
+      - name: Rust tests
+        run: cargo test --workspace --locked
+
+      - name: Build AppImage and Debian package
+        working-directory: crates/wh3mm-app
+        env:
+          # linuxdeploy and appimagetool are AppImages themselves. Extracting
+          # them keeps the build independent of FUSE on the runner.
+          APPIMAGE_EXTRACT_AND_RUN: 1
+        run: npx --yes @tauri-apps/cli@2.12.4 build --ci --bundles deb,appimage
+
+      - name: Stage artifacts and checksums
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+
+          appimage=$(find target/release/bundle/appimage -maxdepth 1 -name '*.AppImage' -print -quit)
+          deb=$(find target/release/bundle/deb -maxdepth 1 -name '*.deb' -print -quit)
+          if [ -z "$appimage" ] || [ -z "$deb" ]; then
+            echo "::error::Tauri did not produce both the AppImage and the .deb"
+            find target/release/bundle -maxdepth 3 -type f || true
+            exit 1
+          fi
+
+          cp "$appimage" "dist/wh3mm_${VERSION}_amd64.AppImage"
+          cp "$deb" "dist/wh3mm_${VERSION}_amd64.deb"
+
+          stage="dist/wh3mm-${VERSION}-linux-x86_64"
+          mkdir -p "$stage"
+          cp target/release/wh3mm "$stage/wh3mm"
+          cp packaging/linux/wh3mm.desktop "$stage/wh3mm.desktop"
+          cp crates/wh3mm-app/icons/128x128.png "$stage/wh3mm.png"
+          tar -C dist -czf "dist/wh3mm-${VERSION}-linux-x86_64.tar.gz" "wh3mm-${VERSION}-linux-x86_64"
+          rm -rf "$stage"
+
+          cp packaging/linux/smoke-test.sh dist/smoke-test.sh
+
+          cd dist
+          sha256sum \
+            "wh3mm_${VERSION}_amd64.AppImage" \
+            "wh3mm_${VERSION}_amd64.deb" \
+            "wh3mm-${VERSION}-linux-x86_64.tar.gz" >SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
+          ls -lh
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wh3mm-linux-${{ steps.version.outputs.version }}
+          path: |
+            dist/*.AppImage
+            dist/*.deb
+            dist/*.tar.gz
+            dist/SHA256SUMS.txt
+            dist/smoke-test.sh
+          if-no-files-found: error
+          retention-days: 30
+
+  ubuntu-24-04:
+    name: Install and start on Ubuntu 24.04
+    needs: bundles
+    runs-on: ubuntu-24.04
+    container: ubuntu:24.04
+    timeout-minutes: 20
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: wh3mm-linux-${{ needs.bundles.outputs.version }}
+          path: dist
+
+      - name: Verify checksums
+        working-directory: dist
+        run: |
+          sha256sum -c SHA256SUMS.txt
+
+      # The .deb declares its WebKitGTK/GTK dependencies; apt installs them.
+      - name: Install the .deb and start the app
+        run: |
+          set -euo pipefail
+          apt-get update
+          apt-get install -y --no-install-recommends xvfb xdotool dbus dbus-x11 ca-certificates
+          apt-get install -y ./dist/wh3mm_*_amd64.deb
+          dpkg-query -W -f='${Package} ${Version}\n' wh3-mod-manager
+          bash dist/smoke-test.sh /usr/bin/wh3mm
+
+      # GTK/WebKit are already present from the .deb, so this exercises the
+      # AppImage payload on the same clean base image. Containers have no
+      # /dev/fuse, so smoke-test.sh uses the runtime's extract-and-run mode.
+      - name: Run the AppImage
+        run: |
+          set -euo pipefail
+          appimage=$(ls dist/*.AppImage)
+          chmod +x "$appimage"
+          bash dist/smoke-test.sh "$appimage"
+
+  fedora:
+    name: AppImage and tarball on Fedora
+    needs: bundles
+    runs-on: ubuntu-24.04
+    container: fedora:latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: wh3mm-linux-${{ needs.bundles.outputs.version }}
+          path: dist
+
+      - name: Install runtime dependencies and the smoke-test harness
+        run: |
+          dnf install -y \
+            webkit2gtk4.1 \
+            libayatana-appindicator-gtk3 \
+            xorg-x11-server-Xvfb \
+            xdotool \
+            dbus-tools
+
+      - name: Verify checksums
+        working-directory: dist
+        run: sha256sum -c SHA256SUMS.txt
+
+      - name: Run the tarball
+        run: |
+          set -euo pipefail
+          mkdir -p /opt/wh3mm
+          tar -xzf dist/*.tar.gz -C /opt/wh3mm --strip-components=1
+          bash dist/smoke-test.sh /opt/wh3mm/wh3mm
+
+      - name: Run the AppImage
+        run: |
+          set -euo pipefail
+          appimage=$(ls dist/*.AppImage)
+          chmod +x "$appimage"
+          bash dist/smoke-test.sh "$appimage"
+
+  arch:
+    name: Arch package (archlinux:latest)
+    needs: bundles
+    runs-on: ubuntu-24.04
+    container: archlinux:latest
+    timeout-minutes: 60
+    steps:
+      # archlinux:latest is deliberately minimal; git must exist before
+      # actions/checkout can run.
+      - name: Install build dependencies
+        run: |
+          pacman -Syu --noconfirm --needed \
+            base-devel git nodejs npm rust \
+            webkit2gtk-4.1 libayatana-appindicator patchelf gtk3 librsvg \
+            openssl dbus xorg-server-xvfb xdotool sudo
+
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        run: npm install --global pnpm@12.14.0
+
+      - name: Toolchain versions
+        run: |
+          node --version
+          rustc --version
+          cargo --version
+          pnpm --version
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Frontend gates
+        run: |
+          pnpm typecheck
+          pnpm lint
+          pnpm test
+          pnpm build
+
+      - name: Rust gates
+        run: |
+          cargo fmt --all --check
+          cargo clippy --workspace --all-targets --locked -- -D warnings
+          cargo test --workspace --locked
+          cargo build -p wh3mm-app --release --locked
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: wh3mm-linux-${{ needs.bundles.outputs.version }}
+          path: artifacts
+
+      - name: Build the Arch package
+        env:
+          VERSION: ${{ needs.bundles.outputs.version }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          bash packaging/arch/build-package.sh \
+            "$VERSION" \
+            "artifacts/wh3mm-${VERSION}-linux-x86_64.tar.gz" \
+            packaging-out
+
+      - name: Install the package and start the app
+        run: |
+          set -euo pipefail
+          pkg=$(find packaging-out -maxdepth 1 -name 'wh3mm-bin-*.pkg.tar.zst' -print -quit)
+          pacman -U --noconfirm "$pkg"
+          pacman -Q wh3mm-bin
+          test -x /usr/bin/wh3mm
+          test -f /usr/share/applications/wh3mm.desktop
+          bash artifacts/smoke-test.sh /usr/bin/wh3mm
+
+      - name: Stage the package, PKGBUILD, and checksums
+        env:
+          VERSION: ${{ needs.bundles.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p packaging-out/release
+          cp packaging-out/wh3mm-bin-*.pkg.tar.zst packaging-out/release/
+          cp packaging-out/aur/PKGBUILD packaging-out/release/PKGBUILD
+          cp packaging-out/aur/.SRCINFO packaging-out/release/.SRCINFO
+          cd packaging-out/release
+          sha256sum wh3mm-bin-*.pkg.tar.zst >SHA256SUMS.arch.txt
+          sha256sum -c SHA256SUMS.arch.txt
+          ls -lh .
+
+      # Artifact paths are flattened to packaging-out/release so the publish
+      # job receives PKGBUILD and .SRCINFO at the release root. .SRCINFO is a
+      # hidden file, so include-hidden-files is required.
+      - name: Upload the Arch package
+        uses: actions/upload-artifact@v4
+        with:
+          name: wh3mm-arch-${{ needs.bundles.outputs.version }}
+          path: |
+            packaging-out/release/*.pkg.tar.zst
+            packaging-out/release/SHA256SUMS.arch.txt
+            packaging-out/release/PKGBUILD
+            packaging-out/release/.SRCINFO
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
