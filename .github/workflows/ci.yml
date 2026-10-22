@@ -32,7 +32,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Reference fetch script tests
-        run: bash scripts/tests/fetch-reference.test.sh
+        run: bash scripts/dev/fetch-reference.test.sh
 
       - uses: pnpm/action-setup@v4
         with:
@@ -54,7 +54,7 @@ jobs:
 
       - name: QA generator guard tests
         timeout-minutes: 5
-        run: node --test scripts/qa/*.test.mjs
+        run: node --test scripts/qa/fixture-target.test.mjs scripts/qa/verify-perf-gate.test.mjs
 
       - name: Rust format
         run: cargo fmt --all --check
@@ -100,10 +100,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Parity report tests
-        run: node --test scripts/parity-report.test.mjs
+        run: node --test scripts/qa/parity-report.test.mjs
 
       - name: Parity report
-        run: node scripts/parity-report.mjs --check
+        run: node scripts/qa/parity-report.mjs --check
 
   windows-tauri:
     name: Windows Tauri shell (manual until packaging)

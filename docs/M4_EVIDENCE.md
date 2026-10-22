@@ -15,7 +15,7 @@ that directory's README).
 | Rust format | `cargo fmt --all --check` | pass |
 | Rust lint | `cargo clippy --workspace --all-targets --locked -- -D warnings` | pass |
 | Rust tests | `cargo test --workspace --locked` | 134 passed |
-| Parity gate | `node --test scripts/parity-report.test.mjs && node scripts/parity-report.mjs --check` | pass |
+| Parity gate | `node --test scripts/qa/parity-report.test.mjs && node scripts/qa/parity-report.mjs --check` | pass |
 | Screenshot capture | `pnpm build && node scripts/qa/screenshots-m4.mjs` | 29 PNGs + measurements |
 
 ## Density and virtualization

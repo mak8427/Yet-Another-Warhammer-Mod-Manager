@@ -38,7 +38,7 @@ A pull request may merge only when **both** required checks are
 | Check | Workflow | What it proves |
 |---|---|---|
 | `Linux quality gates` | `.github/workflows/ci.yml` | fmt, clippy, Rust tests, fixture guards, typecheck, lint, frontend tests, build |
-| `Capability parity` | `.github/workflows/ci.yml` | `node scripts/parity-report.mjs --check` |
+| `Capability parity` | `.github/workflows/ci.yml` | `node scripts/qa/parity-report.mjs --check` |
 
 `Windows Tauri shell (manual until packaging)` is skipped on pull requests by
 design and is not a required check. A change to the Tauri layer still needs the
@@ -309,7 +309,7 @@ release task.
 ## Pre-release checklist
 
 - [ ] M4 merged (WAR-10), including SET-4, ML-3, CF-4, PRF-2, and DET-1; `main` is green.
-- [ ] `node scripts/parity-report.mjs` reports **0 missing checks** at the release
+- [ ] `node scripts/qa/parity-report.mjs` reports **0 missing checks** at the release
       head. The allowed limitations are WS-3, LA-1, ML-4, SET-2, and DET-1's
       Linux roots. DSC-1 is done against the corrected PRODUCT_SCOPE after
       WAR-107, and WS-2 is done after WAR-106.

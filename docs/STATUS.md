@@ -155,7 +155,7 @@ now covers name, type, timestamp, and dependencies. This is a removal, not a
 limitation.
 
 The capability-parity index in `docs/PARITY.md` is generated from
-`docs/PARITY.yaml`. At `84b11c6` (WAR-107 merged), `node scripts/parity-report.mjs`
+`docs/PARITY.yaml`. At `84b11c6` (WAR-107 merged), `node scripts/qa/parity-report.mjs`
 reports **94.000% with 35 done / 5 partial / 0 missing**. SET-4, ML-3, CF-4,
 and PRF-2 moved to done with the WAR-10 code and tests cited in
 `docs/PARITY.yaml`; DET-1 stays partial for the documented Flatpak/Snap/XDG

@@ -4,7 +4,7 @@ set -euo pipefail
 readonly PINNED_COMMIT="07fcf3ea1428fe3aa88282ba7aed44d9947ef103"
 readonly TEST_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly REPO_ROOT="$(cd -- "$TEST_DIR/../.." && pwd)"
-readonly SCRIPT="$REPO_ROOT/scripts/fetch-reference.sh"
+readonly SCRIPT="$REPO_ROOT/scripts/dev/fetch-reference.sh"
 
 fail() {
   printf 'FAIL: %s\n' "$*" >&2
@@ -21,12 +21,12 @@ commit_all() {
 # pinned commit can be pointed at a fixture commit.
 new_case() {
   local dir="$1" pinned="$2"
-  mkdir -p "$dir/scripts"
+  mkdir -p "$dir/scripts/dev"
   if [ -n "$pinned" ]; then
     sed "s|^readonly PINNED_COMMIT=.*|readonly PINNED_COMMIT=\"$pinned\"|" \
-      "$SCRIPT" > "$dir/scripts/fetch-reference.sh"
+      "$SCRIPT" > "$dir/scripts/dev/fetch-reference.sh"
   else
-    cp "$SCRIPT" "$dir/scripts/fetch-reference.sh"
+    cp "$SCRIPT" "$dir/scripts/dev/fetch-reference.sh"
   fi
   git init -q "$dir"
 }
@@ -35,7 +35,7 @@ run_case() {
   local name="$1" dir="$2" want_code="$3" want_text="$4"
   local output code
   set +e
-  output="$(bash "$dir/scripts/fetch-reference.sh" 2>&1)"
+  output="$(bash "$dir/scripts/dev/fetch-reference.sh" 2>&1)"
   code=$?
   set -e
   [ "$code" -eq "$want_code" ] ||
@@ -46,7 +46,7 @@ run_case() {
   esac
 }
 
-bash -n "$SCRIPT" || fail "scripts/fetch-reference.sh has a syntax error"
+bash -n "$SCRIPT" || fail "scripts/dev/fetch-reference.sh has a syntax error"
 grep -Fq "readonly PINNED_COMMIT=\"$PINNED_COMMIT\"" "$SCRIPT" ||
   fail "pinned commit changed; update this test with the re-pin"
 

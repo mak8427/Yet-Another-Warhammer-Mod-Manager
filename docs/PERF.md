@@ -3,6 +3,24 @@
 This file records how we measure the paths users feel, on which machine, and with which command.
 A number without an environment and a command does not belong here.
 
+## Runbook
+
+Every bench and fixture is reachable through the root `package.json` scripts. Run them from the
+repository root after `pnpm install --frozen-lockfile`.
+
+| Command | What it does | Evidence or output |
+| --- | --- | --- |
+| `pnpm fixtures:verify` | verifies the committed QA fixtures, then regenerates and verifies the 100/500/2000-pack workloads | `fixtures/manifest.json`, `perf-fixture/suite-manifest.json` |
+| `pnpm fixtures:perf` | regenerates only the gitignored perf workloads | `perf-fixture/` |
+| `pnpm bench` | generates and verifies the workloads, then runs the Criterion suite | Criterion output |
+| `pnpm bench:budget` | regenerates the suite and enforces the scan budgets | exit 1 on a missed budget |
+| `pnpm perf:gate` | validates `docs/perf/comparison.json` against the committed reports | `ok: true` |
+| `pnpm qa:scripts` | runs the fixture, parity, and perf-gate script tests | `node --test` output |
+
+The Criterion bench and both fixture generators run on Linux. The legacy baseline and the new-app
+A/B harnesses need a Windows host; their exact commands, environment, and raw evidence are recorded
+under "Legacy baseline" and "New app vs legacy" below.
+
 ## Legacy baseline
 
 Target: the unmodified WH3 Mod Manager release build, used as the A/B reference for the rebuild.
@@ -431,8 +449,8 @@ budget check so that win cannot silently regress.
 | --- | --- |
 | Bench | `crates/wh3mm-core/benches/hot_paths.rs` (Criterion 0.7, `bench` profile, 100 samples) |
 | Fixture suite | `node scripts/perf/generate-suite.mjs` — 100/500/2000 trees, digest `d8896967d0910fe6e3b8c1a6f5ae0a46f47d5cfd4c079c8d4ead98c3bc024217` |
-| Bench command | `node scripts/perf/generate-suite.mjs && cargo bench -p wh3mm-core --bench hot_paths --locked -- "scan/"` |
-| Budget check | `node scripts/perf/scan-budget.mjs` (regenerates the suite, verifies the digest, fails on a missed budget) |
+| Bench command | `pnpm bench` (`scripts/perf/bench.sh`: generate + verify the suite, then `cargo bench -p wh3mm-core --bench hot_paths --locked`) |
+| Budget check | `pnpm bench:budget` (`scripts/perf/scan-budget.mjs` regenerates the suite, verifies the digest, and fails on a missed budget) |
 | Budget host | Linux dev host, CachyOS 7.2.9, i9-13900K (32 threads), 125.5 GiB RAM, Node v26.11.1 |
 
 Measured WAR-66 before/after (PR #24, head `e22054a`, `main` at `0e05120`, same fixture and host):

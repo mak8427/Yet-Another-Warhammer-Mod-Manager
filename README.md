@@ -25,7 +25,9 @@ crates/wh3mm-app/    Tauri 2 command layer and `wh3mm` binary (Windows-gated)
 frontend/            React + TypeScript + Vite UI
 docs/adr/            architecture decisions
 fixtures/            synthetic QA fixtures (see fixtures/README.md)
-scripts/qa/          deterministic fixture generator
+scripts/dev/         developer setup helpers
+scripts/perf/        workload generators and Criterion bench harness
+scripts/qa/          fixture generator, release gates, and script tests
 ```
 
 The frontend never touches the filesystem. All game, Steam, pack, and state
@@ -94,11 +96,11 @@ cargo build --workspace --locked
 # Run the core, IPC contract, fixture-contract, and command tests
 cargo test --workspace --locked
 
-# Verify the committed synthetic fixtures against their manifest
-node scripts/qa/generate-fixtures.mjs --verify
+# Verify every fixture (committed QA + generated perf workloads)
+pnpm fixtures:verify
 
-# QA script tests (fixture guard + performance-gate validator)
-node --test scripts/qa/*.test.mjs
+# QA script tests (fixture, parity, and performance-gate validators)
+pnpm qa:scripts
 
 # The same lint gates CI enforces
 cargo fmt --all --check

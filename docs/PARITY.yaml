@@ -119,7 +119,7 @@ corrections:
     effect: "No index effect; counts are generated from the current tree."
   - id: oracle-set-rebuilt
     claim: "The 39-file oracle map covered the relevant legacy tests."
-    verified: "The first map padded six cut load-order-rules files (71 assertions) and omitted modSortingHelpers, modRowSorting, modSources and other in-scope files. The set is rebuilt from docs/PRODUCT_SCOPE.md: 29 files and 204 assertions, with membership pinned in scripts/parity-report.test.mjs."
+    verified: "The first map padded six cut load-order-rules files (71 assertions) and omitted modSortingHelpers, modRowSorting, modSources and other in-scope files. The set is rebuilt from docs/PRODUCT_SCOPE.md: 29 files and 204 assertions, with membership pinned in scripts/qa/parity-report.test.mjs."
     effect: "No index effect; oracle total 39 -> 29 and assertions 272 -> 204. Cut-feature files are excluded instead of counted not-applicable."
   - id: ported-dispositions
     claim: "compatScope and compatIndexedAlgorithms were ported."

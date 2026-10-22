@@ -31,7 +31,7 @@ recorded. The open findings below must also be fixed or explicitly accepted.
 | 6 | `pnpm lint` | pass |
 | 7 | `pnpm test` | pass, **75 tests in 9 files** |
 | 8 | `pnpm build` | pass |
-| 9 | `node scripts/parity-report.mjs --check` | exit 0, **94.000%**, 35 done / 5 partial / **0 missing**, oracle 29/29, cut scan 0/35 files |
+| 9 | `node scripts/qa/parity-report.mjs --check` | exit 0, **94.000%**, 35 done / 5 partial / **0 missing**, oracle 29/29, cut scan 0/35 files |
 | 10 | `node scripts/qa/verify-perf-gate.mjs` | **PASS**, all five primary metrics strictly faster |
 
 CI corroboration: `main` CI run [39648458067](https://github.com/mak8427/Warhammer_mod_manager/actions/runs/39648458067)
@@ -179,7 +179,7 @@ cargo fmt --all --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 pnpm typecheck && pnpm lint && pnpm test && pnpm build
-node scripts/parity-report.mjs --check
+node scripts/qa/parity-report.mjs --check
 node scripts/qa/verify-perf-gate.mjs
 ```
 
