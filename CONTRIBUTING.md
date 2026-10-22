@@ -36,9 +36,11 @@ triage labels; you do not need permission to open an issue.
 
 Prerequisites and the end-to-end run instructions are in [README.md](README.md).
 The short version: Rust 1.90+ (stable), Node.js 24.15+, and pnpm 12.14.0. The
-headless Rust workspace and the frontend run on Linux. The desktop shell and
-the installer are Windows targets; see README.md for the current platform
-support.
+Tauri 2 desktop shell builds and runs on Windows and Linux (native
+Steam/Proton); the release installer (NSIS) is Windows-only and macOS is not
+supported. See [README.md](README.md) and
+[ADR-007](docs/adr/007-linux-desktop-shell.md) for the current platform support
+and the per-OS prerequisites.
 
 Run the gates that cover your change. CI runs the Linux quality gates and the
 capability-parity check on every push and pull request; a docs-only change still
