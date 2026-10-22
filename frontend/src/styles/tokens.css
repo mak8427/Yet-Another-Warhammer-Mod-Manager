@@ -11,16 +11,28 @@
 
   /* ---------------------------------------------------------------------
    * Palette (private). Never reference raw palette tokens from components.
+   *
+   * WAR-147: TW:WH3 uses wine-dark stone and brass, not neutral iron.
+   * The ramp is warm so chrome reads as one material with the parchment text.
    * ------------------------------------------------------------------ */
-  --iron-1000: #0a0c0e;
-  --iron-950: #0f1215;
-  --iron-900: #14181c;
-  --iron-850: #191e23;
-  --iron-800: #1f252b;
-  --iron-750: #252c33;
-  --iron-700: #2d353d;
-  --iron-650: #39424c;
-  --iron-600: #454f5a;
+  --obsidian-1000: #070405;
+  --obsidian-950: #0c0809;
+  --obsidian-900: #120d0e;
+  --obsidian-850: #1a1214;
+  --obsidian-800: #221719;
+  --obsidian-750: #2c1e20;
+  --obsidian-700: #38282a;
+  --obsidian-650: #493537;
+  --obsidian-600: #5b4446;
+
+  --wine-950: #1b0b0e;
+  --wine-900: #250e12;
+  --wine-850: #2a1215;
+  --wine-800: #321317;
+  --wine-700: #3d161a;
+  --wine-600: #4d1a1e;
+  --wine-500: #6e1b1e;
+  --wine-400: #8a2426;
 
   --parchment-50: #f6efe0;
   --parchment-100: #e8dcc4;
@@ -149,24 +161,31 @@
   /* ---------------------------------------------------------------------
    * Semantic colour — surfaces
    * ------------------------------------------------------------------ */
-  --color-bg-app: var(--iron-950);
-  --color-bg-rail: var(--iron-900);
-  --color-bg-content: var(--iron-950);
-  --color-bg-surface: var(--iron-850);
-  --color-bg-surface-raised: var(--iron-800);
-  --color-bg-row: var(--iron-950);
-  --color-bg-row-alt: var(--iron-900);
-  --color-bg-row-hover: #20262c;
-  --color-bg-row-selected: #262d34;
-  --color-bg-row-dragging: var(--iron-800);
-  --color-bg-list-header: var(--iron-850);
-  --color-bg-toolbar: var(--iron-900);
-  --color-bg-inspector: var(--iron-900);
-  --color-bg-input: var(--iron-1000);
-  --color-bg-menu: var(--iron-850);
-  --color-bg-dialog: var(--iron-850);
+  --color-bg-app: var(--obsidian-950);
+  --color-bg-rail: var(--obsidian-900);
+  --color-bg-content: var(--obsidian-950);
+  --color-bg-surface: var(--obsidian-850);
+  --color-bg-surface-raised: var(--obsidian-800);
+  --color-bg-row: var(--obsidian-950);
+  --color-bg-row-alt: var(--obsidian-900);
+  --color-bg-row-hover: #241315;
+  --color-bg-row-selected: #331114;
+  --color-bg-row-dragging: var(--obsidian-800);
+  --color-bg-list-header: var(--wine-950);
+  --color-bg-toolbar: #140c0e;
+  --color-bg-inspector: #140c0e;
+  --color-bg-input: var(--obsidian-1000);
+  --color-bg-menu: #1c1214;
+  --color-bg-dialog: #1a1012;
   --color-bg-tooltip: var(--parchment-100);
-  --color-bg-overlay: rgb(5 7 9 / 0.72);
+  --color-bg-overlay: rgb(5 2 3 / 0.78);
+
+  /* TW:WH3 chrome: banner plates and framed panes */
+  --color-bg-banner: #1f0d10;
+  --color-bg-banner-raised: var(--wine-800);
+  --color-bg-rail-plate: #2b1013;
+  --color-bg-tab: var(--wine-950);
+  --color-bg-tab-active: #4a1215;
 
   --color-state-success-bg: #1c2418;
   --color-state-warning-bg: #2a2318;
@@ -196,13 +215,16 @@
   /* ---------------------------------------------------------------------
    * Semantic colour — borders
    * ------------------------------------------------------------------ */
-  --color-border-subtle: var(--iron-750);
-  --color-border-default: var(--iron-700);
-  --color-border-strong: var(--iron-650);
+  --color-border-subtle: var(--obsidian-750);
+  --color-border-default: var(--obsidian-700);
+  --color-border-strong: var(--obsidian-650);
   --color-border-control: #66717e;
   --color-border-accent: var(--brass-600);
   --color-border-focus: var(--brass-400);
   --color-border-selected: var(--brass-500);
+  --color-border-frame: #8f6c32;
+  --color-border-frame-strong: var(--brass-500);
+  --color-border-frame-inner: #120b0c;
   --color-border-success: var(--signal-green);
   --color-border-warning: var(--signal-amber);
   --color-border-danger: var(--signal-red);
@@ -210,19 +232,21 @@
   /* ---------------------------------------------------------------------
    * Semantic colour — actions, tags, focus
    * ------------------------------------------------------------------ */
-  --color-action-primary-bg: var(--brass-500);
-  --color-action-primary-bg-hover: var(--brass-400);
-  --color-action-primary-text: var(--color-text-inverse);
-  --color-action-secondary-bg: transparent;
-  --color-action-secondary-bg-hover: var(--iron-800);
+  --color-action-primary-bg: var(--wine-500);
+  --color-action-primary-bg-hover: var(--wine-400);
+  --color-action-primary-border: var(--brass-500);
+  --color-action-primary-text: var(--parchment-50);
+  --color-action-secondary-bg: #1d1315;
+  --color-action-secondary-bg-hover: #2a1a1d;
+  --color-action-secondary-border: #7a5c2c;
   --color-action-danger-bg: var(--oxide-700);
   --color-action-danger-bg-hover: var(--oxide-600);
   --color-action-danger-text: var(--parchment-50);
   --color-action-disabled-bg: transparent;
   --color-action-disabled-text: var(--color-text-disabled);
 
-  --color-tag-bg: var(--iron-800);
-  --color-tag-border: var(--iron-650);
+  --color-tag-bg: var(--obsidian-800);
+  --color-tag-border: #5c4430;
   --color-tag-text: var(--color-text-secondary);
   --color-selection-bg: var(--brass-700);
   --color-selection-text: var(--parchment-50);
@@ -244,9 +268,17 @@
   --radius-dialog: 4px;
   --radius-scrollbar: 2px;
 
-  --shadow-menu: 0 8px 24px rgb(0 0 0 / 0.45);
-  --shadow-dialog: 0 16px 40px rgb(0 0 0 / 0.55);
-  --shadow-drag: 0 2px 8px rgb(0 0 0 / 0.35);
+  --shadow-menu: 0 8px 24px rgb(0 0 0 / 0.55);
+  --shadow-dialog: 0 16px 40px rgb(0 0 0 / 0.65);
+  --shadow-drag: 0 2px 8px rgb(0 0 0 / 0.4);
+
+  /* Structural bevels, not decoration: they read as stamped metal. */
+  --bevel-plate: inset 0 1px 0 rgb(255 255 255 / 0.05), inset 0 -1px 0 rgb(0 0 0 / 0.6);
+  --bevel-sunken: inset 0 1px 3px rgb(0 0 0 / 0.65);
+  --bevel-frame: inset 0 0 0 1px rgb(0 0 0 / 0.55);
+
+  /* Our own 14x14 brass stud, drawn for this app. Not game art. */
+  --ornament-corner: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='14'%20height='14'%20viewBox='0%200%2014%2014'%3E%3Cpath%20d='M7%201%2013%207%207%2013%201%207Z'%20fill='none'%20stroke='%23c9a24d'/%3E%3Cpath%20d='M7%204%2010%207%207%2010%204%207Z'%20fill='%239a7a32'/%3E%3C/svg%3E");
 
   /* ---------------------------------------------------------------------
    * Motion, stacking, scrollbars
@@ -265,9 +297,9 @@
   --z-tooltip: 100;
 
   --scrollbar-size: 10px;
-  --scrollbar-thumb: var(--iron-650);
-  --scrollbar-thumb-hover: var(--iron-600);
-  --scrollbar-track: var(--iron-900);
+  --scrollbar-thumb: var(--brass-700);
+  --scrollbar-thumb-hover: var(--brass-600);
+  --scrollbar-track: var(--obsidian-900);
 
 }
 

@@ -178,6 +178,38 @@ describe('App', () => {
     expect(await screen.findByText(/Ready · 2 mods · 2 enabled/)).toBeInTheDocument()
   })
 
+  it('opens the tag menu without pushing the toolbar (WAR-147)', async () => {
+    mockReady()
+    render(<App />)
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    fireEvent.click(screen.getByRole('button', { name: /^Tags/ }))
+    const menu = await screen.findByRole('menu', { name: 'Tags' })
+    expect(within(menu).getByRole('menuitemcheckbox', { name: /Overhaul/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Tags/ })).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('gives every screen a faction-framed header (WAR-147)', async () => {
+    mockReady()
+    render(<App />)
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    const rail = screen.getByRole('navigation', { name: 'Sections' })
+    const screens = [
+      ['Profiles', '.profiles-screen', 'azure'],
+      ['Conflicts', '.conflict-screen', 'ember'],
+      ['Workshop', '.workshop-screen', 'copper'],
+      ['Settings', '.settings-screen', 'jade'],
+    ] as const
+
+    expect(document.querySelector('.mods-screen')).toHaveAttribute('data-faction', 'brass')
+    for (const [label, selector, faction] of screens) {
+      fireEvent.click(within(rail).getByRole('button', { name: label }))
+      await screen.findByRole('heading', { name: label })
+      expect(document.querySelector(selector)).toHaveAttribute('data-faction', faction)
+    }
+  })
+
   it('renames a non-active profile without replacing its enabled set', async () => {
     mockReady()
     vi.mocked(ipc.saveProfile).mockResolvedValue({ ...PROFILE_CAMPAIGN, name: 'Campaign renamed' })

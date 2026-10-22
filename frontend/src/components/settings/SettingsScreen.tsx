@@ -30,7 +30,7 @@ export function SettingsScreen() {
   }
 
   return (
-    <section className="settings-screen" aria-labelledby="settings-heading">
+    <section className="settings-screen" data-faction="jade" aria-labelledby="settings-heading">
       <div className="screen-bar">
         <div className="screen-title">
           <h2 id="settings-heading" tabIndex={-1}>

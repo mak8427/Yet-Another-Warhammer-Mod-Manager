@@ -1,6 +1,6 @@
-# UI acceptance — WH3 Mod Manager v1.0
+# UI acceptance — WH3 Mod Manager v1.1
 
-- Status: active for M2 and M4
+- Status: active for M2, M4, and the WAR-147 v1.1 fidelity pass
 - Owner: Katerina Zarina (final sign-off); Baltasar Gelt (QA verification)
 - Visual contract: `docs/UI_DIRECTION.md`
 - Tokens: `frontend/src/styles/tokens.css`
@@ -489,6 +489,55 @@ These apply to every screen and every milestone.
   retry, change the path, or quit safely.
   Evidence: The fatal screen offers Retry and the no-game/setup state offers path entry and retry; `App.test.tsx` error and no-game tests cover the recovery paths.
 
+## WAR-147 TW:WH3 fidelity pass (v1.1)
+
+Scope: `docs/UI_DIRECTION.md` §2.8 and `docs/adr/008-tw-wh3-fidelity-skin.md`.
+Evidence set: `docs/screenshots/WAR-147/`. The v1.0 gates above remain in force;
+this section adds the visual-fidelity checks for the skin.
+
+- `[ ]` F-01 `docs/UI_DIRECTION.md` §2.8 links the reference captures, states
+  that they are not committed, and maps the observed palette, typography, and
+  chrome anatomy to semantic tokens.
+  Evidence: §2.8; the only image in the repo is our own reference study plate.
+- `[ ]` F-02 The reference study plate and every capture are our own rendering.
+  No game screenshot, crest, texture, or external font is committed.
+  Evidence: `docs/screenshots/WAR-147/reference-study__*.png`; `tokens.test.ts`
+  rejects remote assets and `@font-face`.
+- `[ ]` F-03 The shell chrome matches the fidelity language: brass-ruled title
+  strip, banner-plate screen titles, framed rail plate, brass-ruled toolbar and
+  column header, framed inspector/dialog/menu panels, and stamped buttons.
+  Evidence: 1920×1080 and 1366×768 captures for Mods, Profiles, Conflicts,
+  Workshop, Settings, dialogs, empty, loading, first-run, and error.
+- `[ ]` F-04 Every screen and rail item carries a stable faction accent
+  (Mods brass, Profiles azure, Conflicts ember, Workshop copper, Settings jade)
+  and the label remains visible.
+  Evidence: `SectionRail.test.tsx` faction test; `App.test.tsx` screen framing
+  test; captures.
+- `[ ]` F-05 The pass did not consume mod-list space: shell heights remain
+  40/40/28/24, row heights remain 32/40/48, and the visible-row counts remain
+  29/23/19 at 1920×1080 and 19/15/13 at 1366×768.
+  Evidence: capture run prints `shell={"title":40,"toolbar":40,
+  "listHeader":28,"status":24}` and the counts; `tokens.test.ts`.
+- `[ ]` F-06 Density, virtualization, and keyboard behaviour are unchanged:
+  `pnpm test` includes the v1.0 density, scroll-preservation, bounded-row, and
+  keyboard tests.
+  Evidence: test output in `docs/UI_FIDELITY_EVIDENCE.md`; no test changed its
+  assertions for this pass.
+- `[ ]` F-07 Contrast, focus visibility, forced-colors, and reduced-motion
+  rules still pass; the brass frame does not clip the focus ring.
+  Evidence: `tokens.test.ts`; `.btn` keeps an outer outline and no `clip-path`;
+  captures include focus states at 1366×768.
+- `[ ]` F-08 Before/after side-by-side captures exist for every screen at
+  1920×1080 and 1366×768.
+  Evidence: `docs/screenshots/WAR-147/side-by-side/`.
+- `[ ]` F-09 No gradient, glow, blur, backdrop-filter, or remote asset was
+  introduced.
+  Evidence: `tokens.test.ts` — `forbids decorative gradients, glows, and
+  external assets in every stylesheet`.
+- `[ ]` F-10 The PR links WAR-147, lists the changed screens, and carries the
+  verification table, merged SHA, and screenshot paths.
+  Evidence: PR body + `docs/UI_FIDELITY_EVIDENCE.md`.
+
 ## Cross-cutting review checklist
 
 - `[x]` X-01 Every screen in this document has a screenshot at 1920×1080 and
@@ -528,6 +577,18 @@ These apply to every screen and every milestone.
 | Workshop virtualization | `WorkshopScreen.test.tsx` — 500 subscriptions mount ≤30 rows | pass |
 | Screenshot set | `docs/screenshots/WAR-10/` — 29 PNGs at 1920×1080 and 1366×768, plus compact/roomy and selection states; see `docs/M4_EVIDENCE.md` | pass |
 
+### WAR-147 verification record
+
+| Check | Command / evidence | Result |
+|---|---|---|
+| `pnpm typecheck` | `pnpm typecheck` | pass |
+| `pnpm lint` | `pnpm lint` | pass |
+| `pnpm test` | `pnpm test` — 10 files / 80 tests | pass |
+| `pnpm build` | `pnpm build` | pass |
+| Shell geometry | capture run prints 40/40/28/24 at both viewports | pass |
+| Visible rows | 29/23/19 at 1920×1080; 19/15/13 at 1366×768 | pass |
+| Screenshot set | `docs/screenshots/WAR-147/` — both viewports + side-by-side | pass |
+
 ## Open items
 
 These are the only unchecked items. Each has an explicit owner and milestone;
@@ -552,6 +613,9 @@ gate.
 | QA | Baltasar Gelt | | | checklist + test run |
 | Performance (if changed) | Genny4Real | | | before/after numbers |
 | Tech lead | Katerina Zarina | | | merge approval |
+| WAR-147 implementation | Karl Franz | Ready for QA | 2026-10-22 | PR + `docs/UI_FIDELITY_EVIDENCE.md` |
+| WAR-147 QA | Baltasar Gelt | | | F-01..F-10 |
+| WAR-147 tech lead | Katerina Zarina | | | design + merge approval |
 
 A screen is `done` only when every global gate and every item in its section is
 checked with evidence, the suite is green, and QA and tech lead have signed.

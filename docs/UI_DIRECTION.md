@@ -1,11 +1,12 @@
-# UI direction — WH3 Mod Manager v1.0
+# UI direction — WH3 Mod Manager v1.1
 
-- Status: accepted for M2/M4
+- Status: accepted for M2/M4; v1.1 fidelity pass accepted for WAR-147
 - Owner: Katerina Zarina
-- Date: 2026-10-21
+- Date: 2026-10-21 (v1.0); 2026-10-22 (v1.1)
 - Product contract: `docs/PRODUCT_SCOPE.md`
 - Architecture: `docs/adr/001-architecture.md`, `docs/adr/002-ipc-contract.md`,
-  `docs/adr/003-data-model.md`, `docs/adr/006-ui-tokens-and-density.md`
+  `docs/adr/003-data-model.md`, `docs/adr/006-ui-tokens-and-density.md`,
+  `docs/adr/008-tw-wh3-fidelity-skin.md`
 - Token source: `frontend/src/styles/tokens.css`
 - Screen checklist: `docs/UI_ACCEPTANCE.md`
 - Legacy reference (read-only): `docs/DESIGN.md` in
@@ -25,9 +26,11 @@ Three rules decide every visual question:
 
 1. **The mod list is the product.** Chrome recedes; the list gets the pixels.
    Every pixel spent on framing is a row the user cannot see.
-2. **TW:WH3 is a material language, not a decoration budget.** Dark iron and
-   charcoal surfaces, parchment text, brass rules, square heraldic accents, and
-   a serif display face for titles. No art, no textures, no glow, no gradients.
+2. **TW:WH3 is a material language, not a decoration budget.** Wine-dark stone
+   surfaces, parchment text, stamped brass frames and banner plates, square
+   heraldic accents, and a serif display face for titles. Structural bevels and
+   one token-defined brass corner stud are the only ornament. No imported art,
+   no textures, no glow, no gradients.
 3. **State is explicit.** Enabled, selected, conflicting, missing a dependency,
    loading, empty, and failed are each expressed with at least two channels:
    shape/icon + text + colour, in that order of importance.
@@ -53,8 +56,8 @@ Drop:
 
 ### Visual references, in order
 
-1. TW:WH3 campaign UI: iron frames, parchment readability, heraldic accents
-   used sparingly.
+1. TW:WH3 campaign UI: wine-dark stone, brass frames, parchment readability,
+   heraldic accents used sparingly.
 2. A professional desktop tool: precise alignment, 1px rules, tabular numbers,
    no ornamental motion.
 3. The legacy mod list: density and interaction behaviour, not its skin.
@@ -63,9 +66,10 @@ Drop:
 
 `frontend/src/styles/tokens.css` is the single source of truth. Components
 MUST consume semantic tokens (`--color-*`, `--text-*`, `--space-*`, `--row-*`,
-`--control-*`, `--radius-*`, `--shadow-*`, `--z-*`, `--motion-*`,
-`--faction-*`) and MUST NOT read raw palette tokens (`--iron-*`,
-`--parchment-*`, `--brass-*`, `--signal-*`) or hard-code colours.
+`--control-*`, `--radius-*`, `--shadow-*`, `--bevel-*`, `--ornament-*`,
+`--z-*`, `--motion-*`, `--faction-*`) and MUST NOT read raw palette tokens
+(`--obsidian-*`, `--wine-*`, `--parchment-*`, `--brass-*`, `--signal-*`) or
+hard-code colours.
 
 ### 2.1 Colour
 
@@ -73,24 +77,29 @@ MUST consume semantic tokens (`--color-*`, `--text-*`, `--space-*`, `--row-*`,
 
 | Token | Value | Use |
 |---|---|---|
-| `--color-bg-app` | `#0f1215` | App and list background |
-| `--color-bg-rail` | `#14181c` | Title strip, left rail, status bar |
-| `--color-bg-content` | `#0f1215` | Main pane behind lists |
-| `--color-bg-surface` | `#191e23` | Panels, inspector, list header, menus |
-| `--color-bg-surface-raised` | `#1f252b` | Hovered controls, tag background |
-| `--color-bg-row` | `#0f1215` | Mod/table row |
-| `--color-bg-row-alt` | `#14181c` | Alternating row, if used |
-| `--color-bg-row-hover` | `#20262c` | Pointer hover |
-| `--color-bg-row-selected` | `#262d34` | Selected row |
-| `--color-bg-row-dragging` | `#1f252b` | Source row during drag |
-| `--color-bg-list-header` | `#191e23` | Column header |
-| `--color-bg-toolbar` | `#14181c` | Toolbar, filter bar |
-| `--color-bg-inspector` | `#14181c` | Inspector sidebar |
-| `--color-bg-input` | `#0a0c0e` | Text input, search field |
-| `--color-bg-menu` | `#191e23` | Context menu, dropdown |
-| `--color-bg-dialog` | `#191e23` | Dialog surface |
+| `--color-bg-app` | `#0c0809` | App and list background |
+| `--color-bg-rail` | `#120d0e` | Title strip, left rail, status bar |
+| `--color-bg-content` | `#0c0809` | Main pane behind lists |
+| `--color-bg-surface` | `#1a1214` | Panels, inspector, list header, menus |
+| `--color-bg-surface-raised` | `#221719` | Hovered controls, tag background |
+| `--color-bg-row` | `#0c0809` | Mod/table row |
+| `--color-bg-row-alt` | `#120d0e` | Alternating row, if used |
+| `--color-bg-row-hover` | `#241315` | Pointer hover |
+| `--color-bg-row-selected` | `#331114` | Selected row |
+| `--color-bg-row-dragging` | `#221719` | Source row during drag |
+| `--color-bg-list-header` | `#1b0b0e` | Column header |
+| `--color-bg-toolbar` | `#140c0e` | Toolbar, filter bar |
+| `--color-bg-inspector` | `#140c0e` | Inspector sidebar |
+| `--color-bg-input` | `#070405` | Text input, search field |
+| `--color-bg-menu` | `#1c1214` | Context menu, dropdown |
+| `--color-bg-dialog` | `#1a1012` | Dialog surface |
+| `--color-bg-banner` | `#1f0d10` | Screen/dialog banner plate |
+| `--color-bg-banner-raised` | `#321317` | Hovered menu item on a banner |
+| `--color-bg-rail-plate` | `#2b1013` | Active rail plate |
+| `--color-bg-tab` | `#1b0b0e` | Idle tab |
+| `--color-bg-tab-active` | `#4a1215` | Active tab |
 | `--color-bg-tooltip` | `#e8dcc4` | Parchment tooltip |
-| `--color-bg-overlay` | `rgb(5 7 9 / 0.72)` | Modal backdrop |
+| `--color-bg-overlay` | `rgb(5 2 3 / 0.78)` | Modal backdrop |
 
 State fills: `--color-state-success-bg` `#1c2418`,
 `--color-state-warning-bg` `#2a2318`, `--color-state-danger-bg` `#2a1c19`,
@@ -102,12 +111,12 @@ State fills: `--color-state-success-bg` `#1c2418`,
 
 | Token | Value | Minimum contrast |
 |---|---|---|
-| `--color-text-primary` | `#e8dcc4` | 13.84:1 on app, 12.36:1 on surface |
-| `--color-text-secondary` | `#d6c8ac` | 11.38:1 on app, 10.16:1 on surface |
-| `--color-text-muted` | `#a59a83` | 6.76:1 on app, 6.03:1 on surface, 5.01:1 on selected row |
-| `--color-text-disabled` | `#948a76` | 4.92:1 on surface; inactive controls only |
+| `--color-text-primary` | `#e8dcc4` | 14.67:1 on app, 13.56:1 on surface |
+| `--color-text-secondary` | `#d6c8ac` | 12.06:1 on app, 11.15:1 on surface |
+| `--color-text-muted` | `#a59a83` | 7.16:1 on app, 6.62:1 on surface, 6.13:1 on selected row |
+| `--color-text-disabled` | `#948a76` | 5.40:1 on surface; inactive controls only |
 | `--color-text-inverse` | `#1a1408` | On brass/parchment fills |
-| `--color-text-accent` | `#d7b45f` | 9.47:1 on app |
+| `--color-text-accent` | `#d7b45f` | 10.04:1 on app, 9.42:1 on banner |
 | `--color-text-link` | `#d7b45f` | Same as accent; underline on hover |
 | `--color-text-success` | `#a3c178` | 7.95:1 on success fill |
 | `--color-text-warning` | `#e0b45c` | 8.03:1 on warning fill |
@@ -122,21 +131,24 @@ inspector status carry the disabled meaning.
 
 | Token | Value | Use |
 |---|---|---|
-| `--color-border-subtle` | `#252c33` | Row separators, section rules |
-| `--color-border-default` | `#2d353d` | Panel, rail, toolbar edges |
-| `--color-border-strong` | `#39424c` | Menus, dialogs, tag edges |
+| `--color-border-subtle` | `#2c1e20` | Row separators, section rules |
+| `--color-border-default` | `#38282a` | Panel, rail, toolbar edges |
+| `--color-border-strong` | `#493537` | Menus, dialogs, tag edges |
 | `--color-border-control` | `#66717e` | Input/select/button boundary (>=3:1) |
 | `--color-border-accent` | `#9a7a32` | Brass frame detail |
+| `--color-border-frame` | `#8f6c32` | Outer brass frame on chrome plates |
+| `--color-border-frame-strong` | `#c9a24d` | Hover/selected brass frame |
+| `--color-border-frame-inner` | `#120b0c` | Dark inner line of a frame |
 | `--color-border-focus` | `#d7b45f` | Focus ring |
 | `--color-border-selected` | `#c9a24d` | Selected-row left rule |
 | `--color-border-success` / `warning` / `danger` | signal colours | State boundaries |
 
-`--color-action-primary-bg` `#c9a24d` with `--color-action-primary-text`
-`#1a1408` (7.63:1); hover `#d7b45f`. `--color-action-secondary-bg` is
-transparent with `--color-border-control`; hover `#1f252b`.
-`--color-action-danger-bg` `#7f2a21` with `#f6efe0` (8.13:1); hover `#8f2d21`.
-Disabled actions use `--color-action-disabled-text` and a strong border; never
-opacity below 0.72.
+`--color-action-primary-bg` `#6e1b1e` with
+`--color-action-primary-text` `#f6efe0` (9.98:1), a `#c9a24d` border, and hover
+`#8a2426`. `--color-action-secondary-bg` is `#1d1315` with a `#7a5c2c` border;
+hover `#2a1a1d`. `--color-action-danger-bg` `#7f2a21` with `#f6efe0` (8.13:1);
+hover `#8f2d21`. Disabled actions use `--color-action-disabled-text` and a
+strong border; never opacity below 0.72.
 
 #### Faction accents
 
@@ -246,17 +258,20 @@ layout.
 
 ### 2.5 Borders, radius, elevation
 
-- 1px hairlines do the structural work. No double borders.
+- 1px hairlines do the structural work. Chrome plates may use a brass outer
+  border and a 1px dark inner line (`--bevel-frame`) to read as a frame.
 - Radii: 0 for row rules and separators; 2px for controls, chips, tags; 3px for
   panels and the inspector; 4px for dialogs. No pill shapes; status indicators
   are square/diamond and the scrollbar thumb is 2px.
 - Shadows are functional only: menus (`--shadow-menu`), dialogs
-  (`--shadow-dialog`), drag ghost (`--shadow-drag`). Nothing else casts a
+  (`--shadow-dialog`), drag ghost (`--shadow-drag`). Inset bevels
+  (`--bevel-plate`, `--bevel-sunken`, `--bevel-frame`) are structural; no other
   shadow.
-- No gradients, no glow, no blur, no backdrop-filter, no inner shadows, no
-  bevels, no ornamental corner marks.
-- CSS-only texture is permitted only as a 1px rule pattern at no more than 3%
-  contrast. The v1.0 default is flat fills; prefer no texture.
+- No gradients, glow, blur, backdrop-filter, or imported ornament. The only
+  corner mark is the token-defined brass stud (`--ornament-corner`), drawn by
+  this project, placed at the four corners of a framed panel.
+- No CSS texture. Surfaces are flat fills; the material read comes from the
+  warm palette, brass rules, banner plates, and bevels.
 
 ### 2.6 Motion
 
@@ -276,6 +291,66 @@ layout.
 values in components. Tooltips sit above dialogs only because they are
 non-interactive overlays; a tooltip inside a dialog uses the same layer.
 
+### 2.8 TW:WH3 fidelity mapping (WAR-147)
+
+This section records the reference study for the v1.1 fidelity pass. Reference
+captures are **linked, not committed**: they are third-party or game media.
+Every image in `docs/screenshots/` is our own rendering.
+
+Reference sources:
+
+- Total War: WARHAMMER III official Steam page, screenshot gallery (the
+  character panel capture is the clearest chrome reference):
+  <https://store.steampowered.com/app/1142710/Total_War_WARHAMMER_III/#screenshots>
+- Total War blog, Update 2.0.0, which documents the front-end and faction-select
+  overhaul: <https://www.totalwar.com/news/total-war-warhammer-iii-update-200/>
+- Faction-select capture, Rooslawn's Unmapped Worlds (screenshot by the author;
+  reference only): <https://unmappedworlds.com/posts/start-screen-is-the-best-part-of-the-game/>
+- Total War Academy, campaign UI overview:
+  <https://academy.totalwar.com/campaign-what-the-ui-is-and-does>
+
+#### Observed chrome anatomy
+
+| Reference element | Observation | Our token / rule |
+|---|---|---|
+| Panel field | Near-black warm brown, not neutral grey: sampled `#0b0706`–`#160a0b` | `--color-bg-app` `#0c0809`, `--color-bg-surface` `#1a1214` |
+| Banner / header plate | Dark wine field with a pale serif title, sampled `#1e0c0a` | `--color-bg-banner` `#1f0d10`; `.toolbar-title`, `.screen-title`, `.modal-header` |
+| Active section / selected row | Deep crimson wash, brighter than the field, sampled `#460a09` for engraved bars | `--color-bg-row-selected` `#331114`, `--color-bg-tab-active` `#4a1215` |
+| Frame | Double brass rule: bright outer line, dark inner line, corner studs | `--color-border-frame` `#8f6c32`, `--bevel-frame`, `--ornament-corner` |
+| Title type | Serif capitals / small caps with wide tracking | `--font-display`; banner rules use `font-variant: small-caps` |
+| Body type | Serif in game panels; sans retained for dense desktop rows | Display face for titles, `--font-body` for rows and controls |
+| Buttons | Dark plate, brass border, capitals; primary is crimson with brass frame | `.btn`, `.btn-primary`, `--color-action-primary-*` |
+| Tabs | Dark plates; the active tab is a crimson plate with a brass edge | `--color-bg-tab-active`, `.filter-tab.is-active` |
+| Faction identity | Accent is a rule or diamond beside a visible label, never the only signal | eight `--faction-accent-*` slots; `data-faction` on rail items and screen headers |
+
+Palette mapping (semantic tokens; reference values are sampled approximations
+because the captures are JPEG and scene-lit):
+
+| Semantic token | Old (M4) | New (v1.1) | Reference role |
+|---|---|---|---|
+| `--color-bg-app` | `#0f1215` | `#0c0809` | Panel/void field |
+| `--color-bg-rail` | `#14181c` | `#120d0e` | Title strip, rail, status bar |
+| `--color-bg-surface` | `#191e23` | `#1a1214` | Raised plate |
+| `--color-bg-list-header` | `#191e23` | `#1b0b0e` | Engraved column strip |
+| `--color-bg-row-selected` | `#262d34` | `#331114` | Crimson selection wash |
+| `--color-border-frame` | — | `#8f6c32` | Brass frame |
+| `--color-action-primary-bg` | `#c9a24d` | `#6e1b1e` | Crimson primary plate |
+| `--color-action-primary-text` | `#1a1408` | `#f6efe0` | Parchment label |
+
+Typography mapping:
+
+| Role | Reference | Our token |
+|---|---|---|
+| App title | Serif capitals / small caps, brass or parchment | `--font-display`, 16px, `small-caps`, `0.04em` |
+| Screen title | Large serif title on a banner plate | `--font-display`, 22px, banner plate |
+| Section labels | Gold capitals with wide tracking and flanking rules | `--font-display`, 11px, `0.18em`, `--color-text-accent` |
+| Buttons | Small serif capitals | `--font-display`, 11px, `text-transform: uppercase`, `0.07em` |
+| Rows | Readable body, tabular numbers | `--font-body`, 11–14px; `--font-mono` for counts |
+
+Rule: the display serif is used for banners, titles, section labels, and
+buttons; it is **not** used inside mod names, metadata, tags, or table cells,
+where density and legibility win.
+
 ## 3. Shell
 
 ```
@@ -294,15 +369,16 @@ non-interactive overlays; a tooltip inside a dialog uses the same layer.
 
 ### 3.1 Title strip (40px)
 
-- Left: 28×28 brass-framed sigil, `TOTAL WAR` kicker (11px label), app name
-  (16px display). The sigil is the only decorative element allowed in the
-  shell.
+- Left: 28×28 shield-shaped brass sigil, `TOTAL WAR` kicker (11px label in
+  brass), app name (16px display, small caps). The sigil is the only
+  illustration in the shell.
 - Centre: profile selector, 28px high, label `Profile` + current name. This is
   the only place the active profile is switched from outside the Profiles
   screen.
 - Right: game status (`◆ Game found` / `◇ Set game path`), settings icon button,
   window controls provided by the OS. Do not draw fake window buttons.
-- Background `--color-bg-rail`, bottom border default. No gradient.
+- Background `--color-bg-rail`, 1px brass bottom rule with a small brass clasp
+  at the centre. No gradient.
 
 ### 3.2 Left rail (208px)
 
@@ -313,7 +389,9 @@ Workshop/Settings.
 
 - Item height 32px, icon 16px inline SVG, label 13px, 10px horizontal padding.
 - Idle: transparent, secondary text. Hover: surface raised, primary text.
-- Active: surface fill, 2px brass left rule, primary text, medium weight.
+- Active: wine plate (`--color-bg-rail-plate`), 1px brass frame, 2px
+  faction-accent left rule, primary text, medium weight. The brass default is
+  used outside the five screen accents listed in §2.8.
 - Focus: the global focus ring, inset by 2px.
 - Planned/unavailable sections are not rendered at v1.0. During M2/M3 a section
   that is not yet implemented may render disabled with the text `Not available
@@ -325,24 +403,27 @@ Workshop/Settings.
 
 - Main pane fills the space between rail, inspector, title strip, and status
   bar. It does not scroll; the list inside it owns vertical scrolling.
-- Toolbar: 40px, 12px horizontal padding, `--color-bg-toolbar`, bottom border
-  subtle. Groups are separated by a 16px-high 1px vertical rule.
+- Toolbar: 40px, 12px horizontal padding, `--color-bg-toolbar`, 1px brass
+  bottom rule. Groups are separated by a 16px-high 1px brass rule with a small
+  centre diamond.
 - Group 1: search field, 280px preferred (200–360px), 28px high, magnifier icon
   14px, `Ctrl+F` hint on the right.
 - Group 2: active filter chips (24px, tag accent 2px left, label 11px, remove
   button 16px) and `Clear filters` text button.
 - Group 3: sort select (28px) with a visible label (`Sort: Name A–Z`), density
   select (`Density: Comfortable`), column visibility menu.
-- Group 4 (right): primary `Apply load order` button (28px, brass, dark text)
-  and overflow menu. The primary action is disabled when the order is clean;
-  disabled state uses text + border, not opacity alone.
-- No hero header, no subtitle paragraph, no stats tiles. The screen title is in
-  the pane heading, 22px display, with a count in mono (`142 mods`).
+- Group 4 (right): primary `Apply load order` button (28px, crimson plate,
+  brass frame, parchment capitals) and overflow menu. The primary action is
+  disabled when the order is clean; disabled state uses text + border, not
+  opacity alone.
+- The screen title sits on a 30px banner plate with a 3px faction-accent left
+  rule and a 6px diamond; its count is mono. No hero header, no subtitle
+  paragraph, no stats tiles.
 
 ### 3.4 List header (28px)
 
-One grid row shared with the data rows. Labels are 11px uppercase, muted,
-letterspacing 0.08em. Sortable columns show a 10px triangle arrow next to the
+One grid row shared with the data rows. Labels are 11px uppercase brass,
+letterspacing 0.12em, on the engraved column strip. Sortable columns show a 10px triangle arrow next to the
 label and expose `aria-sort`. The header does not scroll horizontally; there is
 no horizontal scroll. Column visibility is controlled from the toolbar menu;
 the order and enable columns are always visible.
@@ -378,9 +459,10 @@ line and never scrolls.
 
 - Width 480px (confirm), 640px (form), 880px (wide detail); max height
   `calc(100vh - 96px)`; centered; overlay `--color-bg-overlay`.
-- Header 44px, title 18px display, close button 28px. Body scrolls; 16px
-  padding. Footer 56px with buttons right-aligned, 8px gap; cancel is
-  secondary, the safe action is focused first.
+- Header 44px, centred banner plate with an 18px display title in small caps,
+  close button 28px at the right. Body scrolls; 16px padding. Footer 56px with
+  a brass top rule and buttons right-aligned, 8px gap; cancel is secondary, the
+  safe action is focused first.
 - Destructive dialogs: danger-filled button with an explicit verb (`Delete
   profile`, `Write load order`), a plain-language consequence sentence, and
   cancel as the default focus.
@@ -393,7 +475,7 @@ line and never scrolls.
 
 - Menus: 200px min, 28px items, 8px horizontal padding, icon 14px, shortcut
   right-aligned in mono 11px, 1px separators. Destructive items last, danger
-  text. Shadow menu; no arrow.
+  text. Brass frame, four corner studs, shadow menu; no arrow.
 - Tooltips: parchment surface, inverse text, 1px brass-600 border, 11/14,
   max 360px and 3 lines, 500ms delay, 8px offset. Tooltips explain truncation
   or icon-only controls; they never contain the only copy of a warning.
@@ -613,9 +695,11 @@ Rules:
    contributes its accent to the row. Other tags keep neutral chips. Do not
    tint the row, checkbox, order number, or borders.
 3. **Header framing is a clue, not a theme.** When exactly one faction tag
-   filter is active, the screen title gets a 2px accent rule and a 12px
+   filter is active, the screen title gets a 3px accent rule and a 6px
    diamond, and the title reads `Mods · <Tag>`. With no faction filter, the
-   rule is brass. The accent may occupy at most 2×160px in the header.
+   rule is brass. Each of the five screens also has a stable accent
+   (Mods brass, Profiles azure, Conflicts ember, Workshop copper, Settings
+   jade). The accent may occupy at most 2×160px in the header.
 4. **Palette, not heraldry.** Use the eight accent slots only. Do not add race
    crests, insignia, or artwork without a licensed asset and a new decision.
    The product ships with no external art.
@@ -691,7 +775,9 @@ The following are review failures:
 
 1. Cards for rows, cards for settings, or a card per conflict.
 2. Hero panels, marketing copy, taglines, or onboarding illustrations.
-3. Gradients, glow, blur, backdrop-filter, bevels, or ornamental corners.
+3. Gradients, glow, blur, or backdrop-filter. Structural bevels and the
+   token-defined brass corner stud are permitted chrome; imported ornament is
+   not.
 4. Dashboard tiles, KPI strips, sparklines, or decorative charts.
 5. Empty states taller than 200px, or empty states with art.
 6. Pill-shaped buttons or pills as row containers.
@@ -726,8 +812,9 @@ The following are review failures:
   in component CSS.
 - Row grids are defined once per breakpoint and shared by header and rows.
   Header and row MUST use the same template.
-- No CSS texture or image is required. If one is added, it must be a CSS-only
-  1px pattern at <=3% contrast, with no animation.
+- No CSS texture or image is required. The only image asset is
+  `--ornament-corner`, a 14×14 brass stud drawn for this project as an inline
+  SVG data URI. It must not be replaced with game art.
 - Every new component state must map to an existing semantic token. If it
   cannot, propose a token change in review; do not invent a local value.
 - Token changes that alter meaning or contrast require an update to this
