@@ -96,6 +96,7 @@ jobs:
 
       - name: Resolve release version
         id: version
+        shell: bash
         env:
           INPUT_VERSION: ${{ inputs.version }}
           REF_TYPE: ${{ github.ref_type }}
@@ -138,6 +139,7 @@ jobs:
         run: npx --yes @tauri-apps/cli@2.12.4 build --ci --bundles deb,appimage
 
       - name: Stage artifacts and checksums
+        shell: bash
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
@@ -207,6 +209,7 @@ jobs:
 
       # The .deb declares its WebKitGTK/GTK dependencies; apt installs them.
       - name: Install the .deb and start the app
+        shell: bash
         run: |
           set -euo pipefail
           apt-get update
@@ -219,6 +222,7 @@ jobs:
       # AppImage payload on the same clean base image. Containers have no
       # /dev/fuse, so smoke-test.sh uses the runtime's extract-and-run mode.
       - name: Run the AppImage
+        shell: bash
         run: |
           set -euo pipefail
           appimage=$(ls dist/*.AppImage)
@@ -244,13 +248,14 @@ jobs:
             libayatana-appindicator-gtk3 \
             xorg-x11-server-Xvfb \
             xdotool \
-            dbus-tools
+            dbus-daemon
 
       - name: Verify checksums
         working-directory: dist
         run: sha256sum -c SHA256SUMS.txt
 
       - name: Run the tarball
+        shell: bash
         run: |
           set -euo pipefail
           mkdir -p /opt/wh3mm
@@ -258,6 +263,7 @@ jobs:
           bash dist/smoke-test.sh /opt/wh3mm/wh3mm
 
       - name: Run the AppImage
+        shell: bash
         run: |
           set -euo pipefail
           appimage=$(ls dist/*.AppImage)
@@ -278,9 +284,17 @@ jobs:
           pacman -Syu --noconfirm --needed \
             base-devel git nodejs npm rust \
             webkit2gtk-4.1 libayatana-appindicator patchelf gtk3 librsvg \
-            openssl dbus xorg-server-xvfb xdotool sudo
+            openssl dbus dbus-daemon xorg-server-xvfb xdotool sudo shadow
 
       - uses: actions/checkout@v4
+
+      # cargo tests include a read-only-directory fault-injection case that
+      # root can bypass. Run the frontend and Rust gates as an unprivileged
+      # builder so the tests keep their meaning inside the container.
+      - name: Create non-root builder
+        run: |
+          id builder >/dev/null 2>&1 || useradd --create-home builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
 
       - name: Install pnpm
         run: npm install --global pnpm@12.14.0
@@ -293,21 +307,24 @@ jobs:
           pnpm --version
 
       - name: Install frontend dependencies
-        run: pnpm install --frozen-lockfile
+        run: sudo -u builder -H pnpm install --frozen-lockfile
 
       - name: Frontend gates
         run: |
-          pnpm typecheck
-          pnpm lint
-          pnpm test
-          pnpm build
+          sudo -u builder -H pnpm typecheck
+          sudo -u builder -H pnpm lint
+          sudo -u builder -H pnpm test
+          sudo -u builder -H pnpm build
 
       - name: Rust gates
+        shell: bash
         run: |
-          cargo fmt --all --check
-          cargo clippy --workspace --all-targets --locked -- -D warnings
-          cargo test --workspace --locked
-          cargo build -p wh3mm-app --release --locked
+          set -euo pipefail
+          sudo -u builder -H bash -c 'test "$(id -u)" -ne 0'
+          sudo -u builder -H cargo fmt --all --check
+          sudo -u builder -H cargo clippy --workspace --all-targets --locked -- -D warnings
+          sudo -u builder -H cargo test --workspace --locked
+          sudo -u builder -H cargo build -p wh3mm-app --release --locked
 
       - uses: actions/download-artifact@v4
         with:
@@ -325,6 +342,7 @@ jobs:
             packaging-out
 
       - name: Install the package and start the app
+        shell: bash
         run: |
           set -euo pipefail
           pkg=$(find packaging-out -maxdepth 1 -name 'wh3mm-bin-*.pkg.tar.zst' -print -quit)
@@ -335,6 +353,7 @@ jobs:
           bash artifacts/smoke-test.sh /usr/bin/wh3mm
 
       - name: Stage the package, PKGBUILD, and checksums
+        shell: bash
         env:
           VERSION: ${{ needs.bundles.outputs.version }}
         run: |

@@ -66,12 +66,14 @@ jobs:
       - name: QA fixture integrity
         run: node scripts/qa/generate-fixtures.mjs --verify
 
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The packaging guard reads the workflow files with the root `yaml`
+      # dependency, so it runs after the workspace install.
       - name: QA generator guard tests
         timeout-minutes: 5
         run: node --test scripts/qa/*.test.mjs
-
-      - name: Install frontend dependencies
-        run: pnpm install --frozen-lockfile
 
       # generate_context! embeds frontend/dist at compile time, so the frontend
       # must exist before clippy or tests build the app crate.
