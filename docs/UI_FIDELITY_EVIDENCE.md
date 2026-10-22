@@ -3,7 +3,7 @@
 - Issue: WAR-147 (`60d73306-80b3-4d45-a4af-6ebee00ba475`)
 - Branch: `feat/war-147-ui-fidelity`
 - Base: `main` @ `1747c64`
-- PR: pending
+- PR: #59 (https://github.com/mak8427/Warhammer_mod_manager/pull/59)
 - Merged SHA: pending
 
 ## What changed
@@ -130,7 +130,7 @@ These v1.0 tests still pass unchanged in intent and assertions:
 | F-07 contrast/focus/forced-colors | `tokens.test.ts`; `mods__focus__*`; unchanged media blocks |
 | F-08 side-by-side at both viewports | `side-by-side/` 29 composites |
 | F-09 no gradient/glow/remote asset | `tokens.test.ts` forbidden-pattern test |
-| F-10 PR evidence | PR body + this file |
+| F-10 PR evidence | PR #59 + `docs/UI_FIDELITY_EVIDENCE.md` |
 
 ## Known limitations
 

@@ -536,7 +536,7 @@ this section adds the visual-fidelity checks for the skin.
   external assets in every stylesheet`.
 - `[ ]` F-10 The PR links WAR-147, lists the changed screens, and carries the
   verification table, merged SHA, and screenshot paths.
-  Evidence: PR body + `docs/UI_FIDELITY_EVIDENCE.md`.
+  Evidence: PR #59 + `docs/UI_FIDELITY_EVIDENCE.md`.
 
 ## Cross-cutting review checklist
 
@@ -613,7 +613,7 @@ gate.
 | QA | Baltasar Gelt | | | checklist + test run |
 | Performance (if changed) | Genny4Real | | | before/after numbers |
 | Tech lead | Katerina Zarina | | | merge approval |
-| WAR-147 implementation | Karl Franz | Ready for QA | 2026-10-22 | PR + `docs/UI_FIDELITY_EVIDENCE.md` |
+| WAR-147 implementation | Karl Franz | Ready for QA | 2026-10-22 | PR #59 + `docs/UI_FIDELITY_EVIDENCE.md` |
 | WAR-147 QA | Baltasar Gelt | | | F-01..F-10 |
 | WAR-147 tech lead | Katerina Zarina | | | design + merge approval |
 
