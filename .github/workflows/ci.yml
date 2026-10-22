@@ -49,8 +49,8 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: QA fixture integrity
-        run: node scripts/qa/generate-fixtures.mjs --verify
+      - name: Fixture integrity (committed + perf workloads)
+        run: pnpm fixtures:verify
 
       - name: QA generator guard tests
         timeout-minutes: 5
