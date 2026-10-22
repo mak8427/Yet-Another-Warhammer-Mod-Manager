@@ -137,16 +137,20 @@ Steam remains the fallback when the Proton toolchain cannot be resolved.
    ls -l "/proc/$pid/fd" | grep '\.pack' | sed 's/.* -> //' | sort -u > /tmp/open-packs.txt
    find "<workshop content>" -name '*.pack' -printf '%f\n' | sort -u > /tmp/available-workshop.txt
    grep 'steamapps/workshop/content/1142710' /tmp/open-packs.txt | sed 's#.*/##' | sort -u > /tmp/open-workshop-packs.txt
-   grep -v '^#' "$game_dir/used_mods.txt" | sort -u > /tmp/expected.txt
+   grep -v '^#' "$game_dir/used_mods.txt" | sed '/^$/d' | sort -u > /tmp/expected.txt
    comm -12 /tmp/expected.txt /tmp/available-workshop.txt > /tmp/expected-workshop.txt
    diff -u /tmp/expected-workshop.txt /tmp/open-workshop-packs.txt
    ```
 
    Expected: the `diff` is empty; the command line contains
    `used_mods.txt;`. A non-empty diff is a failure even if the game reaches
-   the main menu.
+   the main menu. Local `.pack` mods under `<game>/data` also appear in
+   `/tmp/open-packs.txt`; compare the non-Workshop entries of
+   `used_mods.txt` with those when the preset uses local mods.
 5. Confirm the launcher never started: the `launcher.log` timestamp from step 2
-   is unchanged, and `pgrep -af '[Ll]auncher'` shows no CA launcher process.
+   is unchanged (or the log is still absent), and
+   `pgrep -af 'The Creative Assembly|Launcher.exe'` shows no CA launcher
+   process.
 6. Confirm the managed option files:
    `data/wh3mm_skip_intro.pack` and `data/script/enable_console_logging` exist
    while the options are enabled. Turn both off and launch again; the managed
