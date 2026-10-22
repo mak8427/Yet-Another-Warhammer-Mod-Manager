@@ -6,8 +6,6 @@ import {
   ZOOM_MAX,
   ZOOM_MIN,
   ZOOM_STEP,
-  zoomLabel,
-  zoomScale,
 } from './zoom'
 
 describe('zoom levels', () => {
@@ -29,12 +27,5 @@ describe('zoom levels', () => {
     expect(stepZoom(ZOOM_MAX, 1)).toBe(ZOOM_MAX)
     expect(stepZoom(137, 1)).toBe(150)
     expect(stepZoom(137, -1)).toBe(130)
-  })
-
-  it('converts a percentage to the webview scale factor', () => {
-    expect(zoomScale(80)).toBeCloseTo(0.8)
-    expect(zoomScale(125)).toBeCloseTo(1.25)
-    expect(zoomScale(500)).toBeCloseTo(2)
-    expect(zoomLabel(110)).toBe('110%')
   })
 })

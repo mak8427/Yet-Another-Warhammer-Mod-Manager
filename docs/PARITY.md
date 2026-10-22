@@ -16,7 +16,7 @@ Snapshot: **2026-10-21** · weighted scope: `docs/PRODUCT_SCOPE.md`
 | Oracle dispositions | 2 ported / 26 rewritten / 1 not-applicable |
 | Cut-feature scan | 0 findings in 37 UI/IPC files |
 | Rust tests on this tree | 157 |
-| Frontend assertions on this tree | 82 in 10 files |
+| Frontend assertions on this tree | 81 in 10 files |
 
 ## Capability table
 

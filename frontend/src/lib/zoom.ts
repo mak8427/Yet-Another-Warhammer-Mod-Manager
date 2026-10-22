@@ -15,11 +15,3 @@ export function stepZoom(current: number, direction: 1 | -1): number {
   const base = Math.round(clampZoom(current) / ZOOM_STEP) * ZOOM_STEP
   return clampZoom(base + direction * ZOOM_STEP)
 }
-
-export function zoomScale(percent: number): number {
-  return clampZoom(percent) / 100
-}
-
-export function zoomLabel(percent: number): string {
-  return `${clampZoom(percent)}%`
-}
