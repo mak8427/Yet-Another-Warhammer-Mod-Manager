@@ -21,6 +21,7 @@ import {
   type WorkshopAction,
   type WorkshopItem,
 } from './lib/ipc'
+import { clampZoom, stepZoom, ZOOM_DEFAULT } from './lib/zoom'
 
 export type AppStatus = 'loading' | 'ready' | 'no-game' | 'error'
 export type View = 'mods' | 'profiles' | 'conflicts' | 'workshop' | 'settings'
@@ -73,6 +74,7 @@ export const DEFAULT_UI: UiPreferences = {
   density: 'comfortable',
   showThumbnails: true,
   lastScrollTop: 0,
+  zoom: ZOOM_DEFAULT,
 }
 
 export function initialState(): AppState {
@@ -775,6 +777,28 @@ export class AppStore {
   setShowThumbnails(showThumbnails: boolean): void {
     this.set({ ui: { ...this.state.ui, showThumbnails } })
     void this.persistUi()
+  }
+
+  setZoom(zoom: number): void {
+    const next = clampZoom(zoom)
+    if (next === this.state.ui.zoom) return
+    this.set({
+      ui: { ...this.state.ui, zoom: next },
+      notice: { kind: 'info', message: `Zoom ${next}%` },
+    })
+    void this.persistUi()
+  }
+
+  zoomIn(): void {
+    this.setZoom(stepZoom(this.state.ui.zoom, 1))
+  }
+
+  zoomOut(): void {
+    this.setZoom(stepZoom(this.state.ui.zoom, -1))
+  }
+
+  resetZoom(): void {
+    this.setZoom(ZOOM_DEFAULT)
   }
 
   noteScroll(top: number): void {

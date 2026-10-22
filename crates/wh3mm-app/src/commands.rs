@@ -10,6 +10,7 @@ use wh3mm_core::ipc::{
 };
 use wh3mm_core::launch::{LaunchOptions, LaunchResult};
 use wh3mm_core::session::{Session, SessionOptions};
+use wh3mm_core::window::WindowGeometry;
 use wh3mm_core::workshop::{SteamActionResult, WorkshopAction, WorkshopItem};
 
 /// Owns the single mutable session. Every filesystem mutation is serialized by
@@ -152,6 +153,16 @@ impl Manager {
         preferences: UiPreferences,
     ) -> Result<UiPreferences, AppError> {
         self.with_mut(|session| session.update_ui_preferences(preferences))
+    }
+
+    pub fn window_geometry(&self) -> Option<WindowGeometry> {
+        self.with(|session| session.window_geometry())
+            .ok()
+            .flatten()
+    }
+
+    pub fn set_window_geometry(&self, geometry: WindowGeometry) -> Result<(), AppError> {
+        self.with_mut(|session| session.set_window_geometry(geometry))
     }
 
     pub fn reset_to_defaults(
@@ -391,22 +402,29 @@ mod tauri_commands {
     #[tauri::command]
     pub async fn update_ui_preferences(
         app: tauri::AppHandle,
+        window: tauri::WebviewWindow,
         preferences: UiPreferences,
     ) -> Result<UiPreferences, AppError> {
-        run_blocking(move || app.state::<Manager>().update_ui_preferences(preferences)).await
+        let saved =
+            run_blocking(move || app.state::<Manager>().update_ui_preferences(preferences)).await?;
+        crate::window_state::apply_zoom(&window, saved.zoom)?;
+        Ok(saved)
     }
 
     #[tauri::command]
     pub async fn reset_to_defaults(
         app: tauri::AppHandle,
+        window: tauri::WebviewWindow,
         confirm: bool,
         confirm_unmanaged_loss: bool,
     ) -> Result<ResetDefaultsReport, AppError> {
-        run_blocking(move || {
+        let report = run_blocking(move || {
             app.state::<Manager>()
                 .reset_to_defaults(confirm, confirm_unmanaged_loss)
         })
-        .await
+        .await?;
+        crate::window_state::apply_zoom(&window, wh3mm_core::ipc::ZOOM_DEFAULT)?;
+        Ok(report)
     }
 
     #[tauri::command]

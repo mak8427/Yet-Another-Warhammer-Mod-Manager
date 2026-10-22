@@ -7,6 +7,9 @@
 pub mod commands;
 
 #[cfg(any(windows, target_os = "linux"))]
+mod window_state;
+
+#[cfg(any(windows, target_os = "linux"))]
 pub fn run() -> tauri::Result<()> {
     use tauri::Manager as _;
 
@@ -15,8 +18,11 @@ pub fn run() -> tauri::Result<()> {
             let config_dir = app.path().app_config_dir()?;
             let manager = commands::Manager::new(config_dir)?;
             app.manage(manager);
+            app.manage(window_state::Tracker::default());
+            window_state::restore(app);
             Ok(())
         })
+        .on_window_event(|window, event| window_state::handle_event(window, event))
         .invoke_handler(tauri::generate_handler![
             commands::app_info,
             commands::detect_game,

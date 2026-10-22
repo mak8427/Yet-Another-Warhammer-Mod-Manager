@@ -3,11 +3,14 @@ use std::path::{Path, PathBuf};
 
 use wh3mm_core::config::{self, AppConfig, CONFIG_FILE};
 use wh3mm_core::error::ErrorCode;
-use wh3mm_core::ipc::{Density, LocationSource, ResetLoadOrderStatus, UiPreferences};
+use wh3mm_core::ipc::{
+    Density, LocationSource, ResetLoadOrderStatus, UiPreferences, ZOOM_MAX, ZOOM_MIN,
+};
 use wh3mm_core::load_order;
 use wh3mm_core::pack::synthetic_pack_bytes;
 use wh3mm_core::session::{Session, SessionOptions};
 use wh3mm_core::test_support::TempDir;
+use wh3mm_core::window::WindowGeometry;
 
 fn write_pack(path: &Path) {
     if let Some(parent) = path.parent() {
@@ -310,6 +313,7 @@ fn reset_to_defaults_keeps_profiles_and_tags_and_writes_an_empty_order() {
             density: Density::Compact,
             show_thumbnails: false,
             last_scroll_top: 400,
+            zoom: 150,
         })
         .unwrap();
     let written = session.write_load_order(false, false).unwrap();
@@ -355,6 +359,7 @@ fn reset_to_defaults_without_a_game_still_persists_the_config() {
             density: Density::Roomy,
             show_thumbnails: false,
             last_scroll_top: 900,
+            zoom: 150,
         })
         .unwrap();
 
@@ -411,6 +416,7 @@ fn reset_to_defaults_reports_a_corrupt_used_mods_file_without_claiming_success()
         density: Density::Compact,
         show_thumbnails: false,
         last_scroll_top: 300,
+        zoom: 150,
     };
     session.update_ui_preferences(preferences.clone()).unwrap();
 
@@ -447,6 +453,7 @@ fn reset_to_defaults_refuses_a_mixed_corrupt_and_unmanaged_file_without_asking()
         density: Density::Compact,
         show_thumbnails: false,
         last_scroll_top: 300,
+        zoom: 150,
     };
     session.update_ui_preferences(preferences.clone()).unwrap();
 
@@ -515,6 +522,7 @@ fn reset_to_defaults_asks_before_dropping_unmanaged_directives() {
         density: Density::Compact,
         show_thumbnails: false,
         last_scroll_top: 300,
+        zoom: 150,
     };
     session.update_ui_preferences(preferences.clone()).unwrap();
 
@@ -735,10 +743,51 @@ fn ui_preferences_round_trip() {
     let mut preferences = session.ui_preferences();
     preferences.density = Density::Compact;
     preferences.last_scroll_top = 1234;
+    preferences.zoom = 150;
     session.update_ui_preferences(preferences.clone()).unwrap();
 
     let reloaded = Session::initialize(options(&dir, Some(&game))).unwrap();
     assert_eq!(reloaded.ui_preferences(), preferences);
+}
+
+#[test]
+fn update_ui_preferences_clamps_zoom_to_the_supported_bounds() {
+    let dir = TempDir::new("session-zoom-bounds");
+    let mut session = Session::initialize(options(&dir, None)).unwrap();
+    let mut preferences = session.ui_preferences();
+
+    preferences.zoom = 500;
+    assert_eq!(
+        session
+            .update_ui_preferences(preferences.clone())
+            .unwrap()
+            .zoom,
+        ZOOM_MAX
+    );
+
+    preferences.zoom = 10;
+    assert_eq!(
+        session.update_ui_preferences(preferences).unwrap().zoom,
+        ZOOM_MIN
+    );
+}
+
+#[test]
+fn window_geometry_round_trips_through_the_config() {
+    let dir = TempDir::new("session-window");
+    let game = game_fixture(&dir, &["a.pack"]);
+    let mut session = Session::initialize(options(&dir, Some(&game))).unwrap();
+    let geometry = WindowGeometry {
+        x: -1800,
+        y: 220,
+        width: 1300,
+        height: 760,
+        maximized: true,
+    };
+    session.set_window_geometry(geometry).unwrap();
+
+    let reloaded = Session::initialize(options(&dir, Some(&game))).unwrap();
+    assert_eq!(reloaded.window_geometry(), Some(geometry));
 }
 
 #[test]

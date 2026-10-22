@@ -1871,6 +1871,18 @@ input[aria-invalid='true'] {
   margin: 0;
 }
 
+.zoom-control {
+  flex-wrap: wrap;
+}
+
+.zoom-value {
+  min-width: 4.5ch;
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
 .setting-row-check:hover {
   background: var(--color-bg-surface-raised);
 }

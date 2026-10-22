@@ -39,6 +39,7 @@ export const UI: UiPreferences = {
   density: 'comfortable',
   showThumbnails: true,
   lastScrollTop: 0,
+  zoom: 100,
 }
 
 export const EMPTY_LOAD_ORDER: LoadOrderReadReport = {

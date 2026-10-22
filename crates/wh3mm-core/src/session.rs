@@ -19,6 +19,7 @@ use crate::load_order::{self, LoadOrderFile, PlannedName, WritePlan};
 use crate::mod_index::{self, DiscoveredMod, IndexReport};
 use crate::paths::{self, DetectionReport, GameLocation};
 use crate::timing::{log_timing, Timings};
+use crate::window::WindowGeometry;
 
 pub struct SessionOptions {
     pub config_path: PathBuf,
@@ -554,14 +555,26 @@ impl Session {
 
     pub fn update_ui_preferences(
         &mut self,
-        mut preferences: UiPreferences,
+        preferences: UiPreferences,
     ) -> Result<UiPreferences, AppError> {
-        preferences.last_scroll_top = preferences.last_scroll_top.min(10_000_000);
+        let preferences = preferences.normalized();
         self.commit_config(|config| {
             config.update_ui(preferences.clone());
             Ok(())
         })?;
         Ok(self.ui_preferences())
+    }
+
+    pub fn window_geometry(&self) -> Option<WindowGeometry> {
+        self.config.window
+    }
+
+    pub fn set_window_geometry(&mut self, geometry: WindowGeometry) -> Result<(), AppError> {
+        let geometry = geometry.sane();
+        self.commit_config(|config| {
+            config.window = Some(geometry);
+            Ok(())
+        })
     }
 
     /// Resets UI preferences and the active profile's enabled set, clears the

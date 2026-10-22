@@ -14,9 +14,9 @@ Snapshot: **2026-10-21** · weighted scope: `docs/PRODUCT_SCOPE.md`
 | Checks | 35 done / 5 partial / 0 missing (40 total) |
 | Legacy oracle coverage | 29/29 (100.0%) |
 | Oracle dispositions | 2 ported / 26 rewritten / 1 not-applicable |
-| Cut-feature scan | 0 findings in 35 UI/IPC files |
-| Rust tests on this tree | 144 |
-| Frontend assertions on this tree | 76 in 9 files |
+| Cut-feature scan | 0 findings in 37 UI/IPC files |
+| Rust tests on this tree | 157 |
+| Frontend assertions on this tree | 82 in 10 files |
 
 ## Capability table
 
