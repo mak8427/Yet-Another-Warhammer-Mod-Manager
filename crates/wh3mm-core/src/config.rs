@@ -400,11 +400,11 @@ pub fn load_or_create(path: &Path) -> Result<LoadedConfig, AppError> {
     let bytes = fs::read(path)
         .map_err(|error| AppError::io_path("Could not read the config file", path, &error))?;
     match parse_config(&bytes) {
-        Ok((config, mut warnings)) => Ok(LoadedConfig {
+        Ok((config, warnings)) => Ok(LoadedConfig {
             config,
             status: ConfigStatus::Loaded,
             write_blocked: false,
-            warnings: std::mem::take(&mut warnings),
+            warnings,
             path: path.to_path_buf(),
         }),
         Err(ParseFailure::UnsupportedVersion(version)) => Ok(LoadedConfig {

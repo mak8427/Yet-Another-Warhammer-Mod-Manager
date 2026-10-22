@@ -14,16 +14,15 @@ use std::process::Command;
 use crate::atomic::atomic_write;
 use crate::config;
 use crate::error::{AppError, ErrorCode};
-use crate::paths::GameLocation;
+use crate::pack::PFH5_HEADER_LEN;
+use crate::paths::{GameLocation, WH3_APP_ID};
 use crate::session::Session;
 
-pub const WH3_APP_ID: &str = "1142710";
 pub const WH3_PROCESS_NAME: &str = "warhammer3.exe";
 pub const MANAGED_SKIP_INTRO_PACK: &str = "wh3mm_skip_intro.pack";
 pub const SCRIPT_LOG_MARKER: &str = "enable_console_logging";
 pub const SCRIPT_LOG_OWNERSHIP_MARKER: &str = ".wh3mm_enable_console_logging";
 
-const PFH5_HEADER_LEN: usize = 28;
 const PACK_BYTE_MASK: u32 = 3;
 const INTRO_MOVIES: [&str; 6] = [
     "movies\\epilepsy_warning\\epilepsy_warning_en.ca_vp8",
@@ -304,12 +303,7 @@ impl Session {
         options: LaunchOptions,
         probe: &dyn GameProcessProbe,
     ) -> Result<LaunchResult, AppError> {
-        let location = self.location.clone().ok_or_else(|| {
-            AppError::new(
-                ErrorCode::GameNotFound,
-                "Could not find a Total War: Warhammer III installation",
-            )
-        })?;
+        let location = self.location.clone().ok_or_else(AppError::game_not_found)?;
         if probe.is_game_running()? {
             return Err(AppError::validation(
                 "Total War: Warhammer III is already running; close it before launching again",
