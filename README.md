@@ -9,6 +9,7 @@ backend and a TypeScript frontend.
 - Linux manual QA: [docs/MANUAL_QA_LINUX.md](docs/MANUAL_QA_LINUX.md)
 - Capability parity scorecard: [docs/PARITY.md](docs/PARITY.md)
 - Bug report template: [docs/BUG_REPORT_TEMPLATE.md](docs/BUG_REPORT_TEMPLATE.md)
+- Contributing, review gates, and credit: [CONTRIBUTING.md](CONTRIBUTING.md)
 - Legacy reference (Electron, not copied): https://github.com/Shazbot/WH3-Mod-Manager
 
 ## Status
