@@ -152,7 +152,7 @@ These apply to every screen and every milestone.
   Evidence: `shots/` has 1920×1080 and 1366×768 pairs for S01–S11, plus compact/roomy mod-list shots; manifest in `shots/README.md`.
 - `[x]` G-18 `pnpm typecheck`, `pnpm lint`, `pnpm test`, and `pnpm build` pass
   on the implementation branch.
-  Evidence: At this head: `pnpm typecheck`, `pnpm lint`, `pnpm test` (9 files / 72 tests), `pnpm build`, `cargo fmt --all --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, `cargo test --workspace --locked` all pass.
+  Evidence: At this head: `pnpm typecheck`, `pnpm lint`, `pnpm test` (10 files / 81 tests), `pnpm build`, `cargo fmt --all --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, `cargo test --workspace --locked` all pass.
 
 ## Zoom and window geometry (WAR-141)
 
@@ -185,7 +185,22 @@ whole webview. The persisted range is 80–200% in 10% steps; `Ctrl+0` resets to
 - `[ ]` Z-05 Manual restart check with the packaged shell: change zoom, resize,
   move, maximise, close, reopen; repeat on Windows and Linux. Geometry saved on
   a monitor that is then disconnected must open on the primary display.
-  Evidence: OPEN — owner Baltasar Gelt (QA), at the merged head. Steps:
+  - Linux (X11): PASS. QA ran the packaged CI binary (artifact of run
+    `39769312236`, sha256 `42b3485f…`) on Ubuntu 24.04 with Xvfb 1920×1080 and
+    openbox, closing via `WM_DELETE_WINDOW`. Zoom 150%, normal bounds 1400×800
+    at (100,80), and the maximised state survived restart; unmaximising
+    restored 1400×800 at (100,80); configs saved at (9000,9000) and
+    (-1800,100) (left monitor gone) opened centred and fully visible on the
+    primary; the app log had no restore or save errors. Evidence bundle:
+    WAR-141 Z-05 Linux evidence (6 screenshots, harness, verbatim output). The
+    multi-monitor hot-unplug case could not be created under Xvfb; the
+    disconnected-monitor coordinates case and the `window.rs` tests cover the
+    same restore branch.
+  - Windows (WebView2): OPEN — no Windows host is available and the CI job
+    builds only. Check that `Ctrl+=`/`Ctrl+-`/`Ctrl+0` and `Ctrl+wheel`
+    persist `ui.zoom` and do not double-apply with the WebView2 accelerator
+    keys. Owner: Baltasar Gelt (QA), or a release-gate decision from
+    Katerina Zarina/Torgrim. Steps:
   1. Start at 1920×1080, set zoom to 150%, resize to 1400×800, move the window,
      maximise, close, reopen. Confirm zoom 150% and the maximised window.
   2. Restore the window, close, move `config.json` to a machine with a
@@ -193,8 +208,8 @@ whole webview. The persisted range is 80–200% in 10% steps; `Ctrl+0` resets to
      documented title strip and status bar.
   3. Edit `config.json` to `"window": {"x": 9000, "y": 9000, ...}`, reopen.
      Confirm the window appears on the primary display, not off-screen.
-  4. Repeat steps 1–3 on Linux (X11; Wayland position is compositor-owned but
-     size, zoom, and maximised state must persist).
+  4. Repeat steps 1–3 on Windows: X11 is covered above; Wayland position is
+     compositor-owned but size, zoom, and maximised state must persist.
 
 ## Truncation and tooltips
 
@@ -573,10 +588,10 @@ whole webview. The persisted range is 80–200% in 10% steps; `Ctrl+0` resets to
 ## Open items
 
 These are the only unchecked items. Each has an explicit owner and milestone;
-all other 115 items have evidence above. None of them blocks M4: M4 owns the
-visual system and the automated keyboard map, while these are Windows-QA,
-native-dialog, and config-recovery work scheduled for the M5 hardening/release
-gate.
+every other item has evidence above. None of them blocks M4: M4 owns the visual
+system and the automated keyboard map, while these are Windows-QA,
+native-dialog, config-recovery, and platform-restart work scheduled for the M5
+hardening/release gate.
 
 | Item | Owner | Milestone | Why it is open and why it is not an M4 blocker |
 |---|---|---|---|
@@ -585,6 +600,7 @@ gate.
 | S08-02 | Katerina Zarina (tech lead) | M5 — Hardening + release | Same missing native folder picker on the not-found state. Tracked with S07-03 in M5. |
 | S08-04 | Katerina Zarina (tech lead) | M5 — Hardening + release | The corrupt-config Restore/Reset dialog needs a new IPC command and an ADR; core currently auto-restores `.bak` and blocks writes when both copies are unreadable. Config recovery is a release-safety item, not an M4 screen-polish item. |
 | X-03 | Baltasar Gelt (QA) | M5 — Hardening + release | Full pointer-free 1024×720 trace. The individual actions are automated and green; the end-to-end pointer-free run is part of the M5 e2e/release checklist. |
+| Z-05 (Windows) | Baltasar Gelt (QA) | WAR-141 v1.1 — release gate | The Linux half passed on X11/Xvfb; no Windows host is available to run the WebView2 restart and accelerator-key check. |
 
 ## Sign-off
 
