@@ -22,7 +22,7 @@ pub fn run() -> tauri::Result<()> {
             window_state::restore(app);
             Ok(())
         })
-        .on_window_event(|window, event| window_state::handle_event(window, event))
+        .on_window_event(window_state::handle_event)
         .invoke_handler(tauri::generate_handler![
             commands::app_info,
             commands::detect_game,
