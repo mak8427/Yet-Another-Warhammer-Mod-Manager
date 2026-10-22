@@ -137,18 +137,22 @@ fn work_areas(window: &tauri::WebviewWindow) -> Option<Vec<WorkArea>> {
     if monitors.is_empty() {
         return None;
     }
-    Some(
-        monitors
-            .iter()
-            .map(|monitor| {
-                let area = monitor.work_area();
-                WorkArea {
-                    x: area.position.x,
-                    y: area.position.y,
-                    width: area.size.width,
-                    height: area.size.height,
-                }
-            })
-            .collect(),
-    )
+    let mut areas: Vec<WorkArea> = monitors.iter().map(monitor_work_area).collect();
+    if let Ok(Some(primary)) = window.primary_monitor() {
+        let primary = monitor_work_area(&primary);
+        if let Some(index) = areas.iter().position(|area| *area == primary) {
+            areas.swap(0, index);
+        }
+    }
+    Some(areas)
+}
+
+fn monitor_work_area(monitor: &tauri::Monitor) -> WorkArea {
+    let area = monitor.work_area();
+    WorkArea {
+        x: area.position.x,
+        y: area.position.y,
+        width: area.size.width,
+        height: area.size.height,
+    }
 }
