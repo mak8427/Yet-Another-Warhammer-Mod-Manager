@@ -75,7 +75,7 @@ fixed seeds, `tempfile::TempDir`, and mocked IPC only.
 | App commands | `crates/wh3mm-app/src/commands.rs` tests | `cargo test` | Command wrappers without a Tauri runtime | < 10 s |
 | IPC contract | `tests/ipc_contract.rs`, `frontend/src/lib/ipc.test.ts` | `cargo test`, Vitest | Wire names, error envelope, malformed rejections | < 5 s |
 | Fixture contract | `crates/wh3mm-core/tests/qa_fixtures.rs` | `cargo test` | Fixture bytes, encodings, manifest, scale index | < 1 s |
-| QA scripts | `scripts/qa/*.test.mjs` | `node --test` | Fixture guard and performance-gate validator | < 1 s |
+| QA scripts | `scripts/qa/*.test.mjs` | `node --test` | Fixture guard, Linux packaging guard, and performance-gate validator | < 1 s |
 | Frontend component | `frontend/src/**/*.test.tsx` | Vitest + Testing Library + jsdom | Rendering, interaction contracts, error states | < 10 s |
 | Manual Windows | `docs/MANUAL_QA_WINDOWS.md` | Human | Install detection, first run, recovery, launch | per script |
 | Manual Linux | `docs/MANUAL_QA_LINUX.md` | Human | Native Steam/Proton detection, mod list, load order, launch | per script |

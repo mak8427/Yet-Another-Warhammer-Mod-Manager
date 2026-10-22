@@ -17,6 +17,10 @@ policy is [CONTRIBUTING.md](../CONTRIBUTING.md); this is the short version.
 ## Run or confirm the gate
 
 ```bash
+# Install dependencies and build the embedded frontend first.
+pnpm install --frozen-lockfile
+pnpm build
+
 bash scripts/tests/fetch-reference.test.sh
 node scripts/qa/generate-fixtures.mjs --verify
 node --test scripts/qa/*.test.mjs
@@ -27,11 +31,9 @@ cargo fmt --all --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 
-pnpm install --frozen-lockfile
 pnpm typecheck
 pnpm lint
 pnpm test
-pnpm build
 ```
 
 A docs-only pull request can rely on CI instead of every local command, but CI

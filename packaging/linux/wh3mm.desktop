@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=WH3 Mod Manager
+GenericName=Mod Manager
+Comment=Manage Total War: Warhammer III mods and load order
+Exec=wh3mm
+Icon=wh3mm
+Terminal=false
+Categories=Game;Utility;
+Keywords=Warhammer;mods;load order;
+StartupWMClass=com.warhammerlabs.wh3mm
