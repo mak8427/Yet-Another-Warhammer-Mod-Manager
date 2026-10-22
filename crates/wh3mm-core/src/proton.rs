@@ -250,11 +250,14 @@ fn proton_candidates(libraries: &[SteamLibrary]) -> Vec<ProtonCandidate> {
 }
 
 fn compare_candidates(a: &ProtonCandidate, b: &ProtonCandidate) -> std::cmp::Ordering {
-    a.version.cmp(&b.version).then_with(|| {
-        a.name
-            .to_ascii_lowercase()
-            .cmp(&b.name.to_ascii_lowercase())
-    })
+    a.version
+        .cmp(&b.version)
+        .then_with(|| b.name.len().cmp(&a.name.len()))
+        .then_with(|| {
+            a.name
+                .to_ascii_lowercase()
+                .cmp(&b.name.to_ascii_lowercase())
+        })
 }
 
 fn matches_tool(candidate: &ProtonCandidate, tool: &str) -> bool {
@@ -480,6 +483,22 @@ mod tests {
                 .join("compatdata")
                 .join(WH3_APP_ID)
         );
+    }
+
+    #[test]
+    fn unresolved_compat_tool_uses_the_newest_proton() {
+        let dir = TempDir::new("proton-newest");
+        let (library, location) = fixture(&dir);
+        let common = dir.path().join("Steam").join("steamapps").join("common");
+        for version in ["9.0", "11.0"] {
+            write(
+                &common.join(format!("Proton {version}")).join("proton"),
+                b"#!/bin/sh",
+            );
+        }
+
+        let toolchain = resolve(&location, &[library], None).unwrap();
+        assert_eq!(toolchain.proton, common.join("Proton 11.0").join("proton"));
     }
 
     #[test]
