@@ -65,11 +65,14 @@ directly on packaging-relevant paths. It has four build/test jobs:
   `.deb`, start the binary; then `chmod +x` the AppImage and start it through
   the runtime's extract-and-run mode because containers have no `/dev/fuse`.
 - `fedora` on `fedora:latest`: checksum verification, start the tarball binary,
-  start the AppImage the same way.
+  start the AppImage the same way. The job installs `dbus-daemon`, which
+  provides `dbus-run-session` for `xvfb-run`.
 - `arch` on `archlinux:latest`: install `webkit2gtk-4.1`,
   `libayatana-appindicator`, and `patchelf`, build the shell, run the Rust and
   frontend gates, build the package from the release tarball, install it with
-  `pacman -U`, and start the app.
+  `pacman -U`, and start the app. The frontend and Rust gates run as an
+  unprivileged `builder` user because the read-only-directory fault-injection
+  test is meaningless as root.
 
 Each runtime job asserts that the main window appears under Xvfb; a process that
 exits or a missing window fails the job. The workflow runs on
