@@ -37,7 +37,7 @@ A pull request may merge only when **both** required checks are
 
 | Check | Workflow | What it proves |
 |---|---|---|
-| `Linux quality gates` | `.github/workflows/ci.yml` | fmt, clippy, Rust tests, fixture guards, typecheck, lint, frontend tests, build |
+| `Linux quality gates` | `.github/workflows/ci.yml` | fmt, clippy, Rust tests, Linux Tauri shell build, fixture guards, typecheck, lint, frontend tests, build, `wh3mm-linux-x64` artifact |
 | `Capability parity` | `.github/workflows/ci.yml` | `node scripts/parity-report.mjs --check` |
 
 `Windows Tauri shell (manual until packaging)` is skipped on pull requests by
@@ -193,6 +193,46 @@ Windows PowerShell:
 
 The result must match the SHA-256 printed in the release notes.
 
+## Build locally on Linux
+
+Linux builds the same Tauri shell for native Steam and Proton. This path
+produces a binary, not an installer; Linux packaging is not part of the release
+workflow yet.
+
+Prerequisites:
+
+| Tool | Version | Notes |
+|---|---|---|
+| Linux | x86_64, X11 or Wayland | A desktop session is required to run the app |
+| Rust | 1.90+ (stable) | `rustup default stable` |
+| Node.js | 24.15+ | `node --version` |
+| pnpm | 12.14 | `corepack enable` then `corepack prepare pnpm@12.14.0 --activate` |
+| WebKitGTK | 4.1 | Debian/Ubuntu: `libwebkit2gtk-4.1-dev libgtk-3-dev` |
+| GTK/appindicator/rsvg | distro packages | Debian/Ubuntu: `libayatana-appindicator3-dev librsvg2-dev libssl-dev libdbus-1-dev` |
+
+Commands, from the repository root:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm typecheck
+pnpm lint
+pnpm test
+pnpm build
+cargo test --workspace --locked
+cargo build -p wh3mm-app --release --locked
+```
+
+Output:
+
+- Executable: `target/release/wh3mm`
+- The binary embeds `frontend/dist` and needs the WebKitGTK 4.1 runtime.
+- CI publishes the same binary as the `wh3mm-linux-x64` workflow artifact,
+  with a `SHA256SUMS.txt`.
+
+The Linux acceptance script is [`docs/MANUAL_QA_LINUX.md`](MANUAL_QA_LINUX.md);
+it must be executed on a real Linux desktop before Linux packaging ships.
+Flatpak/Snap Steam launch, Linux installers, and macOS remain out of scope.
+
 ## Known limitations (v1.0)
 
 These are accepted for v1.0. None is a correctness risk, and each has an exact
@@ -226,9 +266,10 @@ name, type, timestamp, and dependencies.
 5. Creates a **draft** GitHub release with the installer and checksums attached.
 
 It never publishes a release automatically. A human reviews the draft, edits the
-notes, and publishes it. Linux PR gates in `.github/workflows/ci.yml` are
-unchanged and stay required by process (see **Merge provenance** above); GitHub
-enforces them only after the owner enables the required checks.
+notes, and publishes it. Linux PR gates in `.github/workflows/ci.yml` now build
+the Linux desktop shell and upload the `wh3mm-linux-x64` artifact; they stay
+required by process (see **Merge provenance** above), and GitHub enforces them
+only after the owner enables the required checks.
 
 To exercise the build without creating a tag or a release, run the workflow
 manually (`workflow_dispatch`) with the version input; that path uploads the

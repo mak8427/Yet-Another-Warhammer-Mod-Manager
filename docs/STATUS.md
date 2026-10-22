@@ -173,14 +173,15 @@ CEO decision.
 
 ## Risks and open items
 
-- The Windows Tauri shell is not compiled by the Linux gates: `tauri` and
-  `tauri-build` are `cfg(windows)`-only dependencies, so `cargo test --workspace`
-  never runs their build scripts. The first release dispatch on `main`
-  (`e31eb64`, run `39628830515`) failed on a missing `protocol-asset` feature
-  that Linux CI could not see; WAR-101 fixed it (`3106dd5`), and the follow-up
-  dispatch (run `39637746973`) succeeded with artifact `wh3mm-windows-1.0.0`.
-  Until a required Windows PR check exists, treat every Windows-only
-  dependency/feature change as untested by the Linux gates.
+- The Linux gates now compile the Linux Tauri shell (ADR-007), but the Windows
+  shell is still compiled only by the manual Windows job: Windows-specific
+  dependency and feature changes can escape the Linux gate. The first release
+  dispatch on `main` (`e31eb64`, run `39628830515`) failed on a missing
+  `protocol-asset` feature that Linux CI could not see; WAR-101 fixed it
+  (`3106dd5`), and the follow-up dispatch (run `39637746973`) succeeded with
+  artifact `wh3mm-windows-1.0.0`. Until a required Windows PR check exists,
+  treat every Windows-only dependency/feature change as untested by the Linux
+  gates.
 - The default branch has one active ruleset (`Portect brahc`, id `25486392`)
   that blocks deletion and non-fast-forward pushes only; it does not require a
   pull request or status checks. The WAR-127 provenance rule is in

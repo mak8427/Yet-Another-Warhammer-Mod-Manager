@@ -86,6 +86,26 @@ describe('App', () => {
     expect(ipc.listMods).not.toHaveBeenCalled()
   })
 
+  it('shows a Linux game-folder placeholder when the app runs on Linux', async () => {
+    vi.mocked(ipc.appInfo).mockResolvedValue({ ...APP_INFO, platform: 'linux' })
+    vi.mocked(ipc.detectGame).mockRejectedValue(
+      new IpcError({
+        code: 'game_not_found',
+        message: 'Could not find a Total War: Warhammer III installation',
+        details: null,
+        retryable: false,
+      }),
+    )
+
+    render(<App />)
+
+    const input = await screen.findByLabelText('Game folder')
+    expect(input).toHaveAttribute(
+      'placeholder',
+      '/mnt/games/SteamLibrary/steamapps/common/Total War WARHAMMER III',
+    )
+  })
+
   it('renders the mod list, counts, tags, and the active profile after boot', async () => {
     mockReady()
     render(<App />)
