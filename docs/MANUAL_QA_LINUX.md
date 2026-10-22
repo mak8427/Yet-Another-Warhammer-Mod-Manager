@@ -105,19 +105,61 @@ disabled dependencies are reported separately.
 4. Rename the ACF file and refresh. Expected: a `steam_not_found` error lists
    the checked paths; the app does not show an empty list as success.
 
-### LIN-07 — Launch through native Steam
+### LIN-07 — Launch and preset hand-off
+
+The manager launches the game through Proton directly on Linux. This is the
+fix for the Creative Assembly launcher replacing `used_mods.txt` (issue #44);
+Steam remains the fallback when the Proton toolchain cannot be resolved.
 
 1. Close Total War: Warhammer III. Confirm no `Warhammer3.exe` process is
    running (the app checks `/proc`).
-2. Open **Launch game**, enable **Skip intro** and **Script logging**, and
-   launch.
-3. Expected: Steam starts the Proton game. `data/wh3mm_skip_intro.pack` and
-   `data/script/enable_console_logging` exist while the options are enabled.
-4. Turn both options off and launch again. Expected: the managed pack and the
-   owned script-logging marker are removed; a user-owned logging marker is not
+2. Apply a profile whose enabled set differs from the launcher's own active
+   list. Record the exact file and the launcher log timestamp:
+
+   ```bash
+   game_dir="<game folder>"
+   proton_prefix="<game library>/steamapps/compatdata/1142710/pfx"
+   sha256sum "$game_dir/used_mods.txt"
+   launcher_log=$(find "$proton_prefix" -name launcher.log -print -quit)
+   stat -c '%Y %n' "$launcher_log"
+   ```
+
+3. Open **Launch game**, enable **Skip intro** and **Script logging**, and
+   launch. Expected: the result names the **direct** method and says the game
+   receives `used_mods.txt`; the launcher must not run.
+4. While the game runs, collect the open Workshop packs and compare them with
+   the file. Replace `<workshop content>` with the Workshop path from
+   **Settings**:
+
+   ```bash
+   pid=$(pgrep -f 'Warhammer3.exe' | head -1)
+   tr '\0' '\n' < "/proc/$pid/cmdline"
+   ls -l "/proc/$pid/fd" | grep '\.pack' | sed 's/.* -> //' | sort -u > /tmp/open-packs.txt
+   find "<workshop content>" -name '*.pack' -printf '%f\n' | sort -u > /tmp/available-workshop.txt
+   grep 'steamapps/workshop/content/1142710' /tmp/open-packs.txt | sed 's#.*/##' | sort -u > /tmp/open-workshop-packs.txt
+   grep -v '^#' "$game_dir/used_mods.txt" | sort -u > /tmp/expected.txt
+   comm -12 /tmp/expected.txt /tmp/available-workshop.txt > /tmp/expected-workshop.txt
+   diff -u /tmp/expected-workshop.txt /tmp/open-workshop-packs.txt
+   ```
+
+   Expected: the `diff` is empty; the command line contains
+   `used_mods.txt;`. A non-empty diff is a failure even if the game reaches
+   the main menu.
+5. Confirm the launcher never started: the `launcher.log` timestamp from step 2
+   is unchanged, and `pgrep -af '[Ll]auncher'` shows no CA launcher process.
+6. Confirm the managed option files:
+   `data/wh3mm_skip_intro.pack` and `data/script/enable_console_logging` exist
+   while the options are enabled. Turn both off and launch again; the managed
+   pack and the owned marker are removed, while a user-owned marker is not
    deleted.
-5. While the game runs, try launching from the manager again. Expected: a
+7. While the game runs, try launching from the manager again. Expected: a
    validation error says the game is already running, and no files change.
+8. If the result says the **steam** method, it is the fallback. Record the full
+   message: it names the reason and warns that the preset may not reach the
+   game. Fix the reported toolchain problem and repeat from step 2; do not sign
+   off a fallback launch as a preset hand-off.
+
+Windows launch behaviour is unchanged: `steam -applaunch 1142710`.
 
 ### LIN-08 — Recovery
 
@@ -130,6 +172,7 @@ disabled dependencies are reported separately.
 ## Sign-off
 
 - [ ] LIN-01 through LIN-08 pass on native Steam + Proton.
+- [ ] LIN-07 shows an empty pack diff, an unchanged launcher log, and the direct method.
 - [ ] No write occurred outside the expected `used_mods.txt`/config paths.
 - [ ] The CI `wh3mm-linux-x64` artifact matches the tested commit.
 - [ ] Tester/date recorded in the environment block.

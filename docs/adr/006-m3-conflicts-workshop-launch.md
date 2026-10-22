@@ -1,6 +1,6 @@
 # ADR-006 — M3 conflict, Workshop, and launch decisions
 
-- Status: accepted
+- Status: accepted; amended 2026-10-22 for the Linux direct launch (WAR-144)
 - Approved: Katerina Zarina, 2026-10-21
 - Date: 2026-10-21
 - Owner: Karl Franz
@@ -79,8 +79,31 @@ M1/M2 data model.
 
 ## Launch
 
-- Launch command: `<steam> -applaunch 1142710`. The command never runs the game
-  executable directly on Windows or Linux; Steam owns the app lifecycle.
+- Windows: `<steam> -applaunch 1142710`. Steam owns the app lifecycle.
+- Linux: resolve the Proton toolchain and launch the game executable directly,
+  because `steam -applaunch 1142710` hands off to Creative Assembly's launcher,
+  which rewrites `used_mods.txt` with its own active set before
+  `Warhammer3.exe` starts. The direct path is:
+  - library: the library that owns the game, plus every library listed by its
+    `steamapps/libraryfolders.vdf`;
+  - tool: `config/config.vdf` ->
+    `CompatToolMapping["1142710"].name` (for example `proton_11` maps to
+    `Proton 11.0`), falling back to the newest installed `Proton*`;
+  - prefix: `<library>/steamapps/compatdata/1142710`; if it is missing, the
+    direct path is unavailable;
+  - runtime: the newest `steamapps/common/SteamLinuxRuntime*/_v2-entry-point`;
+    when no runtime is installed, invoke `proton` directly;
+  - argv: `_v2-entry-point --verb=waitforexitandrun -- <proton> waitforexitandrun <game>/Warhammer3.exe "used_mods.txt;"`,
+    with the game directory as the working directory. The trailing `;` is part
+    of CA's argument syntax, not a shell separator;
+  - env: `STEAM_COMPAT_APP_ID`, `SteamAppId`, and `SteamGameId` set to
+    `1142710`; `STEAM_COMPAT_CLIENT_INSTALL_PATH`, `STEAM_COMPAT_DATA_PATH`,
+    and `STEAM_COMPAT_INSTALL_PATH` set to the Steam root, the compat-data
+    directory, and the game directory.
+- If any Linux step cannot be resolved, fall back to `steam -applaunch
+  1142710`. The launch result still says `launched: true`, but its message names
+  the reason and warns that Creative Assembly's launcher can replace
+  `used_mods.txt`. The fallback is never silent.
 - A running `Warhammer3.exe` (case-insensitive process/cmdline match) blocks
   another launch with a `validation` error.
 - Options are persisted per profile in `config.json` under
