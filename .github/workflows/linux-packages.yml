@@ -284,7 +284,7 @@ jobs:
           pacman -Syu --noconfirm --needed \
             base-devel git nodejs npm rust \
             webkit2gtk-4.1 libayatana-appindicator patchelf gtk3 librsvg \
-            openssl dbus dbus-daemon xorg-server-xvfb xdotool sudo shadow
+            openssl dbus xorg-server-xvfb xdotool sudo shadow
 
       - uses: actions/checkout@v4
 
