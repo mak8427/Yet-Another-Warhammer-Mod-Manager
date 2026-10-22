@@ -150,10 +150,11 @@ jobs:
 
   windows-tauri:
     name: Windows Tauri shell (manual until packaging)
-    # The shell is Windows-only by design (ADR-001). This job is manual in M0;
-    # M5 promotes it to push/tag builds with an installer artifact. Run it from
-    # workflow_dispatch with run_windows enabled. No rust-cache here: its
-    # post-step upload has hung the job.
+    # The desktop shell builds on Windows and Linux (ADR-007); only the NSIS
+    # release installer is Windows-only. This job is the manual Windows compile
+    # check in M0; M5 promotes it to push/tag builds with an installer artifact.
+    # Run it from workflow_dispatch with run_windows enabled. No rust-cache
+    # here: its post-step upload has hung the job.
     if: github.event_name == 'workflow_dispatch' && inputs.run_windows
     runs-on: windows-latest
     timeout-minutes: 20
