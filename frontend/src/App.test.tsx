@@ -1,7 +1,7 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from './App'
-import { IpcError, ipc } from './lib/ipc'
+import { IpcError, ipc, type ModListSnapshot } from './lib/ipc'
 import { store } from './store'
 import {
   APP_INFO,
@@ -131,7 +131,7 @@ describe('App', () => {
     expect(screen.queryByRole('option', { name: /Alpha Legion/ })).not.toBeInTheDocument()
   })
 
-  it('toggles a mod and sends the boolean inverted from the row state', async () => {
+  it('disables a mod and updates the checkbox, counts, and dirty state', async () => {
     mockReady()
     vi.mocked(ipc.setModEnabled).mockResolvedValue(
       makeSnapshot([{ ...MOD_A, isEnabled: false }, MOD_B]),
@@ -144,7 +144,91 @@ describe('App', () => {
     await waitFor(() => {
       expect(ipc.setModEnabled).toHaveBeenCalledWith('mod-a', false)
     })
-    expect(ipc.listProfiles).toHaveBeenCalled()
+    expect(await screen.findByLabelText('Enable Alpha Legion')).not.toBeChecked()
+    expect(await screen.findByText('Ready · 2 mods · 0 enabled')).toBeInTheDocument()
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument()
+    expect(ipc.listProfiles).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps profile switching blocked until a mod save finishes', async () => {
+    mockReady()
+    let finishSave!: (snapshot: ModListSnapshot) => void
+    vi.mocked(ipc.setModEnabled).mockReturnValueOnce(new Promise((resolve) => {
+      finishSave = resolve
+    }))
+    render(<App />)
+    fireEvent.click(await screen.findByLabelText('Disable Alpha Legion'))
+
+    expect(screen.getByLabelText('Active profile')).toBeDisabled()
+    await act(async () => {
+      finishSave(makeSnapshot([{ ...MOD_A, isEnabled: false }, MOD_B]))
+    })
+    expect(await screen.findByLabelText('Enable Alpha Legion')).not.toBeChecked()
+    expect(screen.getByLabelText('Active profile')).toBeEnabled()
+    expect(screen.getByText('Ready · 2 mods · 0 enabled')).toBeInTheDocument()
+  })
+
+  it('shows a failed mod save, preserves the enabled state, and allows retry', async () => {
+    mockReady()
+    vi.mocked(ipc.setModEnabled)
+      .mockRejectedValueOnce(new IpcError({
+        code: 'io',
+        message: 'Could not save the mod configuration',
+        details: 'Disk is full',
+        retryable: true,
+      }))
+      .mockResolvedValueOnce(makeSnapshot([{ ...MOD_A, isEnabled: false }, MOD_B]))
+    render(<App />)
+    fireEvent.click(await screen.findByLabelText('Disable Alpha Legion'))
+
+    const alert = await screen.findByRole('alert')
+    expect(within(alert).getByText('Could not save the mod configuration')).toBeInTheDocument()
+    expect(within(alert).getByText('Disk is full')).toBeInTheDocument()
+    expect(screen.getByLabelText('Disable Alpha Legion')).toBeChecked()
+    expect(screen.getByLabelText('Active profile')).toBeEnabled()
+    expect(screen.getByText('Ready · 2 mods · 1 enabled')).toBeInTheDocument()
+    expect(screen.queryByText('Unsaved changes')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByLabelText('Disable Alpha Legion'))
+    expect(await screen.findByLabelText('Enable Alpha Legion')).not.toBeChecked()
+    expect(await screen.findByText('Ready · 2 mods · 0 enabled')).toBeInTheDocument()
+    expect(ipc.setModEnabled).toHaveBeenNthCalledWith(1, 'mod-a', false)
+    expect(ipc.setModEnabled).toHaveBeenNthCalledWith(2, 'mod-a', false)
+  })
+
+  it('drags a multi-selection as a group and displays the saved positions', async () => {
+    const beta = { ...MOD_B, isEnabled: true }
+    const gamma = makeMod({ id: 'mod-c', name: 'gamma.pack', humanName: 'Gamma Guard', isEnabled: true, loadOrder: 2 })
+    const disabled = makeMod({ id: 'mod-d', name: 'delta.pack', humanName: 'Delta Dawn', loadOrder: 3 })
+    mockReady(makeSnapshot([MOD_A, beta, gamma, disabled]))
+    vi.mocked(ipc.setLoadOrder).mockResolvedValueOnce(makeSnapshot([
+      { ...beta, loadOrder: 0 },
+      { ...gamma, loadOrder: 1 },
+      { ...MOD_A, loadOrder: 2 },
+      disabled,
+    ]))
+    render(<App />)
+    const list = await screen.findByRole('listbox', { name: 'Mods' })
+    const first = within(list).getByRole('option', { name: /Alpha Legion/ })
+    const dragged = within(list).getByRole('option', { name: /Beta Bastion/ })
+    fireEvent.click(dragged)
+    fireEvent.click(within(list).getByRole('option', { name: /Gamma Guard/ }), { ctrlKey: true })
+    const dataTransfer = { setData: vi.fn(), effectAllowed: '', dropEffect: '' }
+    fireEvent.dragStart(dragged, { dataTransfer })
+    fireEvent.dragOver(first, { dataTransfer })
+    fireEvent.drop(first, { dataTransfer })
+
+    await waitFor(() => {
+      expect(within(list).getAllByRole('option').map((row) => row.dataset.modId))
+        .toEqual(['mod-b', 'mod-c', 'mod-a', 'mod-d'])
+    })
+    expect(ipc.setLoadOrder).toHaveBeenCalledExactlyOnceWith(['mod-b', 'mod-c', 'mod-a'])
+    expect(within(list).getAllByRole('option').map((row) => row.querySelector('.row-order')?.textContent))
+      .toEqual(['1', '2', '3', '–'])
+    expect(within(list).getByRole('option', { name: /Beta Bastion/ })).toHaveAttribute('aria-selected', 'true')
+    expect(within(list).getByRole('option', { name: /Gamma Guard/ })).toHaveAttribute('aria-selected', 'true')
+    expect(within(list).getByLabelText('Enable Delta Dawn')).not.toBeChecked()
+    expect(await screen.findByText('Ready · 4 mods · 3 enabled')).toBeInTheDocument()
   })
 
   it('navigates to the conflict report and shows the winning mod', async () => {

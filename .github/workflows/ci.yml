@@ -24,11 +24,56 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
+  frontend:
+    name: Frontend behavior and quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Frontend behavior tests
+        timeout-minutes: 5
+        run: pnpm --filter @wh3mm/desktop exec vitest run --reporter=default --reporter=junit --outputFile.junit=test-results/frontend.xml
+
+      - name: Upload frontend test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-test-results
+          path: frontend/test-results/frontend.xml
+          if-no-files-found: warn
+          retention-days: 7
+
   linux:
     name: Linux quality gates
+    needs: frontend
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
+      - name: Require frontend checks
+        env:
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+        run: test "$FRONTEND_RESULT" = success
+
       - uses: actions/checkout@v4
 
       - name: Reference fetch script tests
@@ -105,15 +150,6 @@ jobs:
 
       - name: Rust tests
         run: cargo test --workspace --locked
-
-      - name: Typecheck
-        run: pnpm typecheck
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Frontend tests
-        run: pnpm test
 
       - name: Build Linux desktop binary
         run: cargo build -p wh3mm-app --release --locked
