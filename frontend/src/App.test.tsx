@@ -131,7 +131,7 @@ describe('App', () => {
     expect(screen.queryByRole('option', { name: /Alpha Legion/ })).not.toBeInTheDocument()
   })
 
-  it('disables a mod and updates the checkbox, counts, and dirty state', async () => {
+  it('toggles a mod and sends the boolean inverted from the row state', async () => {
     mockReady()
     vi.mocked(ipc.setModEnabled).mockResolvedValue(
       makeSnapshot([{ ...MOD_A, isEnabled: false }, MOD_B]),

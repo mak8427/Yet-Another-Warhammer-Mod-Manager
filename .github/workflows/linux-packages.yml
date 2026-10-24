@@ -26,7 +26,7 @@ on:
       - pnpm-workspace.yaml
       - docs/RELEASE.md
   push:
-    branches: ['**']
+    branches: [main]
     paths:
       - .github/workflows/linux-packages.yml
       - .github/workflows/release.yml

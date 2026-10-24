@@ -9,6 +9,16 @@ import { parse } from 'yaml'
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const workflow = parse(readFileSync(join(repoRoot, '.github/workflows/ci.yml'), 'utf8'))
 
+test('CI and packaging avoid duplicate branch-push runs for pull requests', () => {
+  for (const path of ['.github/workflows/ci.yml', '.github/workflows/linux-packages.yml']) {
+    const config = parse(readFileSync(join(repoRoot, path), 'utf8'))
+    assert.deepEqual(config.on.push.branches, ['main'])
+    assert.ok(Object.hasOwn(config.on, 'pull_request'))
+    assert.ok(Object.hasOwn(config.on, 'workflow_dispatch'))
+    assert.equal(config.concurrency['cancel-in-progress'], true)
+  }
+})
+
 test('frontend behavior checks run without waiting for a desktop build', () => {
   const frontend = workflow.jobs.frontend
   assert.ok(frontend, 'frontend checks need an independent job')

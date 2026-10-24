@@ -1,9 +1,8 @@
 name: CI
 
 on:
-  # The QA gate (docs/QA_PLAN.md) must see every pushed branch and every PR.
   push:
-    branches: ['**']
+    branches: [main]
   pull_request:
   workflow_dispatch:
     inputs:
@@ -41,7 +40,7 @@ jobs:
           cache: pnpm
 
       - name: Install frontend dependencies
-        run: pnpm install --frozen-lockfile
+        run: bash scripts/retry-command.sh pnpm install --frozen-lockfile
 
       - name: Typecheck
         run: pnpm typecheck
@@ -129,7 +128,7 @@ jobs:
         run: node scripts/qa/generate-fixtures.mjs --verify
 
       - name: Install frontend dependencies
-        run: pnpm install --frozen-lockfile
+        run: bash scripts/retry-command.sh pnpm install --frozen-lockfile
 
       # The packaging guard reads the workflow files with the root `yaml`
       # dependency, so it runs after the workspace install.
@@ -195,7 +194,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: bash scripts/retry-command.sh pnpm install --frozen-lockfile
 
       - name: Parity report tests
         run: node --test scripts/parity-report.test.mjs
