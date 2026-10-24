@@ -55,22 +55,6 @@ fn id_of(session: &Session, name: &str) -> String {
         .clone()
 }
 
-fn has_temp_sibling(path: &Path) -> bool {
-    let prefix = format!(
-        ".{}",
-        path.file_name()
-            .map(|name| name.to_string_lossy().into_owned())
-            .unwrap_or_default()
-    );
-    fs::read_dir(path.parent().expect("parent"))
-        .expect("read parent")
-        .flatten()
-        .any(|entry| {
-            let name = entry.file_name().to_string_lossy().into_owned();
-            name.starts_with(&prefix) && name.contains(".tmp-")
-        })
-}
-
 /// FI-01 — one malformed pack must not abort the scan or panic startup.
 #[test]
 fn fi01_malformed_pack_does_not_abort_scan() {

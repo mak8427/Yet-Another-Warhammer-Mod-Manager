@@ -15,8 +15,11 @@ backend and a TypeScript frontend.
 ## Status
 
 The v1.0 feature set is implemented. The Tauri 2 desktop shell builds and runs
-on Windows and Linux (native Steam/Proton); macOS is not supported. Current
-progress and evidence live in [docs/STATUS.md](docs/STATUS.md).
+on Windows and Linux (native Steam/Proton); macOS is not supported. On Windows
+the manager starts `Warhammer3.exe` directly instead of going through Steam's
+`-applaunch` path, so the Creative Assembly launcher cannot replace the applied
+`used_mods.txt`; Steam must be running for Steamworks and Workshop content.
+Current progress and evidence live in [docs/STATUS.md](docs/STATUS.md).
 
 ## Layout
 
@@ -69,7 +72,11 @@ version globally with `npm install -g pnpm@12.14.0`.
 ### Linux (desktop shell)
 
 The Tauri shell builds and runs on Linux against native Steam and Proton
-installs. Flatpak and Snap Steam launches are not covered by this build.
+installs. On Linux the game is started through Proton directly, using the
+configured compatibility tool, the game's existing `compatdata` prefix, and the
+Steam Linux Runtime. There is no automatic Steam fallback on Linux: a missing
+prerequisite or a failed spawn is reported as a typed error code. Flatpak and
+Snap Steam launches are not covered by this build.
 
 - A C linker and `pkg-config` (`build-essential pkg-config` on Debian/Ubuntu).
 - WebKitGTK 4.1 and GTK3 development/runtime packages. On Debian/Ubuntu:
@@ -186,6 +193,9 @@ Use `cargo test -p wh3mm-core --locked` and `pnpm dev` for headless work.
 
 ## Troubleshooting
 
+- **An error code needs an explanation** — see
+  [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for every `AppError` code,
+  including the Linux Proton launch failures.
 - **The build cannot find `frontend/dist`** — run `pnpm build` from the
   repository root before any workspace-wide `cargo` command. Tauri embeds that
   directory at compile time.

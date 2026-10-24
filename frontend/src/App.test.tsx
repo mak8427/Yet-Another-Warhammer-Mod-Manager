@@ -8,6 +8,7 @@ import {
   CONFLICT_REPORT,
   PROFILE_CAMPAIGN,
   PROFILES,
+  PROTON_LAUNCH_RESULT,
   TAGS,
   UI,
   WRITE_REPORT,
@@ -313,7 +314,7 @@ describe('App', () => {
     expect(screen.queryByText('Settings reset; no game path was available for the load order')).not.toBeInTheDocument()
   })
 
-  it('opens the launch dialog and requests a launch through Steam', async () => {
+  it('opens the launch dialog and requests a direct launch', async () => {
     mockReady()
     render(<App />)
     await screen.findByRole('listbox', { name: 'Mods' })
@@ -325,7 +326,24 @@ describe('App', () => {
     await waitFor(() => {
       expect(ipc.launchGame).toHaveBeenCalled()
     })
-    expect(await within(dialog).findByRole('status')).toHaveTextContent('launch requested through Steam')
+    const status = await within(dialog).findByRole('status')
+    expect(status).toHaveTextContent('launch requested directly')
+    expect(status).toHaveTextContent('direct')
+  })
+
+  it('reports a direct Proton launch result', async () => {
+    mockReady()
+    vi.mocked(ipc.launchGame).mockResolvedValueOnce(PROTON_LAUNCH_RESULT)
+    render(<App />)
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Launch game' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Launch Warhammer III' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Launch game' }))
+
+    const status = await within(dialog).findByRole('status')
+    expect(status).toHaveTextContent('launch requested through Proton')
+    expect(status).toHaveTextContent('proton')
   })
 
   it('changes density from settings and persists it', async () => {

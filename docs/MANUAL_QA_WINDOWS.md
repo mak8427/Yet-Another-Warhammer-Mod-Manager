@@ -13,8 +13,9 @@ evidence.
 ## Preconditions
 
 - Windows 10 22H2+ or Windows 11, x64, 8 GB RAM minimum.
-- Steam installed; WH3 app id `1142710` installed in a library that is **not**
-  the Steam root library (proves multi-library detection).
+- Steam installed and running; WH3 app id `1142710` installed in a library that
+  is **not** the Steam root library (proves multi-library detection).
+- The Creative Assembly launcher is closed before each launch test.
 - At least one Workshop mod subscribed and one local `.pack` in
   `<game>/data/`.
 - The release artefact under test: version, SHA-256, and CI run URL.
@@ -139,12 +140,26 @@ warning; the app does not crash.
 
 ### WIN-11 — Launch handoff
 
-1. Close WH3 if running; try **Launch**.
-2. Repeat while WH3 is already running.
+1. Start Steam and close WH3 and the CA launcher. Record the SHA-256 of
+   `used_mods.txt`.
+2. Enable a mod, click **Apply Load Order**, then **Launch** with no options.
+3. Repeat while WH3 is already running.
+4. Close Steam and try **Launch**.
+5. Before a launch, manually replace `used_mods.txt` with a different list.
+6. During the three-second guard, rewrite `used_mods.txt` from another process.
 
-Expected: the game starts through Steam with the chosen options; the
-already-running case reports a clear message instead of starting a second
-instance. No `used_mods.txt` rewrite unless the user applied a change.
+Expected:
+
+- `Warhammer3.exe` is started directly by the manager with the literal
+  `used_mods.txt;` argument and the game directory as cwd;
+- no CA launcher window appears, and Steam is not the launch parent;
+- the game loads the applied mod and the file hash is unchanged at startup and
+  after exit;
+- the already-running case reports a clear message instead of a second instance;
+- Steam not running reports `steam_not_running` and starts no game/launcher;
+- a stale file reports `load_order_overridden` before spawning;
+- an in-guard rewrite stops the spawned process, restores the original bytes,
+  and reports `load_order_overridden`.
 
 ### WIN-12 — Cut-feature audit
 

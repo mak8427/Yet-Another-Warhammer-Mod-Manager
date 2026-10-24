@@ -18,6 +18,8 @@ the error text if a step fails. "Looks fine" is not evidence.
 - WH3 app id `1142710` installed in a Steam library, ideally **not** the Steam
   root library (proves multi-library detection).
 - Proton prefix present at `steamapps/compatdata/1142710/pfx`.
+- At least one installed Proton under `steamapps/common/Proton*` and a
+  `SteamLinuxRuntime*/_v2-entry-point` under `steamapps/common/`.
 - At least one Workshop mod subscribed and one local `.pack` in `<game>/data/`.
 - Back up the real `used_mods.txt`, `config.json`, and `config.json.bak` before
   starting. Stop if no backup was taken.
@@ -105,19 +107,44 @@ disabled dependencies are reported separately.
 4. Rename the ACF file and refresh. Expected: a `steam_not_found` error lists
    the checked paths; the app does not show an empty list as success.
 
-### LIN-07 — Launch through native Steam
+### LIN-07 — Launch through direct Proton
 
-1. Close Total War: Warhammer III. Confirm no `Warhammer3.exe` process is
+1. Record the configured compatibility tool from
+   `config/config.vdf` (`CompatToolMapping` → `1142710` → `name`), the
+   installed `Proton*` directory, and the `SteamLinuxRuntime*` entry point.
+2. Close Total War: Warhammer III. Confirm no `Warhammer3.exe` process is
    running (the app checks `/proc`).
-2. Open **Launch game**, enable **Skip intro** and **Script logging**, and
+3. Write a distinctive load order and record the SHA-256 of `used_mods.txt`.
+4. Open **Launch game**, enable **Skip intro** and **Script logging**, and
    launch.
-3. Expected: Steam starts the Proton game. `data/wh3mm_skip_intro.pack` and
+5. While the game starts, record the process command line:
+
+   ```bash
+   ps -eo pid,args | grep -E 'Warhammer3.exe|_v2-entry-point|/proton'
+   ```
+
+   Expected: the runtime entry point, `--verb=waitforexitandrun`, `--`, the
+   selected Proton `proton` script, `waitforexitandrun`, `Warhammer3.exe`, and
+   the literal `used_mods.txt;` argument. Steam must not be the parent launcher.
+6. Expected: `data/wh3mm_skip_intro.pack` and
    `data/script/enable_console_logging` exist while the options are enabled.
-4. Turn both options off and launch again. Expected: the managed pack and the
+   The game reaches the main menu and loads the selected mods, not just an
+   unchanged file.
+7. Compare the SHA-256 of `used_mods.txt` while the game is running and after it
+   exits. Expected: unchanged from step 3.
+8. Turn both options off and launch again. Expected: the managed pack and the
    owned script-logging marker are removed; a user-owned logging marker is not
    deleted.
-5. While the game runs, try launching from the manager again. Expected: a
+9. While the game runs, try launching from the manager again. Expected: a
    validation error says the game is already running, and no files change.
+10. Test the load-order guard: start another launch and, during the three-second
+    guard window, rewrite `used_mods.txt` from another terminal. Expected: the
+    manager stops the spawned process and shows `load_order_overridden`.
+11. Test the no-fallback behavior: temporarily move the selected
+    `SteamLinuxRuntime*` directory aside (back it up first), launch, and restore
+    it. Expected: `proton_runtime_missing`; Steam must not start as a fallback.
+12. Repeat with `compatdata/1142710` moved aside. Expected:
+    `compat_data_missing`; no prefix is created.
 
 ### LIN-08 — Recovery
 

@@ -102,6 +102,7 @@ fn error_codes_use_snake_case_on_the_wire() {
         (ErrorCode::Io, "io"),
         (ErrorCode::ConfigCorrupt, "config_corrupt"),
         (ErrorCode::SteamNotFound, "steam_not_found"),
+        (ErrorCode::SteamNotRunning, "steam_not_running"),
         (
             ErrorCode::ProcessDetectionFailed,
             "process_detection_failed",
@@ -110,6 +111,12 @@ fn error_codes_use_snake_case_on_the_wire() {
         (ErrorCode::NotFound, "not_found"),
         (ErrorCode::Validation, "validation"),
         (ErrorCode::Internal, "internal"),
+        (ErrorCode::ProtonNotConfigured, "proton_not_configured"),
+        (ErrorCode::CompatDataMissing, "compat_data_missing"),
+        (ErrorCode::ProtonNotInstalled, "proton_not_installed"),
+        (ErrorCode::ProtonRuntimeMissing, "proton_runtime_missing"),
+        (ErrorCode::LaunchFailed, "launch_failed"),
+        (ErrorCode::LoadOrderOverridden, "load_order_overridden"),
     ];
 
     for (code, expected) in cases {
@@ -221,4 +228,50 @@ fn write_report_exposes_confirmation_requirements() {
         json["unmanagedDirectives"][0],
         "add_working_directory \"x\";"
     );
+}
+
+#[test]
+fn launch_method_wire_values_include_proton() {
+    use wh3mm_core::launch::LaunchMethod;
+
+    let cases = [
+        (LaunchMethod::Steam, "steam"),
+        (LaunchMethod::Proton, "proton"),
+        (LaunchMethod::Direct, "direct"),
+    ];
+
+    for (method, expected) in cases {
+        let json = serde_json::to_value(method).expect("LaunchMethod must serialize");
+        assert_eq!(json, expected);
+    }
+}
+
+#[test]
+fn every_error_code_is_documented() {
+    const TROUBLESHOOTING: &str = include_str!("../../../docs/TROUBLESHOOTING.md");
+    let codes = [
+        "io",
+        "config_corrupt",
+        "game_not_found",
+        "steam_not_found",
+        "steam_not_running",
+        "process_detection_failed",
+        "pack_parse_failed",
+        "not_found",
+        "validation",
+        "internal",
+        "proton_not_configured",
+        "compat_data_missing",
+        "proton_not_installed",
+        "proton_runtime_missing",
+        "launch_failed",
+        "load_order_overridden",
+    ];
+
+    for code in codes {
+        assert!(
+            TROUBLESHOOTING.contains(&format!("`{code}`")),
+            "{code} is missing from docs/TROUBLESHOOTING.md"
+        );
+    }
 }
