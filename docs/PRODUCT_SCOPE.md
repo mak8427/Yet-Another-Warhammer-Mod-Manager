@@ -30,7 +30,7 @@ Legacy features that are not in the "In scope" list are cut on purpose.
 | 5 | Profiles | Create/save/rename/duplicate/delete; restore enabled set + order; default profile on first run. |
 | 6 | Conflicts | Compare enabled packs' file indexes; show which mod wins each conflicting path; warn on missing dependencies and duplicate pack names. |
 | 7 | Workshop | List subscriptions and update state from Steam metadata; open item page; subscribe/unsubscribe/update through the Steam client. No custom Steam auth. |
-| 8 | Launch | Launch WH3 through Steam with skip-intro and script-logging options; verify game is not already running. |
+| 8 | Launch | Launch WH3 directly on Windows and through direct Proton on Linux, with skip-intro and script-logging options; verify the game is not already running, that the applied order matches the file, and that `used_mods.txt` is not rewritten during the launch guard. |
 | 9 | Settings | Paths, density, thumbnail columns, backup/restore load order, reset to defaults. English UI only. |
 | 10 | Safety | Atomic config writes, corrupt-file recovery, structured error messages, no silent data loss. |
 
@@ -77,3 +77,5 @@ Legacy features that are not in the "In scope" list are cut on purpose.
 - 2026-10-20 — Scope fixed to WH3-only v1.0; parity with legacy app explicitly rejected.
 - 2026-10-20 — Tauri 2 chosen as the only architecture candidate (Rust backend + TS frontend, no Node main process).
 - 2026-10-21 — Pack-author surface cut from v1.0: PFH5/ACF carry no author and custom Steam auth is forbidden (WAR-104; implemented in WAR-107).
+- 2026-10-24 — Linux launch moved to direct Proton with a load-order guard; no automatic Steam fallback (ADR-009).
+- 2026-10-24 — Windows launch moved to direct `Warhammer3.exe` to bypass the CA launcher, with pre-launch order verification and snapshot restore (ADR-010).

@@ -47,9 +47,8 @@ jobs:
         with:
           components: rustfmt, clippy
 
-      # Cache restore is best effort. A stalled cache service must not block the
-      # job, and the post-step upload has hung jobs before, so bound the step
-      # and fall back to a cold build instead of waiting on it.
+      # Cache restore is best effort: bound the main step and fall back to a
+      # cold build on failure. Post-step cleanup is bounded by the job timeout.
       - name: Restore Rust build cache
         uses: Swatinem/rust-cache@v2
         timeout-minutes: 5
@@ -84,12 +83,14 @@ jobs:
       - name: QA fixture integrity
         run: node scripts/qa/generate-fixtures.mjs --verify
 
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The packaging guard reads the workflow files with the root `yaml`
+      # dependency, so it runs after the workspace install.
       - name: QA generator guard tests
         timeout-minutes: 5
         run: node --test scripts/qa/*.test.mjs
-
-      - name: Install frontend dependencies
-        run: pnpm install --frozen-lockfile
 
       # generate_context! embeds frontend/dist at compile time, so the frontend
       # must exist before clippy or tests build the app crate.
