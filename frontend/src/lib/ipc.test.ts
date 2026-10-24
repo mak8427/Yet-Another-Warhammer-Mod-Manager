@@ -153,6 +153,50 @@ describe('ipc', () => {
     expect(error.message).toBe('Unknown IPC failure')
   })
 
+  it('accepts every launch error code', () => {
+    const codes = [
+      'steam_not_running',
+      'process_detection_failed',
+      'proton_not_configured',
+      'compat_data_missing',
+      'proton_not_installed',
+      'proton_runtime_missing',
+      'launch_failed',
+      'load_order_overridden',
+    ] as const
+
+    for (const code of codes) {
+      const error = toIpcError({
+        code,
+        message: 'launch failed',
+        details: null,
+        retryable: false,
+      })
+      expect(error.code).toBe(code)
+    }
+  })
+
+  it('accepts launch failure codes and forwards a Proton result', async () => {
+    const error = toIpcError({
+      code: 'load_order_overridden',
+      message: 'used_mods.txt changed during launch',
+      details: 'changed',
+      retryable: false,
+    })
+    expect(error.code).toBe('load_order_overridden')
+
+    invokeMock.mockResolvedValue({
+      launched: true,
+      method: 'proton',
+      message: 'Warhammer III launch requested through Proton.',
+    })
+    await expect(ipc.launchGame(true, false)).resolves.toMatchObject({ method: 'proton' })
+    expect(invokeMock).toHaveBeenLastCalledWith('launch_game', {
+      skipIntro: true,
+      scriptLogging: false,
+    })
+  })
+
   it('turns thumbnail paths into asset URLs only in this module', () => {
     expect(fileUrl('C:/game/thumb.png')).toBe('asset://localhost/C%3A%2Fgame%2Fthumb.png')
     convertFileSrcMock.mockImplementationOnce(() => {

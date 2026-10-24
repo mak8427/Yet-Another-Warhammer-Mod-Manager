@@ -254,7 +254,15 @@ fn used_mods_fixtures_keep_their_encodings_and_defects() {
     assert!(duplicates.contains("MOD_A.PACK"));
 
     let directives = read_text_fixture("load_order/used_mods_unknown_directive.txt");
-    assert_eq!(directives.matches("add_working_directory").count(), 2);
+    assert_eq!(directives.matches("custom_directive").count(), 1);
+    assert_eq!(directives.matches("another_unknown_directive").count(), 1);
+
+    let working_directory = read_text_fixture("load_order/used_mods_working_directory.txt");
+    assert_eq!(
+        working_directory.matches("add_working_directory").count(),
+        1
+    );
+    assert!(working_directory.contains("workshop"));
 
     let no_newline = read_text_fixture("load_order/used_mods_no_final_newline.txt");
     assert!(!no_newline.ends_with('\n'));

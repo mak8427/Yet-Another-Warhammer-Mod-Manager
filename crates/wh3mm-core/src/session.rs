@@ -192,6 +192,24 @@ impl Session {
             .ok_or_else(|| self.game_not_found_error())
     }
 
+    /// Steam roots considered by the Linux direct-Proton resolver.
+    ///
+    /// The detected location carries the Steam root for automatic detection, but
+    /// a manual path only exposes the library root. Prefer the location's root
+    /// and fall back to the injected/default candidates.
+    pub(crate) fn launch_steam_roots(&self) -> Vec<PathBuf> {
+        let mut candidates = self
+            .steam_root_candidates
+            .clone()
+            .unwrap_or_else(paths::default_steam_root_candidates);
+        if let Some(location) = &self.location {
+            if !location.steam_root.as_os_str().is_empty() {
+                candidates.insert(0, location.steam_root.clone());
+            }
+        }
+        paths::discover_steam_roots(&candidates)
+    }
+
     pub fn set_game_path(
         &mut self,
         game_path: Option<PathBuf>,
@@ -806,10 +824,20 @@ impl Session {
         let mut unresolved = Vec::new();
         for id in &self.enabled_ids {
             match by_id.get(id.as_str()) {
-                Some(module) => resolved.push(PlannedName {
-                    id: id.clone(),
-                    name: module.name.clone(),
-                }),
+                Some(module) => {
+                    let directory = module.path.parent().and_then(|parent| {
+                        if parent == location.data_path.as_path() {
+                            None
+                        } else {
+                            Some(parent.to_path_buf())
+                        }
+                    });
+                    resolved.push(PlannedName {
+                        id: id.clone(),
+                        name: module.name.clone(),
+                        directory,
+                    });
+                }
                 None => unresolved.push(id.rsplit('/').next().unwrap_or(id.as_str()).to_string()),
             }
         }

@@ -473,7 +473,7 @@ function fixtureScript() {
           case 'set_launch_options':
             return data.launchOptions;
           case 'launch_game':
-            return { launched: true, method: 'steam', message: 'Warhammer III launch requested through Steam.' };
+            return { launched: true, method: 'direct', message: 'Warhammer III launch requested directly.' };
           default:
             throw error('internal', 'Unknown command: ' + command, null, false);
         }

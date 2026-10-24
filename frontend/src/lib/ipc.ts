@@ -17,10 +17,17 @@ export const ERROR_CODES = [
   'config_corrupt',
   'game_not_found',
   'steam_not_found',
+  'steam_not_running',
   'process_detection_failed',
   'pack_parse_failed',
   'not_found',
   'validation',
+  'proton_not_configured',
+  'compat_data_missing',
+  'proton_not_installed',
+  'proton_runtime_missing',
+  'launch_failed',
+  'load_order_overridden',
   'internal',
 ] as const
 
@@ -232,7 +239,7 @@ export interface LaunchOptions {
   scriptLogging: boolean
 }
 
-export type LaunchMethod = 'steam' | 'direct'
+export type LaunchMethod = 'steam' | 'proton' | 'direct'
 
 export interface LaunchResult {
   launched: boolean
