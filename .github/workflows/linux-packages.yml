@@ -26,7 +26,7 @@ on:
       - package.json
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
-      - docs/RELEASE.md
+      - docs/INSTALLATION.md
   push:
     branches: ['**']
     paths:
@@ -42,7 +42,7 @@ on:
       - package.json
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
-      - docs/RELEASE.md
+      - docs/INSTALLATION.md
   workflow_dispatch:
     inputs:
       version:

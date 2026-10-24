@@ -232,7 +232,7 @@ For uninstall commands and configuration cleanup, see [the installation guide](d
 
 Screenshots use sample profiles and states. Mod-list captures include installed
 Workshop mod thumbnails to show how artwork appears in the app. See the
-[screenshot record](docs/screenshots/showcase/README.md) for capture details.
+[screenshot record](docs/TESTING.md#screenshots) for capture details.
 
 ## Quick Start
 
@@ -245,7 +245,7 @@ Workshop mod thumbnails to show how artwork appears in the app. See the
   libraries, and an X11 or Wayland desktop session.
 
 Linux dependency commands and full platform setup are in
-[the development guide](docs/DEV_SETUP.md).
+[the development guide](docs/DEVELOPMENT.md).
 
 ### Run locally
 
@@ -276,10 +276,10 @@ server; filesystem and game actions require the Tauri app.
 | Rust tests | `cargo test --workspace --locked` |
 | Core tests without a desktop/frontend build | `cargo test -p wh3mm-core --locked` |
 | Rust format / lint | `cargo fmt --all --check` / `cargo clippy --workspace --all-targets --locked -- -D warnings` |
-| QA script tests | `node --test scripts/qa/*.test.mjs` |
+| QA script tests | `pnpm qa:scripts` |
 | Release recipe tests | `python3 scripts/qa/install-recipes.test.py` |
-| Capability check | `node scripts/parity-report.mjs --check` |
-| Linux release packages | See [release builds](docs/RELEASE.md#build-locally-on-linux) |
+| Documentation links | `pnpm docs:check` |
+| Linux release packages | See [release builds](docs/INSTALLATION.md#build-locally-on-linux) |
 
 ## Feature Matrix
 
@@ -292,12 +292,12 @@ server; filesystem and game actions require the Tauri app.
 | Conflict inspection | Implemented | Overlapping pack entries, duplicate pack names, and missing/disabled dependencies |
 | Workshop | Partial | Read installed/subscribed metadata and open Steam pages; subscribe/unsubscribe/update through Steam |
 | Game launch | Implemented; manual QA required | Direct Windows / Proton paths, launch options, running-game checks, and load-order protection |
-| Preferences | Implemented; persistence caveats | Density, thumbnails, paths, reset, and backup recovery; see the parity scorecard |
+| Preferences | Implemented; persistence caveats | Density, thumbnails, paths, reset, and backup recovery; see the testing guide |
 | Large-list UI | Partial | Virtualized rows; persisted scroll and the 20k-row guard remain documented limitations |
 | Linux distribution | Implemented in workflows; activation pending | Package/install checks; public releases, signed hosting, and real-game QA are separate gates |
 
-The [capability scorecard](docs/PARITY.md) records evidence and accepted gaps.
-[STATUS](docs/STATUS.md) and [product scope](docs/PRODUCT_SCOPE.md) remain the
+The [testing guide](docs/TESTING.md) records evidence and accepted gaps.
+[architecture](ARCHITECTURE.md) and [installation guide](docs/INSTALLATION.md) remain the
 references for release readiness.
 
 ## Architecture
@@ -312,27 +312,57 @@ Warhammer_mod_manager/
 ├── packaging/       # Linux packages, Flatpak, Nix/Gentoo recipes, signed updates
 ├── fixtures/        # Synthetic game, Steam, and pack fixtures
 ├── scripts/         # Development, QA, and performance tools
-└── docs/            # Decisions, evidence, installation, and release guides
+└── docs/            # Development, installation, testing, and performance guides
 ```
 
 The frontend accesses files through typed Tauri commands. The Rust core stays
 independent of the UI so domain behavior can be tested without a WebView.
 Windows uses WebView2; Linux uses WebKitGTK. See
-[the architecture decisions](docs/adr/) and [IPC contract](docs/adr/002-ipc-contract.md).
+[the architecture decisions](ARCHITECTURE.md) and [IPC contract](ARCHITECTURE.md).
 
 ## Documentation & Contributing
 
 | Guide | Contents |
 |---|---|
 | [Installation](docs/INSTALLATION.md) | Formats, runtime dependencies, updates, verification, and removal |
-| [Development setup](docs/DEV_SETUP.md) | Toolchains, local builds, and developer workflow |
-| [Troubleshooting](docs/TROUBLESHOOTING.md) | Typed errors, Steam discovery, and launch failures |
-| [Release guide](docs/RELEASE.md) | Package builds, signing activation, QA, publication, and rollback |
-| [QA plan](docs/QA_PLAN.md) | Acceptance criteria and release checks |
-| [Linux QA](docs/MANUAL_QA_LINUX.md) / [Windows QA](docs/MANUAL_QA_WINDOWS.md) | Desktop and game-launch checks |
-| [Performance](docs/PERF.md) | Measurement procedure and recorded evidence |
+| [Development setup](docs/DEVELOPMENT.md) | Toolchains, local builds, and developer workflow |
+| [Troubleshooting](docs/INSTALLATION.md#troubleshooting) | Typed errors, Steam discovery, and launch failures |
+| [Release guide](docs/INSTALLATION.md) | Package builds, signing activation, QA, publication, and rollback |
+| [QA plan](docs/TESTING.md) | Acceptance criteria and release checks |
+| [Linux QA](docs/TESTING.md#desktop-and-game-checks) / [Windows QA](docs/TESTING.md#desktop-and-game-checks) | Desktop and game-launch checks |
+| [Performance](docs/PERFORMANCE.md) | Measurement procedure and recorded evidence |
 | [Contributing](CONTRIBUTING.md) | Development and review expectations |
 
-The original [WH3 Mod Manager](https://github.com/Shazbot/WH3-Mod-Manager) is the
-legacy capability reference. This repository rebuilds the manager with a Rust
-backend and a Tauri interface.
+Inspired by [Shazbot's WH3 Mod Manager](https://github.com/Shazbot/WH3-Mod-Manager).
+This app uses a Rust backend and a Tauri interface.
+
+<details>
+<summary>Skip-intro asset attribution</summary>
+
+The one-frame blank movie used for skip-intro overrides retains the following
+MIT notice. No source checkout or cross-application comparison is required to
+build or test this app.
+
+MIT License
+
+Copyright (c) 2022 Shazbot
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+</details>

@@ -14,8 +14,7 @@
  *                           directories unless they are previous --scale output
  *                           or --force is given
  *
- * The PFH5 layout follows the compatibility reference in the legacy manager
- * (`src/packFileHandler.ts` and `src/utility/packFileIndex.ts`):
+ * The synthetic PFH5 header and packed-file index use this layout:
  *
  *   offset  size  field
  *        0     4  magic "PFH5"

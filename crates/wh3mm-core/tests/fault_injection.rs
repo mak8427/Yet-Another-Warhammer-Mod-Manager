@@ -1,6 +1,6 @@
 //! Deliberate fault injection at the Rust API boundary.
 //!
-//! Each test names a failure from `docs/QA_PLAN.md` §5 and asserts three things:
+//! Each test names a failure from `docs/TESTING.md` §5 and asserts three things:
 //! the operation returns a typed error (never a panic), the user's original file
 //! is byte-identical afterwards, and no temp file is left behind. These are the
 //! paths that can destroy a load order, so they are release-blocking.

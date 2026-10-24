@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Builds the three benchmark workloads (100 / 500 / 2000 packs) from the *same* generator that
- * produces the QA and legacy-baseline fixture, so every consumer measures the same bytes.
+ * produces the QA and performance fixture, so every consumer measures the same bytes.
  *
  * The per-size generator lives in `generate-fixture.mjs`; this script only orchestrates it,
  * verifies each tree, and records one suite manifest. Nothing here is committed: the packs are

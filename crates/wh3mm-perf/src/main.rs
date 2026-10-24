@@ -6,7 +6,7 @@
 //! configuration directory; `scripts/perf/measure-new-app.mjs` starts a new
 //! process per sample and owns the summary and the environment record.
 //!
-//! Scope, stated plainly in `docs/PERF.md`:
+//! Scope, stated plainly in `docs/PERFORMANCE.md`:
 //!
 //! - `coldStartMs`: process start to `Session::initialize` returning. This is
 //!   the work the Tauri shell does before the window is usable, but it excludes
@@ -221,7 +221,7 @@ fn measure(
     session.apply_profile(&all_profile.id)?;
 
     // Apply/persist: move the second enabled row to position 5, the same edit
-    // the legacy harness performs by dragging a row onto the list.
+    // a user performs by reordering the list.
     let mut order: Vec<String> = session
         .snapshot()
         .mods
@@ -304,16 +304,16 @@ fn measure(
             .to_string(),
         "headerScanMs is Session timings.scan_ms: PFH5 header parsing plus data-folder enumeration and deduplication of the 492 pack files this app scans."
             .to_string(),
-        "loadOrderPersistMs is the core set_load_order command to the persisted config.json; it excludes DOM drag dispatch included in the legacy CDP number."
+        "loadOrderPersistMs is the core set_load_order command to the persisted config.json; it excludes UI drag dispatch."
             .to_string(),
-        "presetSwitchMs is the core apply_profile command to the persisted config.json; it excludes DOM keyboard dispatch included in the legacy CDP number."
+        "presetSwitchMs is the core apply_profile command to the persisted config.json; it excludes UI keyboard dispatch."
             .to_string(),
-        "gameLaunchHandoffMs is a PROXY: app used_mods.txt write plus a stub process started by the harness, because c1a9cdd has no launch command. It is not a TW:WH3 launch."
+        "gameLaunchHandoffMs is a PROXY: app used_mods.txt write plus a stub process started by the harness, rather than the real game. It is not a TW:WH3 launch."
             .to_string(),
     ];
     if mod_count != 500 {
         notes.push(format!(
-            "The new app scanned {mod_count} pack files, not 500: the 8 workshop duplicate copies live under content/1142710 and only enter the scan through Steam discovery. The legacy app enumerated them and then dropped the same 8 copies, so both lists contain 492 mods."
+            "The new app scanned {mod_count} pack files, not 500: the 8 workshop duplicate copies live under content/1142710 and only enter the scan through Steam discovery. This core-only fixture path therefore reports 492 mods."
         ));
     }
 
