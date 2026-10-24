@@ -1,8 +1,8 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { cpus, platform, arch } from 'node:os'
 import { expect, it } from 'vitest'
-import { ModList } from './ModList'
-import { makeMod } from '../../test/mocks'
+import { ModList } from './src/components/mod-list/ModList'
+import { makeMod } from './src/test/mocks'
 
 it('measures synchronous drag-marker updates with 500 mods', () => {
   const samples: number[] = []

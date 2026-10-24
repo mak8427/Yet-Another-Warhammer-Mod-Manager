@@ -477,45 +477,6 @@ for the rest of WAR-7.
 - **Sub-millisecond core commands.** Medians keep three decimals; a rounded `0 ms` is a lie about a
   real 0.2 ms call, so the report keeps the decimals.
 
-## Mod interaction responsiveness (2026-10-24)
-
-Mod toggles and load-order changes now update the working list before persistence
-finishes. Saves remain serialized, with rollback on failure and pending edits
-reapplied over the last confirmed snapshot. Conflict scans capture session metadata
-under the manager lock, then read pack indexes and compute the report after releasing
-it. Profile/conflict refreshes run after a pending edit batch finishes.
-
-The list also memoizes unchanged rows and stabilizes event callbacks so moving the
-drag marker does not render every visible row. The inspector caches conflict lookups
-by report and selected mod; filtering/sorting no longer reruns on unrelated state
-updates, and bulk selection uses sets rather than repeated linear membership checks.
-
-The reproducible component benchmark is:
-
-```bash
-pnpm --dir frontend exec vitest run --config vite.perf.config.ts --disableConsoleIntercept --silent=false --reporter=verbose
-```
-
-Baseline uses `ModList.tsx` and `ModRow.tsx` from `6ae9103`, with the same
-benchmark/config copied into that tree. The optimized run uses this PR. Both use
-500 synthetic mods (20 enabled), a 320px compact viewport, three warmup runs,
-12 measured runs, and 40 drag-marker changes per run. Mounting, DOM queries and
-cleanup are outside the timer. These are synchronous React/jsdom event-processing
-measurements on a shared Linux development host, not WebView input-to-paint latency,
-disk-save timings, or the release scan-budget host.
-
-| Metric | Baseline | Optimized |
-| --- | --- | --- |
-| Median milliseconds per drag-marker update | 2.972 | 0.458 |
-| IQR milliseconds per update | 0.125 | 0.175 |
-| Unchanged tracked row name reads per 40 updates | 240 | 0 |
-
-Environment: Node v26.11.1, Linux x64, AMD Ryzen 7 5800X3D. Raw samples and scope
-are recorded in [mod-interaction-linux.json](perf/mod-interaction-linux.json).
-The component result is approximately 6.5x faster for this narrow operation;
-end-to-end desktop latency still needs a WebView trace. Existing release performance
-evidence is unchanged; `verify-perf-gate.mjs` continues to pass against it.
-
 ## Optimisation candidates
 
 The M2 gate does not require an optimisation: all six metrics passed on the shared Windows runner.
