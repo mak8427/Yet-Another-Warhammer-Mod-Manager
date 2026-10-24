@@ -6,7 +6,7 @@
 - Product contract: `docs/PRODUCT_SCOPE.md`
 - Architecture: `docs/adr/001-architecture.md`, `docs/adr/002-ipc-contract.md`,
   `docs/adr/003-data-model.md`, `docs/adr/006-ui-tokens-and-density.md`,
-  `docs/adr/008-tw-wh3-fidelity-skin.md`
+  `docs/adr/012-tw-wh3-fidelity-skin.md`
 - Token source: `frontend/src/styles/tokens.css`
 - Screen checklist: `docs/UI_ACCEPTANCE.md`
 - Legacy reference (read-only): `docs/DESIGN.md` in
@@ -727,9 +727,13 @@ Rules:
 | `F6` / `Shift+F6` | Cycle focus between rail, toolbar, list, inspector |
 | `Escape` | Close menu/dialog/tooltip, cancel drag, clear search when search is focused |
 | `Ctrl+,` | Settings (optional alias for `Ctrl+5`) |
+| `Ctrl+=` / `Ctrl++` | Zoom in 10% (80–200%) |
+| `Ctrl+-` | Zoom out 10% (80–200%) |
+| `Ctrl+0` | Reset zoom to 100% |
+| `Ctrl+wheel` | Zoom in/out one step |
 
-Shortcuts do not fire while typing in an input, except `Escape`, `Ctrl+F`, and
-the section shortcuts.
+Shortcuts do not fire while typing in an input, except `Escape`, `Ctrl+F`, the
+section shortcuts, and the zoom shortcuts.
 
 ### 7.2 Mod list
 

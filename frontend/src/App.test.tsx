@@ -393,6 +393,64 @@ describe('App', () => {
     expect(document.documentElement.dataset.density).toBe('roomy')
   })
 
+  it('changes zoom from the keyboard even while typing and persists it', async () => {
+    mockReady()
+    render(<App />)
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    const search = screen.getByLabelText('Search mods')
+    search.focus()
+    fireEvent.keyDown(search, { key: '=', ctrlKey: true })
+
+    await waitFor(() => {
+      expect(ipc.updateUiPreferences).toHaveBeenCalledWith(expect.objectContaining({ zoom: 110 }))
+    })
+    expect(await screen.findByText('Zoom 110%')).toBeInTheDocument()
+
+    fireEvent.keyDown(search, { key: '0', ctrlKey: true })
+    await waitFor(() => {
+      expect(ipc.updateUiPreferences).toHaveBeenLastCalledWith(expect.objectContaining({ zoom: 100 }))
+    })
+    expect(await screen.findByText('Zoom 100%')).toBeInTheDocument()
+
+    fireEvent.keyDown(search, { key: '-', ctrlKey: true })
+    await waitFor(() => {
+      expect(ipc.updateUiPreferences).toHaveBeenLastCalledWith(expect.objectContaining({ zoom: 90 }))
+    })
+  })
+
+  it('changes zoom from settings and resets it', async () => {
+    mockReady()
+    render(<App />)
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    const rail = screen.getByRole('navigation', { name: 'Sections' })
+    fireEvent.click(within(rail).getByRole('button', { name: 'Settings' }))
+    await screen.findByRole('heading', { name: 'Settings' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }))
+    expect(screen.getByLabelText('Current zoom')).toHaveTextContent('110%')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reset' }))
+    expect(screen.getByLabelText('Current zoom')).toHaveTextContent('100%')
+
+    await waitFor(() => {
+      expect(ipc.updateUiPreferences).toHaveBeenLastCalledWith(expect.objectContaining({ zoom: 100 }))
+    })
+  })
+
+  it('zooms with Ctrl and the mouse wheel', async () => {
+    mockReady()
+    render(<App />)
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    fireEvent.wheel(window, { deltaY: -120, ctrlKey: true })
+
+    await waitFor(() => {
+      expect(ipc.updateUiPreferences).toHaveBeenCalledWith(expect.objectContaining({ zoom: 110 }))
+    })
+  })
+
   it('offers no author toggle in settings', async () => {
     mockReady()
     render(<App />)

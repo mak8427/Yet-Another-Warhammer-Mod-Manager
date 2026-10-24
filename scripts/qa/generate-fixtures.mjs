@@ -540,7 +540,8 @@ const USED_MODS_CORRUPT = [
 const CONFIG_VALID = {
   schemaVersion: 1,
   paths: { gamePathOverride: null },
-  ui: { density: 'comfortable', showThumbnails: true, lastScrollTop: 0 },
+  ui: { density: 'comfortable', showThumbnails: true, lastScrollTop: 0, zoom: 100 },
+  window: null,
   activeProfileId: 'b0f4e7f0-3a55-4b8e-9d4a-8a2f6f4b1c21',
   profiles: [
     {

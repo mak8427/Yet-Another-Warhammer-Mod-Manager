@@ -19,6 +19,7 @@ pub(crate) mod proton_launch;
 pub mod session;
 pub mod test_support;
 pub mod timing;
+pub mod window;
 pub mod workshop;
 
 /// Semantic version of the core crate, reported through the IPC contract.

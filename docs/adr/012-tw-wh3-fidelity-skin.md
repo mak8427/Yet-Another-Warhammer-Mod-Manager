@@ -1,4 +1,4 @@
-# ADR-008 — TW:WH3 fidelity skin (WAR-147)
+# ADR-012 — TW:WH3 fidelity skin (WAR-147)
 
 - Status: accepted for v1.1
 - Date: 2026-10-22

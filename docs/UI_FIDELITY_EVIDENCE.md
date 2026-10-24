@@ -37,7 +37,7 @@ code changed.
   the measurement line, menu/focus captures.
 - `scripts/qa/reference-study.html`,
   `scripts/qa/render-reference-study.sh`: our own reference study plate.
-- `docs/UI_DIRECTION.md` §2.8, `docs/adr/008-tw-wh3-fidelity-skin.md`,
+- `docs/UI_DIRECTION.md` §2.8, `docs/adr/012-tw-wh3-fidelity-skin.md`,
   `docs/UI_ACCEPTANCE.md` (WAR-147 section), this evidence file.
 
 ## Reference study

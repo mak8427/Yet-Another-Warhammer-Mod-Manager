@@ -1,6 +1,6 @@
 # ADR-006 — UI token source, density roles, and faction accents
 
-- Status: accepted; palette primitives and the bevel/corner clauses are superseded by ADR-008 for the v1.1 fidelity skin.
+- Status: accepted; palette primitives and the bevel/corner clauses are superseded by ADR-012 for the v1.1 fidelity skin.
 - Date: 2026-10-21
 - Owner: Katerina Zarina
 - Depends on: ADR-001, ADR-003

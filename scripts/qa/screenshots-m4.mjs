@@ -19,6 +19,10 @@ const DIST = join(ROOT, 'frontend/dist')
 const OUT = process.env.SHOT_OUT
   ? resolve(ROOT, process.env.SHOT_OUT)
   : join(ROOT, 'docs/screenshots/WAR-10')
+const ONLY = (process.env.SHOT_ONLY ?? '')
+  .split(',')
+  .map((name) => name.trim())
+  .filter(Boolean)
 const CHROME =
   process.env.CHROME_PATH ??
   ['/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome'].find((path) =>
@@ -363,7 +367,7 @@ function fixtureScript() {
     hardBlocked: false,
   }
 
-  const prefs = { density: 'comfortable', showThumbnails: true, lastScrollTop: 0 }
+  const prefs = { density: 'comfortable', showThumbnails: true, lastScrollTop: 0, zoom: 100 }
   const launchOptions = { skipIntro: false, scriptLogging: false }
   const game = {
     gamePath: 'C:/Steam/steamapps/common/Total War WARHAMMER III',
@@ -712,28 +716,33 @@ try {
     { scenario: 'ready', viewport: narrow, density: 'comfortable', action: 'launch-dialog', name: 'launch__dialog__1366x768__comfortable' },
   ]
 
-  for (const spec of specs) await capture(cdp, spec)
-
-  for (const view of [null, 'Profiles', 'Conflicts', 'Workshop', 'Settings']) {
-    await capture(cdp, {
-      scenario: 'ready',
-      viewport: { width: 1024, height: 720 },
-      density: 'comfortable',
-      view,
-      name: `check__${view ?? 'mods'}__1024x720`,
-      skipShot: true,
-    })
+  for (const spec of specs) {
+    if (ONLY.length > 0 && !ONLY.some((name) => spec.name.includes(name))) continue
+    await capture(cdp, spec)
   }
 
-  for (const density of ['compact', 'comfortable', 'roomy']) {
-    for (const [label, viewport] of [['1920x1080', wide], ['1366x768', narrow]]) {
+  if (ONLY.length === 0) {
+    for (const view of [null, 'Profiles', 'Conflicts', 'Workshop', 'Settings']) {
       await capture(cdp, {
         scenario: 'ready',
-        viewport,
-        density,
-        name: `count__mods__${label}__${density}`,
+        viewport: { width: 1024, height: 720 },
+        density: 'comfortable',
+        view,
+        name: `check__${view ?? 'mods'}__1024x720`,
         skipShot: true,
       })
+    }
+
+    for (const density of ['compact', 'comfortable', 'roomy']) {
+      for (const [label, viewport] of [['1920x1080', wide], ['1366x768', narrow]]) {
+        await capture(cdp, {
+          scenario: 'ready',
+          viewport,
+          density,
+          name: `count__mods__${label}__${density}`,
+          skipShot: true,
+        })
+      }
     }
   }
 } finally {
