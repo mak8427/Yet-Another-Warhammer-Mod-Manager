@@ -67,6 +67,18 @@ mod "the-mod.pack";
 `used_mods.txt` must contain the folder that holds the pack. A local pack in
 `<game>/data/` does not need one.
 
+On Linux/Proton, the Windows game needs a Windows-visible path. The manager
+writes Unix absolute directories with Proton's default `Z:` drive mapping:
+
+```text
+add_working_directory "Z:/home/player/.local/share/Steam/steamapps/workshop/content/1142710/<workshop-id>";
+mod "the-mod.pack";
+```
+
+A bare `/home/...` directory can leave the Workshop pack undiscoverable even
+when the file exists on Linux. After updating from a build that wrote bare Unix
+paths, click **Apply Load Order** to regenerate the file before launching.
+
 Check, in order:
 
 1. The pack path. A Workshop mod lives under
