@@ -566,7 +566,7 @@ impl Session {
             expected.push(module.name.as_str());
             if let Some(parent) = module.path.parent() {
                 if parent != location.data_path.as_path() {
-                    let directory = parent.to_string_lossy().into_owned();
+                    let directory = load_order::game_working_directory(parent);
                     if seen_directories.insert(directory.to_lowercase()) {
                         expected_directories.push(directory);
                     }
@@ -1447,6 +1447,74 @@ mod tests {
 
         assert_eq!(result.method, LaunchMethod::Direct);
         assert_eq!(spawner.commands.borrow().len(), 1);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn proton_launch_accepts_converted_workshop_paths_and_rejects_old_unix_paths() {
+        let mut fixture = launch_fixture("launch-proton-workshop", true);
+        let workshop = fixture._dir.path().join("Workshop Library ü");
+        let workshop_mod_dir = workshop.join("2858184271");
+        write(
+            &workshop_mod_dir.join("workshop_mod.pack"),
+            crate::pack::synthetic_pack_bytes(0, &[], 0),
+        );
+        fixture.session.location.as_mut().unwrap().workshop_path = workshop;
+        let (mods, report) = crate::mod_index::scan(fixture.session.location.as_ref().unwrap());
+        fixture.session.mods = mods;
+        fixture.session.index_report = report;
+        let id = fixture
+            .session
+            .mods
+            .iter()
+            .find(|module| module.name == "workshop_mod.pack")
+            .unwrap()
+            .id
+            .clone();
+        fixture.session.set_mods_enabled(&[id], true).unwrap();
+
+        let path = fixture.game.join("used_mods.txt");
+        let old = format!(
+            "add_working_directory \"{}\";\nmod \"workshop_mod.pack\";",
+            workshop_mod_dir.display()
+        );
+        write(&path, old.as_bytes());
+        let spawner = RecordingSpawner::default();
+        let error = fixture
+            .session
+            .launch_game_with_seams(
+                LaunchOptions::default(),
+                &StubProbe(Ok(false)),
+                &spawner,
+                &fast_guard(),
+                &StubSteamProbe(Ok(true)),
+                LaunchPlatform::Linux,
+            )
+            .unwrap_err();
+        assert_eq!(error.code, ErrorCode::LoadOrderOverridden);
+        assert_eq!(spawner.attempts.get(), 0);
+        assert_eq!(fs::read(&path).unwrap(), old.as_bytes());
+
+        fixture.session.write_load_order(false, false).unwrap();
+        let expected = format!(
+            "add_working_directory \"Z:{}\";\nmod \"workshop_mod.pack\";",
+            workshop_mod_dir.display()
+        );
+        assert_eq!(fs::read(&path).unwrap(), expected.as_bytes());
+        let result = fixture
+            .session
+            .launch_game_with_seams(
+                LaunchOptions::default(),
+                &StubProbe(Ok(false)),
+                &spawner,
+                &fast_guard(),
+                &StubSteamProbe(Ok(true)),
+                LaunchPlatform::Linux,
+            )
+            .unwrap();
+        assert_eq!(result.method, LaunchMethod::Proton);
+        assert_eq!(spawner.attempts.get(), 1);
+        assert_eq!(fs::read(&path).unwrap(), expected.as_bytes());
     }
 
     #[test]

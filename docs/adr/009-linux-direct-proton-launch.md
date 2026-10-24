@@ -87,6 +87,10 @@ command.
 The mod-list file also contains managed `add_working_directory` lines for every
 enabled pack outside the game's `data` directory. Proton does not provide the
 Workshop search path by itself, so the same rule as ADR-010 applies on Linux.
+Unix absolute search directories are serialized as `Z:/...` using Proton's
+default filesystem mapping. The Windows game cannot use bare Unix paths as
+Unix absolute paths. The pre-launch check uses the same conversion; old files
+with bare Unix directories must be regenerated with Apply Load Order.
 
 `GameLocation.proton_prefix` points at `.../compatdata/1142710/pfx`. The
 resolver uses its parent for `STEAM_COMPAT_DATA_PATH`; passing the `pfx`
