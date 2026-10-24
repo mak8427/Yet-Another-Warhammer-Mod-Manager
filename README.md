@@ -1,6 +1,6 @@
 <div align="center">
 
-# WH3 Mod Manager
+# YAWHMM
 
 **Your mod collection. Your load order. Your campaign.**
 
