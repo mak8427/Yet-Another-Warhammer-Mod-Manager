@@ -62,7 +62,9 @@ pack that provides it and refresh again; the same dependency becomes
 1. Open **Launch**, enable **Skip intro movies** and **Enable script logging**.
 2. Confirm `data/wh3mm_skip_intro.pack` and
    `data/script/enable_console_logging` exist.
-3. Click **Launch game**. Steam must start app `1142710`.
+3. Click **Launch game**. On Windows the manager must start `Warhammer3.exe`
+   directly with the literal `used_mods.txt;` argument and no CA launcher; on
+   Linux the runtime must start it through Proton with no Steam fallback.
 4. Start WH3 manually and click **Launch game** while it is running. The
    manager must refuse with a "already running" validation error.
 5. Disable both options and launch again. The managed pack and the manager-owned

@@ -50,7 +50,7 @@ describe('LoadOrderBanner', () => {
         ...EMPTY_LOAD_ORDER,
         missingNames: ['gone.pack', 'also_gone.pack'],
         duplicates: ['dupe.pack'],
-        unmanagedDirectives: ['add_working_directory "C:/x";'],
+        unmanagedDirectives: ['custom_directive "C:/x";'],
       },
     })
 

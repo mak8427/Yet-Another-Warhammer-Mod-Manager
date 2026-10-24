@@ -393,7 +393,7 @@ export class AppStore {
         busy: null,
         notice: {
           kind: 'success',
-          message: result.message ?? 'Launch requested through Steam',
+          message: result.message ?? 'Launch requested',
         },
       })
     } catch (cause) {

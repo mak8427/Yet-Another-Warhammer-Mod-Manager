@@ -30,6 +30,7 @@ fn names(values: &[&str]) -> Vec<PlannedName> {
         .map(|name| PlannedName {
             id: (*name).to_string(),
             name: (*name).to_string(),
+            directory: None,
         })
         .collect()
 }
@@ -191,6 +192,30 @@ fn unmanaged_directives_require_confirmation_before_they_are_dropped() {
         b"mod \"mod_a.pack\";\nmod \"mod_b.pack\";"
     );
     assert_eq!(fs::read(backup_path(&path)).expect("backup"), original);
+}
+
+#[test]
+fn working_directories_are_managed_and_written_before_mods() {
+    let dir = TempDir::new("qa-loadorder-working-dir");
+    let path = stage(&dir, "used_mods_working_directory.txt");
+    let mut resolved = names(&["mod_a.pack", "mod_b.pack"]);
+    resolved[0].directory = Some(PathBuf::from("C:/Games/Steam/workshop/123"));
+
+    let plan = plan_write(&path, &resolved, &[], false, false).expect("plan");
+
+    assert!(plan.can_write);
+    assert!(plan.unmanaged_directives.is_empty());
+    assert_eq!(
+        plan.content,
+        b"add_working_directory \"C:/Games/Steam/workshop/123\";\nmod \"mod_a.pack\";\nmod \"mod_b.pack\";"
+    );
+    write_plan(&plan).expect("write");
+    let reread = read_file(&path);
+    assert_eq!(
+        reread.parsed.working_directories,
+        vec!["C:/Games/Steam/workshop/123"]
+    );
+    assert!(!reread.is_corrupt());
 }
 
 #[test]

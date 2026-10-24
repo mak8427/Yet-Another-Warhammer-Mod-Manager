@@ -1,4 +1,4 @@
-add_working_directory "C:\\Games\\Steam\\steamapps\\common\\Warhammer3\\data";
+custom_directive "C:\Games\Steam\steamapps\common\Warhammer3\data";
 mod "mod_a.pack";
-add_working_directory "C:\\Games\\Steam\\steamapps\\workshop\\content\\1142710";
+another_unknown_directive "value";
 mod "mod_b.pack";
