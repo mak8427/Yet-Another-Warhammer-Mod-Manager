@@ -16,7 +16,7 @@ A mod manager for **Total War: Warhammer III**, built with a Rust core and a Tau
 
 </div>
 
-![WH3 Mod Manager — mods, load order, and selected-pack inspector](docs/screenshots/WAR-10/mods__selected-inspector__1920x1080__comfortable.png)
+![WH3 Mod Manager — mods, load order, and selected-pack inspector](docs/screenshots/showcase/mods__selected-inspector__1920x1080__comfortable.png)
 
 ## Downloads & Installation
 
@@ -224,12 +224,12 @@ For uninstall commands and configuration cleanup, see [the installation guide](d
 
 | Campaign profiles | Pack conflicts & dependencies |
 |---|---|
-| ![Campaign profiles](docs/screenshots/WAR-10/profiles__active__1920x1080__comfortable.png) | ![Conflict report](docs/screenshots/WAR-10/conflicts__report__1920x1080__comfortable.png) |
+| ![Campaign profiles](docs/screenshots/showcase/profiles__active__1920x1080__comfortable.png) | ![Conflict report](docs/screenshots/showcase/conflicts__report__1920x1080__comfortable.png) |
 | **Launch options** | **Preferences & density** |
-| ![Launch options](docs/screenshots/WAR-10/launch__dialog__1920x1080__comfortable.png) | ![Settings](docs/screenshots/WAR-10/settings__general__1920x1080__comfortable.png) |
+| ![Launch options](docs/screenshots/showcase/launch__dialog__1920x1080__comfortable.png) | ![Settings](docs/screenshots/showcase/settings__general__1920x1080__comfortable.png) |
 
 Screenshots use the repository's synthetic QA fixtures. See the
-[screenshot record](docs/screenshots/WAR-10/README.md) for capture details.
+[screenshot record](docs/screenshots/showcase/README.md) for capture details.
 
 ## Quick Start
 

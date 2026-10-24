@@ -11,35 +11,48 @@
 
   /* ---------------------------------------------------------------------
    * Palette (private). Never reference raw palette tokens from components.
+   *
+   * WAR-147: user-supplied campaign, Cathay and Forbidden Workshop references.
+   * Owner palette: Fiery Forge charcoal/greys, ivory, gold, orange and indigo.
+   * Keep the approved blue action plates; green is reserved for status/identity.
    * ------------------------------------------------------------------ */
-  --iron-1000: #0a0c0e;
-  --iron-950: #0f1215;
-  --iron-900: #14181c;
-  --iron-850: #191e23;
-  --iron-800: #1f252b;
-  --iron-750: #252c33;
-  --iron-700: #2d353d;
-  --iron-650: #39424c;
-  --iron-600: #454f5a;
+  --obsidian-1000: #111315;
+  --obsidian-950: #1c1e21;
+  --obsidian-900: #17191c;
+  --obsidian-850: #2c2f33;
+  --obsidian-800: #34373b;
+  --obsidian-750: #3c3f43;
+  --obsidian-700: #5c5c5c;
+  --obsidian-650: #717171;
+  --obsidian-600: #898989;
 
-  --parchment-50: #f6efe0;
-  --parchment-100: #e8dcc4;
-  --parchment-200: #d6c8ac;
-  --parchment-300: #a59a83;
-  --parchment-400: #948a76;
+  --wine-950: #23172e;
+  --wine-900: #2c183a;
+  --wine-850: #311b43;
+  --wine-800: #3a1e51;
+  --wine-700: #421a62;
+  --wine-600: #4b0082;
+  --wine-500: #6e1b1e;
+  --wine-400: #8a2426;
 
-  --brass-300: #e3c374;
-  --brass-400: #d7b45f;
-  --brass-500: #c9a24d;
-  --brass-600: #9a7a32;
-  --brass-700: #6f5724;
+  --parchment-50: #fffaf0;
+  --parchment-100: #fffaf0;
+  --parchment-200: #d3d3d3;
+  --parchment-300: #b0ada6;
+  --parchment-400: #a5a19a;
 
-  --oxide-700: #7f2a21;
-  --oxide-600: #8f2d21;
+  --brass-300: #ffe67a;
+  --brass-400: #ffd700;
+  --brass-500: #c9ad4a;
+  --brass-600: #a68e43;
+  --brass-700: #5c5c5c;
+
+  --oxide-700: #8b331d;
+  --oxide-600: #a03b21;
 
   --signal-green: #a3c178;
-  --signal-amber: #e0b45c;
-  --signal-red: #e07a63;
+  --signal-amber: #ff8c00;
+  --signal-red: #ff6347;
   --signal-azure: #7fb0d0;
 
   /* Faction accent slots. Identity always comes from the visible label. */
@@ -149,24 +162,31 @@
   /* ---------------------------------------------------------------------
    * Semantic colour — surfaces
    * ------------------------------------------------------------------ */
-  --color-bg-app: var(--iron-950);
-  --color-bg-rail: var(--iron-900);
-  --color-bg-content: var(--iron-950);
-  --color-bg-surface: var(--iron-850);
-  --color-bg-surface-raised: var(--iron-800);
-  --color-bg-row: var(--iron-950);
-  --color-bg-row-alt: var(--iron-900);
-  --color-bg-row-hover: #20262c;
-  --color-bg-row-selected: #262d34;
-  --color-bg-row-dragging: var(--iron-800);
-  --color-bg-list-header: var(--iron-850);
-  --color-bg-toolbar: var(--iron-900);
-  --color-bg-inspector: var(--iron-900);
-  --color-bg-input: var(--iron-1000);
-  --color-bg-menu: var(--iron-850);
-  --color-bg-dialog: var(--iron-850);
+  --color-bg-app: var(--obsidian-950);
+  --color-bg-rail: var(--obsidian-900);
+  --color-bg-content: var(--obsidian-950);
+  --color-bg-surface: var(--obsidian-850);
+  --color-bg-surface-raised: var(--obsidian-800);
+  --color-bg-row: var(--obsidian-950);
+  --color-bg-row-alt: #202225;
+  --color-bg-row-hover: #303338;
+  --color-bg-row-selected: #2f263e;
+  --color-bg-row-dragging: var(--obsidian-800);
+  --color-bg-list-header: #2c2f33;
+  --color-bg-toolbar: #24272a;
+  --color-bg-inspector: #202225;
+  --color-bg-input: var(--obsidian-1000);
+  --color-bg-menu: #272a2e;
+  --color-bg-dialog: #24272a;
   --color-bg-tooltip: var(--parchment-100);
-  --color-bg-overlay: rgb(5 7 9 / 0.72);
+  --color-bg-overlay: rgb(6 7 10 / 0.78);
+
+  /* TW:WH3 chrome: banner plates and framed panes */
+  --color-bg-banner: #2c2f33;
+  --color-bg-banner-raised: #383b3f;
+  --color-bg-rail-plate: #233f4d;
+  --color-bg-tab: #24272a;
+  --color-bg-tab-active: #204552;
 
   --color-state-success-bg: #1c2418;
   --color-state-warning-bg: #2a2318;
@@ -185,7 +205,7 @@
   --color-text-link: var(--brass-400);
   --color-text-success: var(--signal-green);
   --color-text-warning: var(--signal-amber);
-  --color-text-danger: var(--signal-red);
+  --color-text-danger: #ff8f7c;
   --color-text-info: var(--signal-azure);
 
   --color-state-success: var(--signal-green);
@@ -196,13 +216,16 @@
   /* ---------------------------------------------------------------------
    * Semantic colour — borders
    * ------------------------------------------------------------------ */
-  --color-border-subtle: var(--iron-750);
-  --color-border-default: var(--iron-700);
-  --color-border-strong: var(--iron-650);
-  --color-border-control: #66717e;
+  --color-border-subtle: var(--obsidian-750);
+  --color-border-default: var(--obsidian-700);
+  --color-border-strong: var(--obsidian-650);
+  --color-border-control: #8b929d;
   --color-border-accent: var(--brass-600);
-  --color-border-focus: var(--brass-400);
-  --color-border-selected: var(--brass-500);
+  --color-border-focus: #8cdae0;
+  --color-border-selected: #7496b3;
+  --color-border-frame: #5c5c5c;
+  --color-border-frame-strong: #b8aa7e;
+  --color-border-frame-inner: #0e1014;
   --color-border-success: var(--signal-green);
   --color-border-warning: var(--signal-amber);
   --color-border-danger: var(--signal-red);
@@ -210,23 +233,25 @@
   /* ---------------------------------------------------------------------
    * Semantic colour — actions, tags, focus
    * ------------------------------------------------------------------ */
-  --color-action-primary-bg: var(--brass-500);
-  --color-action-primary-bg-hover: var(--brass-400);
-  --color-action-primary-text: var(--color-text-inverse);
-  --color-action-secondary-bg: transparent;
-  --color-action-secondary-bg-hover: var(--iron-800);
+  --color-action-primary-bg: #12404a;
+  --color-action-primary-bg-hover: #205862;
+  --color-action-primary-border: #7fb6b6;
+  --color-action-primary-text: var(--parchment-50);
+  --color-action-secondary-bg: #383b3f;
+  --color-action-secondary-bg-hover: #4b4d50;
+  --color-action-secondary-border: #8e8a80;
   --color-action-danger-bg: var(--oxide-700);
   --color-action-danger-bg-hover: var(--oxide-600);
   --color-action-danger-text: var(--parchment-50);
   --color-action-disabled-bg: transparent;
   --color-action-disabled-text: var(--color-text-disabled);
 
-  --color-tag-bg: var(--iron-800);
-  --color-tag-border: var(--iron-650);
+  --color-tag-bg: #4b0082;
+  --color-tag-border: #a38aba;
   --color-tag-text: var(--color-text-secondary);
   --color-selection-bg: var(--brass-700);
   --color-selection-text: var(--parchment-50);
-  --color-state-pending: var(--brass-600);
+  --color-state-pending: #ff4500;
   --faction-accent: var(--faction-accent-default);
 
   --focus-ring-width: 2px;
@@ -239,14 +264,32 @@
   --border-hairline: 1px;
   --border-strong: 1px;
   --radius-none: 0;
-  --radius-control: 2px;
-  --radius-panel: 3px;
-  --radius-dialog: 4px;
+  --radius-control: 4px;
+  --radius-panel: 4px;
+  --radius-dialog: 5px;
   --radius-scrollbar: 2px;
 
-  --shadow-menu: 0 8px 24px rgb(0 0 0 / 0.45);
-  --shadow-dialog: 0 16px 40px rgb(0 0 0 / 0.55);
-  --shadow-drag: 0 2px 8px rgb(0 0 0 / 0.35);
+  --shadow-menu: 0 8px 24px rgb(0 0 0 / 0.55);
+  --shadow-dialog: 0 16px 40px rgb(0 0 0 / 0.65);
+  --shadow-drag: 0 2px 8px rgb(0 0 0 / 0.4);
+
+  /* Structural bevels, not decoration: they read as stamped metal. */
+  --bevel-plate: inset 0 1px 0 rgb(246 238 195 / 0.35), inset 0 2px 0 rgb(255 255 255 / 0.06), inset 0 -2px 0 rgb(0 0 0 / 0.7), 0 1px 2px rgb(0 0 0 / 0.45);
+  --bevel-sunken: inset 0 1px 3px rgb(0 0 0 / 0.65);
+  --bevel-frame: inset 0 0 0 1px rgb(0 0 0 / 0.75), inset 0 2px 0 rgb(224 223 191 / 0.13);
+
+  /* Material highlights reproduce the supplied metal/stone control references.
+   * Geometry stays flat; only the surface shading changes. */
+  --material-stone: linear-gradient(112deg, #34373b, #202326 48%, #2c2f33);
+  --material-header: linear-gradient(180deg, #3b3e42, #2c2f33 48%, #202225);
+  --material-button: linear-gradient(180deg, #72716e 0%, #4c4d4d 18%, #34373b 55%, #242629 100%);
+  --material-button-hover: linear-gradient(180deg, #959087, #66635e 22%, #484a4d 70%, #34373b);
+  --material-primary: linear-gradient(180deg, #47828a 0%, #1b5660 17%, #10343d 55%, #1e5961 90%, #78b6b8 100%);
+  --material-primary-hover: linear-gradient(180deg, #76bdc2, #286773 20%, #19454f 55%, #337d87 90%, #9adadd);
+  --material-red: linear-gradient(180deg, #a0522d, #713922 22%, #3d241c 70%, #80351e);
+
+  /* Our own 14x14 brass stud, drawn for this app. Not game art. */
+  --ornament-corner: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='14'%20height='14'%20viewBox='0%200%2014%2014'%3E%3Cpath%20d='M7%201%2013%207%207%2013%201%207Z'%20fill='none'%20stroke='%23c9a24d'/%3E%3Cpath%20d='M7%204%2010%207%207%2010%204%207Z'%20fill='%239a7a32'/%3E%3C/svg%3E");
 
   /* ---------------------------------------------------------------------
    * Motion, stacking, scrollbars
@@ -265,9 +308,9 @@
   --z-tooltip: 100;
 
   --scrollbar-size: 10px;
-  --scrollbar-thumb: var(--iron-650);
-  --scrollbar-thumb-hover: var(--iron-600);
-  --scrollbar-track: var(--iron-900);
+  --scrollbar-thumb: var(--brass-700);
+  --scrollbar-thumb-hover: var(--brass-600);
+  --scrollbar-track: var(--obsidian-900);
 
 }
 

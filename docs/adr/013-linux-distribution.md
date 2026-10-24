@@ -1,4 +1,4 @@
-# ADR-012 — Additional Linux distribution formats and signed updates
+# ADR-013 — Additional Linux distribution formats and signed updates
 
 - Status: accepted for implementation; public hosting activation pending
 - Date: 2026-10-24

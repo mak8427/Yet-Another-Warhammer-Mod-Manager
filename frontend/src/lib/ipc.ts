@@ -150,6 +150,8 @@ export interface UiPreferences {
   density: Density
   showThumbnails: boolean
   lastScrollTop: number
+  /** Whole-interface webview zoom in percent (80–200). */
+  zoom: number
 }
 
 export type ResetLoadOrderStatus =
