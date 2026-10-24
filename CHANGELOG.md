@@ -1,103 +1,67 @@
 # Changelog
 
-All notable changes to the WH3 Mod Manager rebuild are recorded here. The
-format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
-project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+Notable changes to WH3 Mod Manager. Versioned entries marked unreleased describe
+implemented work, not a public download. See [installation and release steps](docs/INSTALLATION.md).
 
 ## [1.1.0] - unreleased
 
 ### Added
 
-- **Linux desktop shell** (`#48`, ADR-007): the Tauri shell now builds and runs
-  on Linux against native Steam and Proton. The Linux CI job installs WebKitGTK
-  4.1/GTK3, builds the shell, and uploads the `wh3mm-linux-x64` tarball with a
-  checksum. Contribution by @Genny4Real1. Flatpak/Snap launch, Linux installer
-  packaging, and macOS remain out of scope.
-- **Linux direct Proton launch and load-order guard** (ADR-009): WH3 is started
-  through the configured Proton and Steam Linux Runtime without the Creative
-  Assembly launcher, using the existing `compatdata` prefix and the literal
-  `used_mods.txt;` argument. Launch aborts with `load_order_overridden` if the
-  file is rewritten during the three-second guard window. New launch errors are
-  documented in `docs/TROUBLESHOOTING.md`.
-- **Windows direct launch and mod-list protection** (ADR-010): Windows now
-  starts `Warhammer3.exe` directly with `used_mods.txt;`, so Steam no longer
-  opens the Creative Assembly launcher. Launch refuses a stale file, requires
-  Steam to be running, and restores the snapshot if the file is rewritten
-  during the launch guard.
-- **Workshop working directories**: `used_mods.txt` now includes managed
-  `add_working_directory "…";` lines for enabled Workshop/custom-folder packs,
-  before the `mod` lines, so a directly launched game can find their packs. The
-  parser, preview, pre-launch check, and fixtures treat this directive as
-  managed rather than unmanaged.
+- Linux Tauri desktop support with native Steam and Proton (`#48`, contribution
+  by @Genny4Real1).
+- Linux package builds for Debian, RPM, AppImage, tarball, Arch, Flatpak, and
+  hash-pinned Nix/Gentoo binary recipes. Signed apt/RPM/pacman/Flatpak repository
+  publishing is implemented; persistent signing and public hosting require activation.
+- Persisted window geometry and whole-interface zoom (`#53`).
+- Dark-grey surfaces and blue controls, with updated README screenshots (`#59`, `#64`).
+
+### Fixed
+
+- Linux launches through the configured Proton and Steam Linux Runtime using the
+  existing compatibility prefix. Windows launches `Warhammer3.exe` directly with
+  Steam running. Both avoid the CA launcher and protect the applied load order (`#61`).
+- Managed Workshop working directories precede mod entries in `used_mods.txt`;
+  Linux absolute paths use Proton's Windows-visible `Z:/...` mapping (`#62`).
+
+### Changed
+
+- Removed unused core APIs, duplicated parsing/constants, and redundant session
+  operations while retaining current launch protections (`#50`).
+- Removed unused frontend exports/actions/styles and centralized workspace state
+  loading and mutation (`#51`).
+- Consolidated documentation into nine current guides, added `AGENTS.md`, and
+  grouped developer/QA/performance helpers by purpose (`#52`).
+- Retired migration scorecards, agent-task approval records, reference-fetch
+  tooling, and cross-application comparisons. Benchmarks now measure this app
+  independently; scan budgets remain unchanged.
 
 ## [1.0.0] - unreleased
 
-This entry describes the scope merged on `main` as of 2026-10-21. The `v1.0.0`
-tag and draft release follow the green Windows artifact dispatch and the release
-gates; the release is published only after the WAR-12 audit signs off the draft.
-See `docs/RELEASE.md`.
-
 ### Added
 
-- **M0 — application foundation** (`#1`, `abceb50`): Rust workspace, Tauri 2
-  Windows shell, TypeScript/Vite frontend, typed IPC skeleton, ADRs, Linux CI
-  gates, and a manual Windows shell build.
-- **M1/M2 — detection and mod management** (`#6`, `c1a9cdd`): Steam and game
-  detection across registry, native, Flatpak, Snap, and XDG roots; modern and
-  legacy `libraryfolders.vdf`; PFH5 pack parsing; the mod index; the mod list;
-  load-order read/write with an atomic `used_mods.txt` and `.bak` recovery;
-  profiles; tags; UI preferences.
-- **M3 — conflicts, Workshop, and launch** (`#18`, `bb306d4`): conflict
-  analysis with a disabled-local-dependency fix, Steam Workshop discovery and
-  thumbnails, and game launch with the saved load order.
-- **UI design system** (`#10`, `32945a2`): the Total War: Warhammer III-inspired
-  visual system, design tokens, density rules, keyboard map, and the screen
-  acceptance checklist.
-- **Performance and QA gates** (`#4`, `#7`, `#19`): the legacy baseline
-  measurement harness, the 500-mod fixture, acceptance suites, and the perf gate.
-- **M4 — TW:WH3 UI direction and v1.0 blockers** (`#26`, `0e051204`): the
-  TW:WH3 visual system applied to every v1.0 screen (density, keyboard map,
-  empty/error states) and the WAR-79 ship-gate blockers: reset settings and load
-  order to defaults, deterministic mod-list sort, duplicate-pack-name warning,
-  profile apply restoring the saved order, and fixture-tested Windows/native
-  Steam roots.
-- **Release engineering** (`#25`, `e31eb64`): Windows NSIS per-user installer
-  configuration at version 1.0.0, a `v*` tag workflow that builds the
-  installer, uploads the artifact, and opens a draft release, and this release
-  guide plus changelog.
+- Rust core, Tauri desktop shell, React/TypeScript interface, and typed IPC (`#1`).
+- Steam/game discovery, PFH5 pack indexing, mod browsing, load-order editing,
+  profiles, tags, atomic writes, and backup recovery (`#6`).
+- Pack conflict/dependency inspection, Workshop metadata and thumbnails, and
+  launch options (`#18`).
+- Density controls, keyboard navigation, loading/error states, reset settings,
+  deterministic sorting, duplicate-name warnings, and profile recovery (`#10`, `#26`).
+- Windows per-user NSIS installer and a tag workflow that produces a reviewed
+  draft release (`#25`).
+
 ### Removed
 
-- **Pack-author surface** (`WAR-104`, `WAR-107`): the author column, author
-  sort, author search dimension, Settings "Show authors" toggle, and
-  `showAuthors` preference are removed, along with the unused `author` fields
-  in the pack header and mod summary. PFH5 and the Steam ACF carry no author,
-  and v1.0 does not ship custom Steam authentication, so the column could only
-  be permanently empty. PRODUCT_SCOPE capability 2 now requires name, type,
-  timestamp, and dependencies.
+- Pack-author fields and controls: the available pack/Steam metadata does not
+  provide author information without additional authentication.
 
-### Known limitations
+### Current limitations
 
-v1.0 accepts these limitations; the exact manual checks are in `docs/RELEASE.md`.
-
-- **WS-3 — Steam subscription actions are manual.** Subscribe, unsubscribe, and
-  update through the Steam client; the app has no custom Steam authentication
-  and never automates them. Manual check: subscribe and unsubscribe in Steam,
-  rescan, and confirm the mod list follows.
-- **LA-1 — launch through Steam is measured as a proxy.** The launch number is a
-  proxy, not an in-game load time. Manual check: launch in the Windows QA pass
-  and keep the proxy label.
-- **ML-4 — scroll persistence and the 20k-row guard are polish.** A reset scroll
-  position is accepted; the 20k fixture must show the guard instead of freezing.
-  Manual check in the Windows QA pass.
-- **SET-2 — density/thumbnail preferences are best-effort.** Manual check:
-  toggle each, restart, confirm the values persist, and record any that do not.
-  The author surface is removed, not a limitation (see Removed).
-- **DET-1 — Linux Flatpak/Snap/XDG discovery is best-effort.** Windows registry
-  and native root are fixture-tested on WAR-10. Manual check: detect on Linux
-  Flatpak/Snap or use the manual path; confirm Windows detection without a path.
-- The Windows installer is unsigned; SmartScreen shows the documented
-  "Unknown publisher" warning.
-- The offline installer is not shipped; WebView2 uses the bootstrapper.
-- No auto-updater, telemetry, account system, or Windows code signing.
-
-[1.0.0]: https://github.com/mak8427/Warhammer_mod_manager/releases/tag/v1.0.0
+- Steam owns subscription changes; the manager opens Workshop pages and reads
+  installed/subscribed state without automating Steam login.
+- Native Steam is required for Linux launching. Flatpak/Snap discovery is
+  best-effort; launching those Steam clients is unsupported.
+- The Windows installer is unsigned. WebView2 setup can require a download.
+- The launch guard is bounded and does not certify mod compatibility or game
+  loading. Performance launch measurements use a process-start proxy.
+- Real-game and platform-specific desktop behavior still need manual checks in
+  addition to automated tests; see [testing](docs/TESTING.md).
