@@ -47,14 +47,31 @@ jobs:
         with:
           components: rustfmt, clippy
 
-      - uses: Swatinem/rust-cache@v2
+      # Cache restore is best effort: bound the main step and fall back to a
+      # cold build on failure. Post-step cleanup is bounded by the job timeout.
+      - name: Restore Rust build cache
+        uses: Swatinem/rust-cache@v2
+        timeout-minutes: 5
+        continue-on-error: true
 
       # The workspace now compiles the Tauri shell on Linux, so the desktop
       # libraries must be present before any cargo command.
+      #
+      # apt can wait indefinitely on a stalled mirror or on the dpkg lock held
+      # by unattended-upgrades on a fresh runner. Bound every network wait and
+      # the whole step so a bad mirror fails fast instead of hanging.
       - name: Install Linux desktop dependencies
+        timeout-minutes: 10
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
+          APT_OPTS=(
+            -o Acquire::http::Timeout=30
+            -o Acquire::https::Timeout=30
+            -o Acquire::Retries=3
+            -o DPkg::Lock::Timeout=120
+          )
+          sudo systemctl stop unattended-upgrades.service || true
+          sudo DEBIAN_FRONTEND=noninteractive apt-get "${APT_OPTS[@]}" update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get "${APT_OPTS[@]}" install -y \
             libwebkit2gtk-4.1-dev \
             libgtk-3-dev \
             libayatana-appindicator3-dev \
