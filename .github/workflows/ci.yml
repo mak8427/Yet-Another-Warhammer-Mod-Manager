@@ -1,7 +1,7 @@
 name: CI
 
 on:
-  # The QA gate (docs/QA_PLAN.md) must see every pushed branch and every PR.
+  # The QA gate (docs/TESTING.md) must see every pushed branch and every PR.
   push:
     branches: ['**']
   pull_request:
@@ -80,6 +80,9 @@ jobs:
             libssl-dev \
             libdbus-1-dev
 
+      - name: Release installer recipe tests
+        run: python3 scripts/qa/install-recipes.test.py
+
       - name: Fixture integrity (committed + perf workloads)
         run: pnpm fixtures:verify
 
@@ -88,6 +91,9 @@ jobs:
 
       # The packaging guard reads the workflow files with the root `yaml`
       # dependency, so it runs after the workspace install.
+      - name: Documentation links
+        run: node scripts/qa/check-docs.mjs
+
       - name: QA generator guard tests
         timeout-minutes: 5
         run: node --test scripts/qa/fixture-target.test.mjs scripts/qa/verify-perf-gate.test.mjs
@@ -141,31 +147,6 @@ jobs:
             dist/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
-
-  parity:
-    name: Capability parity
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          run_install: false
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Parity report tests
-        run: node --test scripts/qa/parity-report.test.mjs
-
-      - name: Parity report
-        run: node scripts/qa/parity-report.mjs --check
 
   windows-tauri:
     name: Windows Tauri shell (manual until packaging)

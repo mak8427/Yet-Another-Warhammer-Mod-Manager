@@ -6,7 +6,7 @@
 //! configuration directory; `scripts/perf/measure-new-app.mjs` starts a new
 //! process per sample and owns the summary and the environment record.
 //!
-//! Scope, stated plainly in `docs/PERF.md`:
+//! Scope, stated plainly in `docs/PERFORMANCE.md`:
 //!
 //! - `coldStartMs`: process start to `Session::initialize` returning. This is
 //!   the work the Tauri shell does before the window is usable, but it excludes

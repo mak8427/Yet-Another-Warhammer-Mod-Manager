@@ -43,7 +43,7 @@ The official legacy release is win32-x64 only:
 
 On a Windows host the same command runs all twelve measured passes and writes docs/perf/legacy-baseline.json.
 On Linux/macOS this stage cannot run: the release has no Linux/macOS artefact and the app needs a
-Windows desktop session. See docs/PERF.md ("Legacy baseline / Feasibility").
+Windows desktop session. See docs/PERFORMANCE.md ("Legacy baseline / Feasibility").
 EOF
   exit 2
 fi

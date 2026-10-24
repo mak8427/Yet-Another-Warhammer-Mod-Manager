@@ -1,7 +1,7 @@
 name: Perf new app vs legacy
 
 # Measures the rebuilt manager on the same 500-pack fixture and host class as the approved
-# legacy baseline (docs/PERF.md, perf/legacy-baseline @ 348c4a8). Windows-only so the host
+# legacy baseline (docs/PERFORMANCE.md, perf/legacy-baseline @ 348c4a8). Windows-only so the host
 # class matches; the harness itself is headless and does not need a desktop session.
 on:
   # workflow_dispatch only works once this file is on the default branch; the pull_request

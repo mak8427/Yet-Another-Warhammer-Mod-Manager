@@ -52,7 +52,7 @@ if (!APP) {
 }
 if (process.platform !== "win32" && !hasFlag("allow-non-win32")) {
   console.error(
-    "The legacy release build is win32-x64 only. Run this on Windows (see docs/PERF.md), or pass\n" +
+    "The legacy release build is win32-x64 only. Run this on Windows (see docs/PERFORMANCE.md), or pass\n" +
       "--allow-non-win32 to check the fixture/config wiring only.",
   );
   process.exit(64);

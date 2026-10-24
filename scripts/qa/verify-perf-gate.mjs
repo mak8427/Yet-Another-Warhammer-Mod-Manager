@@ -2,7 +2,7 @@
 /**
  * Release gate for the CEO performance directive (WAR-6, WAR-7, WAR-19).
  *
- * `docs/PERF.md` is for humans. This script validates the machine-readable
+ * `docs/PERFORMANCE.md` is for humans. This script validates the machine-readable
  * comparison that backs it:
  *
  *   docs/perf/comparison.json   schema: wh3mm.perf.comparison.v1
@@ -197,7 +197,7 @@ function main() {
       ok: false,
       blocked: true,
       failures: [
-        `BLOCKED: ${args.file} does not exist. The v1.0 gate requires a new-app vs legacy comparison on the same host and fixture. See docs/QA_PLAN.md §7.`,
+        `BLOCKED: ${args.file} does not exist. The v1.0 gate requires a new-app vs legacy comparison on the same host and fixture. See docs/TESTING.md §7.`,
       ],
       warnings: [],
       report: [],

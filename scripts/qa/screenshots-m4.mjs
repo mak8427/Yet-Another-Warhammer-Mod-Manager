@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { createReadStream, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
+import { createReadStream, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { dirname, extname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -127,6 +127,27 @@ async function launchChrome() {
   throw new Error('Chromium did not expose a debugging port')
 }
 
+// Optional installed artwork for the README only. Keep default QA captures
+// deterministic and do not copy the user's Workshop files into the repository.
+const WORKSHOP_ART = process.env.SHOT_WORKSHOP_DIR
+  ? readdirSync(process.env.SHOT_WORKSHOP_DIR, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .flatMap((entry) => {
+        const folder = join(process.env.SHOT_WORKSHOP_DIR, entry.name)
+        const files = readdirSync(folder).sort()
+        const pack = files.find((file) => file.endsWith('.pack'))
+        const artwork = files.find((file) => /\.(png|jpe?g|webp)$/i.test(file))
+        if (!pack || !artwork) return []
+        const bytes = readFileSync(join(folder, artwork))
+        if (bytes.length > 2 * 1024 * 1024) return []
+        const extension = extname(artwork).toLowerCase()
+        const mime = extension === '.png' ? 'image/png' : extension === '.webp' ? 'image/webp' : 'image/jpeg'
+        return [{ pack, workshopId: entry.name, image: `data:${mime};base64,${bytes.toString('base64')}` }]
+      })
+      .slice(0, 63)
+  : []
+
 function fixtureScript() {
   const tags = [
     { id: 'tag-overhaul', name: 'Overhaul', color: '#C9A227' },
@@ -240,6 +261,17 @@ function fixtureScript() {
       sizeBytes: 1024 * 1024 * (12 + index),
     }
   })
+
+  if (WORKSHOP_ART.length) {
+    for (const [index, mod] of mods.entries()) {
+      const artwork = WORKSHOP_ART[index % WORKSHOP_ART.length]
+      mod.name = artwork.pack
+      mod.humanName = artwork.pack.replace(/\.pack$/, '').replace(/_/g, ' ')
+      mod.isWorkshop = true
+      mod.workshopId = artwork.workshopId
+      mod.thumbnailPath = artwork.image
+    }
+  }
 
   const loadOrder = {
     path: 'C:/Steam/steamapps/common/Total War WARHAMMER III/used_mods.txt',

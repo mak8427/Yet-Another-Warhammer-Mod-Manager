@@ -8,7 +8,11 @@ import test from 'node:test'
 import { parse } from 'yaml'
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
-const workflows = ['.github/workflows/linux-packages.yml', '.github/workflows/release.yml']
+const workflows = [
+  '.github/workflows/linux-packages.yml',
+  '.github/workflows/release.yml',
+  '.github/workflows/package-repositories.yml',
+]
 
 function readWorkflow(path) {
   return parse(readFileSync(join(repoRoot, path), 'utf8'))
@@ -59,6 +63,9 @@ test('packaging shell scripts parse', () => {
     'packaging/linux/smoke-test.sh',
     'packaging/arch/render.sh',
     'packaging/arch/build-package.sh',
+    'packaging/flatpak/build.sh',
+    'packaging/repositories/build.sh',
+    'packaging/repositories/setup.sh.in',
   ]) {
     const result = spawnSync('bash', ['-n', join(repoRoot, script)], { encoding: 'utf8' })
     assert.equal(result.status, 0, `${script}: ${result.stderr}`)

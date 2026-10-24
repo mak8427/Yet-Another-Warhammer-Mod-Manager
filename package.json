@@ -19,10 +19,9 @@
     "fixtures:perf": "node scripts/perf/generate-suite.mjs",
     "bench": "bash scripts/perf/bench.sh",
     "bench:budget": "node scripts/perf/scan-budget.mjs",
-    "qa:scripts": "node --test scripts/qa/fixture-target.test.mjs scripts/qa/verify-perf-gate.test.mjs && node --test scripts/qa/parity-report.test.mjs",
+    "qa:scripts": "node --test scripts/qa/*.test.mjs && python3 scripts/qa/install-recipes.test.py",
     "perf:gate": "node scripts/qa/verify-perf-gate.mjs",
-    "parity:check": "node scripts/qa/parity-report.mjs --check",
-    "parity:write": "node scripts/qa/parity-report.mjs --write"
+    "docs:check": "node scripts/qa/check-docs.mjs"
   },
   "devDependencies": {
     "yaml": "2.8.1"

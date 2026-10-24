@@ -13,7 +13,7 @@
  *
  * Each sample is a fresh process (`crates/wh3mm-perf`) with a fresh config
  * directory, so the cold-start number is not a warm in-process repeat. The
- * harness measures the core session pipeline; `docs/PERF.md` states exactly
+ * harness measures the core session pipeline; `docs/PERFORMANCE.md` states exactly
  * what that excludes (WebView creation and paint) and which metrics are proxies.
  */
 import { execFile, execFileSync } from "node:child_process";

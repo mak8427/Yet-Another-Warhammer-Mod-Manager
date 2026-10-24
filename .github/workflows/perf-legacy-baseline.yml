@@ -2,7 +2,7 @@ name: Perf legacy baseline
 
 # Measures the official legacy WH3 Mod Manager release build against the synthetic 500-mod
 # fixture. Windows-only: the legacy project ships a win32-x64 release and the app needs a
-# desktop session. See docs/PERF.md.
+# desktop session. See docs/PERFORMANCE.md.
 on:
   # workflow_dispatch only works once this file is on the default branch; the pull_request
   # trigger lets the job run on the branch that introduces it.
