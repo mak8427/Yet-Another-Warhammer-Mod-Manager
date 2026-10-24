@@ -470,7 +470,39 @@ pub fn base_game_index(location: &GameLocation) -> BaseGameIndex {
 
 impl Session {
     pub fn conflict_report(&self) -> Result<ConflictReport, AppError> {
+        self.conflict_scan()?.compute()
+    }
+
+    pub fn conflict_scan(&self) -> Result<ConflictScan, AppError> {
         let location = self.require_game_location()?;
+        Ok(ConflictScan {
+            location: location.clone(),
+            mods: self.mods.clone(),
+            enabled_ids: self.enabled_ids.clone(),
+            duplicate_pack_names: self
+                .index_report
+                .duplicates
+                .iter()
+                .map(|duplicate| DuplicatePackName {
+                    name: duplicate.name.clone(),
+                    mod_ids: std::iter::once(duplicate.kept_id.clone())
+                        .chain(duplicate.dropped_ids.iter().cloned())
+                        .collect(),
+                })
+                .collect(),
+        })
+    }
+}
+
+pub struct ConflictScan {
+    location: GameLocation,
+    mods: Vec<DiscoveredMod>,
+    enabled_ids: Vec<String>,
+    duplicate_pack_names: Vec<DuplicatePackName>,
+}
+
+impl ConflictScan {
+    pub fn compute(self) -> Result<ConflictReport, AppError> {
         let by_id: HashMap<&str, &DiscoveredMod> = self
             .mods
             .iter()
@@ -503,28 +535,18 @@ impl Session {
             }
         }
 
+        let enabled_ids: HashSet<&str> = self.enabled_ids.iter().map(String::as_str).collect();
         let all_packs: Vec<PackAvailability> = self
             .mods
             .iter()
             .map(|module| PackAvailability {
                 mod_id: module.id.clone(),
                 pack_name: module.name.clone(),
-                enabled: self.enabled_ids.iter().any(|id| id == &module.id),
+                enabled: enabled_ids.contains(module.id.as_str()),
             })
             .collect();
-        let duplicate_pack_names = self
-            .index_report
-            .duplicates
-            .iter()
-            .map(|duplicate| DuplicatePackName {
-                name: duplicate.name.clone(),
-                mod_ids: std::iter::once(duplicate.kept_id.clone())
-                    .chain(duplicate.dropped_ids.iter().cloned())
-                    .collect(),
-            })
-            .collect();
-        let base = base_game_index(location);
-        let mut report = compute_report(&inputs, &all_packs, duplicate_pack_names, &base);
+        let base = base_game_index(&self.location);
+        let mut report = compute_report(&inputs, &all_packs, self.duplicate_pack_names, &base);
         report.warnings.splice(0..0, warnings);
         Ok(report)
     }
