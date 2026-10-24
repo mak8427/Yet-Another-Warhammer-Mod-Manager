@@ -412,11 +412,6 @@ kbd {
   font-size: var(--text-2xs);
 }
 
-.btn-large {
-  height: var(--control-h-lg);
-  padding: 0 var(--space-6);
-}
-
 .btn-icon {
   width: var(--control-h-md);
   padding: 0;
@@ -1953,16 +1948,6 @@ input[aria-invalid='true'] {
   background: var(--color-state-warning-bg);
 }
 
-.banner-success {
-  border-left: 2px solid var(--color-border-success);
-  background: var(--color-state-success-bg);
-}
-
-.banner-info {
-  border-left: 2px solid var(--color-border-default);
-  background: var(--color-state-info-bg);
-}
-
 .banner-body {
   display: flex;
   flex-direction: column;
@@ -2639,10 +2624,6 @@ input[aria-invalid='true'] {
   font-size: var(--text-2xs);
   letter-spacing: 0.07em;
   text-transform: uppercase;
-}
-
-.btn-large {
-  font-size: var(--text-xs);
 }
 
 .btn-primary {

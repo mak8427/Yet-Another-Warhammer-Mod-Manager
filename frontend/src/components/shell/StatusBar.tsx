@@ -37,7 +37,7 @@ export function StatusBar({ status, appInfo, snapshot, busy, dirty, lastWriteAt 
       <div className="status-cluster">
         <span>{readiness}</span>
       </div>
-      <div className="status-cluster status-cluster-right">
+      <div className="status-cluster">
         <span className={dirty ? 'status-dirty' : undefined}>{writeState}</span>
         <span className="status-divider" aria-hidden="true" />
         <span>v{appInfo?.version ?? '0.1.0'}</span>

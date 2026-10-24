@@ -25,10 +25,6 @@ const allStyles = stylesheets(sourceDir).map((file) => ({
 }))
 const componentStyles = allStyles.filter(({ file }) => !file.endsWith('tokens.css'))
 
-function withoutLegacyShell(css: string): string {
-  return css.replace(/\/\* legacy-m2:start[\s\S]*?\/\* legacy-m2:end \*\//g, '')
-}
-
 function declarations(css: string): Map<string, string> {
   const values = new Map<string, string>()
   const pattern = /(--[a-z0-9-]+)\s*:\s*([^;]+);/gi
@@ -283,7 +279,7 @@ describe('design tokens', () => {
 
   it('keeps material gradients in tokens and forbids remote assets and web fonts', () => {
     for (const { file, css } of allStyles) {
-      const checked = withoutLegacyShell(css)
+      const checked = css
       if (!file.endsWith('tokens.css')) {
         expect(checked, `${file} bypasses the material tokens`).not.toMatch(/(linear|radial|conic)-gradient\(/i)
       }

@@ -17,13 +17,3 @@ export function formatDate(value: string | null): string {
   if (Number.isNaN(date.getTime())) return value
   return date.toISOString().slice(0, 10)
 }
-
-export function baseName(path: string): string {
-  if (!path) return ''
-  const parts = path.split(/[\\/]/).filter(Boolean)
-  return parts.at(-1) ?? path
-}
-
-export function formatMs(value: number): string {
-  return `${Math.max(0, Math.round(value))} ms`
-}

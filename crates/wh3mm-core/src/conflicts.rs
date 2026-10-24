@@ -13,17 +13,15 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{AppError, ErrorCode};
-use crate::mod_index::DiscoveredMod;
+use crate::mod_index::{self, DiscoveredMod};
+use crate::pack::PFH5_HEADER_LEN;
 use crate::paths::GameLocation;
 use crate::session::Session;
 
-pub const PFH5_HEADER_LEN: usize = 28;
 pub const FILENAME_HASH_MASK: u32 = 0x40;
 pub const MAX_FILE_COUNT: u32 = 2_000_000;
 pub const MAX_PACK_INDEX_BYTES: u32 = 256 * 1024 * 1024;
 pub const MAX_TABLE_SHADOWS: usize = 200;
-
-const FALLBACK_VANILLA_PACKS: &[&str] = &["data.pack", "db.pack", "data_script.pack"];
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -444,7 +442,7 @@ pub fn compute_report(
 
 pub fn base_game_index(location: &GameLocation) -> BaseGameIndex {
     let mut index = BaseGameIndex::default();
-    let names = vanilla_pack_names(&location.data_path);
+    let names = mod_index::vanilla_pack_names(&location.data_path);
     index.pack_names.extend(names.iter().cloned());
 
     for name in names {
@@ -470,43 +468,9 @@ pub fn base_game_index(location: &GameLocation) -> BaseGameIndex {
     index
 }
 
-fn vanilla_pack_names(data_path: &Path) -> Vec<String> {
-    let manifest = std::fs::read_to_string(data_path.join("manifest.txt"));
-    match manifest {
-        Ok(text) => {
-            let mut names: Vec<String> = text
-                .lines()
-                .filter_map(|line| line.split_whitespace().next())
-                .filter(|name| name.to_ascii_lowercase().ends_with(".pack"))
-                .map(|name| name.to_ascii_lowercase())
-                .collect();
-            names.sort();
-            names.dedup();
-            if names.is_empty() {
-                FALLBACK_VANILLA_PACKS
-                    .iter()
-                    .map(|name| name.to_string())
-                    .collect()
-            } else {
-                names
-            }
-        }
-        Err(_) => FALLBACK_VANILLA_PACKS
-            .iter()
-            .map(|name| name.to_string())
-            .collect(),
-    }
-}
-
 impl Session {
     pub fn conflict_report(&self) -> Result<ConflictReport, AppError> {
-        self.game_location()?;
-        let location = self.location.as_ref().ok_or_else(|| {
-            AppError::new(
-                ErrorCode::GameNotFound,
-                "Could not find a Total War: Warhammer III installation",
-            )
-        })?;
+        let location = self.require_game_location()?;
         let by_id: HashMap<&str, &DiscoveredMod> = self
             .mods
             .iter()
