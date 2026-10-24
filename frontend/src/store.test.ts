@@ -62,21 +62,20 @@ describe('AppStore', () => {
   })
 
   it('toggles a mod through the backend and refreshes the profile counts', async () => {
-    const enabled = makeSnapshot([
-      { ...MOD_A, isEnabled: true },
-      { ...MOD_B, isEnabled: true },
-      MOD_C,
-    ])
+    const disabled = makeSnapshot([MOD_B, { ...MOD_A, isEnabled: false }, MOD_C])
     const client = makeClient({
       listMods: vi.fn(async () => makeSnapshot([MOD_A, MOD_B, MOD_C])),
-      setModEnabled: vi.fn(async () => enabled),
+      setModEnabled: vi.fn(async () => disabled),
     })
     const store = new AppStore(client)
     await store.init()
     await store.toggleMod('mod-a')
     expect(client.setModEnabled).toHaveBeenCalledWith('mod-a', false)
-    expect(store.getState().snapshot?.enabledCount).toBe(2)
-    expect(client.listProfiles).toHaveBeenCalled()
+    expect(store.getState().snapshot?.enabledCount).toBe(1)
+    expect(store.getState().snapshot?.mods.find((mod) => mod.id === 'mod-a')?.isEnabled).toBe(false)
+    expect(store.getState().dirty).toBe(true)
+    expect(store.getState().busy).toBeNull()
+    expect(client.listProfiles).toHaveBeenCalledTimes(2)
   })
 
   it('moves the selected enabled mods and sends the complete order', async () => {

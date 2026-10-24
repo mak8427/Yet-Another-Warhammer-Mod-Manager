@@ -19,6 +19,11 @@ on:
       - packaging/**
       - crates/**
       - frontend/**
+      - '!frontend/**/*.test.ts'
+      - '!frontend/**/*.test.tsx'
+      - '!frontend/**/*.bench.tsx'
+      - '!frontend/src/test/**'
+      - '!frontend/vite.perf.config.ts'
       - Cargo.toml
       - Cargo.lock
       - package.json
@@ -26,13 +31,18 @@ on:
       - pnpm-workspace.yaml
       - docs/RELEASE.md
   push:
-    branches: ['**']
+    branches: [main]
     paths:
       - .github/workflows/linux-packages.yml
       - .github/workflows/release.yml
       - packaging/**
       - crates/**
       - frontend/**
+      - '!frontend/**/*.test.ts'
+      - '!frontend/**/*.test.tsx'
+      - '!frontend/**/*.bench.tsx'
+      - '!frontend/src/test/**'
+      - '!frontend/vite.perf.config.ts'
       - Cargo.toml
       - Cargo.lock
       - package.json

@@ -4,6 +4,7 @@ reference/
 dist/
 crates/wh3mm-app/gen/
 coverage/
+frontend/test-results/
 .vite/
 *.tsbuildinfo
 *.log
