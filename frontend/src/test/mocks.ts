@@ -179,8 +179,14 @@ export const LAUNCH_OPTIONS: LaunchOptions = {
 
 export const LAUNCH_RESULT: LaunchResult = {
   launched: true,
-  method: 'steam',
-  message: 'Warhammer III launch requested through Steam.',
+  method: 'direct',
+  message: 'Warhammer III launch requested directly.',
+}
+
+export const PROTON_LAUNCH_RESULT: LaunchResult = {
+  launched: true,
+  method: 'proton',
+  message: 'Warhammer III launch requested through Proton.',
 }
 
 export const RESET_REPORT: ResetDefaultsReport = {

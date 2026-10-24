@@ -446,7 +446,7 @@ fn reset_to_defaults_reports_a_corrupt_used_mods_file_without_claiming_success()
 fn reset_to_defaults_refuses_a_mixed_corrupt_and_unmanaged_file_without_asking() {
     let dir = TempDir::new("session-reset-corrupt-unmanaged");
     let (steam_root, game) = steam_game_fixture(&dir, &["a.pack"]);
-    let mixed = "add_working_directory \"C:/tools\";\nmod \"unterminated;\n";
+    let mixed = "custom_directive \"C:/tools\";\nmod \"unterminated;\n";
     fs::write(game.join("used_mods.txt"), mixed).unwrap();
     let mut session = Session::initialize(steam_options(&dir, &steam_root)).unwrap();
     let preferences = UiPreferences {
@@ -514,7 +514,7 @@ fn reset_to_defaults_reports_an_unreadable_used_mods_file_without_claiming_succe
 fn reset_to_defaults_asks_before_dropping_unmanaged_directives() {
     let dir = TempDir::new("session-reset-unmanaged");
     let (steam_root, game) = steam_game_fixture(&dir, &["a.pack"]);
-    let directive = "add_working_directory \"C:/tools\";";
+    let directive = "custom_directive \"C:/tools\";";
     let original = format!("{directive}\nmod \"a.pack\";\n");
     fs::write(game.join("used_mods.txt"), &original).unwrap();
     let mut session = Session::initialize(steam_options(&dir, &steam_root)).unwrap();

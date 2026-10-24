@@ -152,13 +152,13 @@ These apply to every screen and every milestone.
   Evidence: `shots/` has 1920×1080 and 1366×768 pairs for S01–S11, plus compact/roomy mod-list shots; manifest in `shots/README.md`.
 - `[x]` G-18 `pnpm typecheck`, `pnpm lint`, `pnpm test`, and `pnpm build` pass
   on the implementation branch.
-  Evidence: At this head: `pnpm typecheck`, `pnpm lint`, `pnpm test` (10 files / 81 tests), `pnpm build`, `cargo fmt --all --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, `cargo test --workspace --locked` all pass.
+  Evidence: At this head: `pnpm typecheck`, `pnpm lint`, `pnpm test` (10 files / 84 tests), `pnpm build`, `cargo fmt --all --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, `cargo test --workspace --locked` all pass.
 
 ## Zoom and window geometry (WAR-141)
 
 Zoom is independent of density. Density changes row heights; zoom scales the
-whole webview. The persisted range is 80–200% in 10% steps; `Ctrl+0` resets to
-100%.
+whole webview. The persisted range is clamped to 80–200%; the controls move
+in 10% steps; `Ctrl+0` resets to 100%.
 
 - `[x]` Z-01 `ui.zoom` round-trips, an older config without it loads as 100%,
   and **Reset to defaults** restores 100%.

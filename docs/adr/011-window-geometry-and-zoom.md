@@ -1,4 +1,4 @@
-# ADR-008 — Persisted window geometry and whole-interface zoom
+# ADR-011 — Persisted window geometry and whole-interface zoom
 
 - Status: accepted
 - Date: 2026-10-22
@@ -25,8 +25,9 @@ areas, which are only available from the platform shell.
 ### Zoom
 
 - `ui.zoom` is a percentage in `UiPreferences` (config schema v1, additive
-  field, `serde(default)`). The range is 80–200 in 10-point steps; the default
-  and the value restored by **Reset to defaults** is 100.
+  field, `serde(default)`). The persisted range is clamped to 80–200; the
+  controls move in 10-point steps. The default and the value restored by
+  **Reset to defaults** is 100.
 - The backend clamps every persisted or caller-supplied value with
   `wh3mm_core::ipc::clamp_zoom`. An older config without `zoom` loads as 100,
   so no schema-version bump is required.

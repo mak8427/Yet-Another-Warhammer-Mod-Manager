@@ -57,10 +57,17 @@ rejects with the final value.
 | `config_corrupt` | Persisted state cannot be parsed or validated | no |
 | `game_not_found` | WH3 install not located | no |
 | `steam_not_found` | Steam install/library data not readable | no |
-| `process_detection_failed` | Whether the game is already running could not be determined; launch is blocked | yes |
+| `steam_not_running` | Steam is installed but its client process is not running | no |
+| `process_detection_failed` | Whether the game or Steam is running could not be determined; launch is blocked | yes |
 | `pack_parse_failed` | `.pack` header/file is malformed | no |
 | `not_found` | Requested mod/profile/tag does not exist | no |
 | `validation` | Caller-supplied input is invalid | no |
+| `proton_not_configured` | Steam has no Proton mapping and `Warhammer3.exe` is absent | no |
+| `compat_data_missing` | `steamapps/compatdata/1142710` is absent | no |
+| `proton_not_installed` | No usable `steamapps/common/Proton*/proton` exists | no |
+| `proton_runtime_missing` | No `SteamLinuxRuntime*/_v2-entry-point` exists | no |
+| `launch_failed` | The Steam, Proton, or direct game process could not be spawned | no |
+| `load_order_overridden` | `used_mods.txt` does not match the applied order or changed during launch | no |
 | `internal` | Unexpected failure | no |
 
 Rules:
@@ -318,7 +325,7 @@ type LaunchOptions = {
 
 type LaunchResult = {
   launched: boolean
-  method: 'steam' | 'direct'
+  method: 'steam' | 'proton' | 'direct'
   message: string | null
 }
 ```

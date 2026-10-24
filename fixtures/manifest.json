@@ -46,12 +46,16 @@
       "bytes": 87
     },
     "load_order/used_mods_unknown_directive.txt": {
-      "sha256": "addbb6c0ac38810e4535334ab0174db2ca214ffe37623ea4fda5a3637e6fa34b",
-      "bytes": 196
+      "sha256": "b8bff3001b16a63c7b23491a4f364efd2002df397565b3d17de96b39ccc241b0",
+      "bytes": 139
     },
     "load_order/used_mods_valid.txt": {
       "sha256": "b5932c38da056e18de1bbf9f436eebea169e35e0b6528f0488e0bedea9695275",
       "bytes": 88
+    },
+    "load_order/used_mods_working_directory.txt": {
+      "sha256": "d0598473981e5899081a6b592d636d43c36ea983c6dff646b5a4ffe086590f95",
+      "bytes": 122
     },
     "packs/malformed_bad_magic.pack": {
       "sha256": "534646c1653a1f5f563f95927d2dbf3f39bb354dfe1991826c276da9aaa3cf11",
