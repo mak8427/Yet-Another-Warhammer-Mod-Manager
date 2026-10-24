@@ -1,0 +1,33 @@
+{
+  "date": "2026-10-24",
+  "baselineCommit": "6ae9103",
+  "scope": "Synchronous React/jsdom drag-marker update; excludes mounting, DOM queries, cleanup, WebView painting and disk persistence. Shared development host; CPU was not isolated.",
+  "command": "pnpm --dir frontend exec vitest run --config vite.perf.config.ts --disableConsoleIntercept --silent=false --reporter=verbose",
+  "environment": {
+    "node": "v26.11.1",
+    "os": "linux",
+    "arch": "x64",
+    "cpu": "AMD Ryzen 7 5800X3D 8-Core Processor"
+  },
+  "fixture": {
+    "mods": 500,
+    "enabledMods": 20,
+    "viewportHeight": 320,
+    "density": "compact",
+    "warmups": 3,
+    "runs": 12,
+    "eventsPerRun": 40
+  },
+  "baseline": {
+    "medianMsPerEvent": 2.9718769124999964,
+    "iqrMsPerEvent": 0.12461180000000494,
+    "samplesMsPerEvent": [2.919815025000003, 3.0010178999999995, 3.0433820749999994, 3.0659190000000023, 2.9782287749999967, 3.868577024999996, 2.9340761749999955, 2.926001299999996, 2.8692639999999985, 2.9503844999999957, 2.9655250499999966, 3.1026724999999944],
+    "trackedRowNameReadsPerRun": [240, 240, 240, 240, 240, 240, 240, 240, 240, 240, 240, 240]
+  },
+  "optimized": {
+    "medianMsPerEvent": 0.45782423750000023,
+    "iqrMsPerEvent": 0.17511122499999915,
+    "samplesMsPerEvent": [0.57282285, 0.6491294000000011, 0.6794108250000022, 0.8436180250000007, 0.5379547000000002, 0.4483929000000046, 0.4418341499999997, 0.4340681000000018, 0.4286377500000015, 0.43766170000000104, 0.4672555749999958, 0.4031945500000006],
+    "trackedRowNameReadsPerRun": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  }
+}
