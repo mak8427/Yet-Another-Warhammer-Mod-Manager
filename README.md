@@ -222,13 +222,16 @@ For uninstall commands and configuration cleanup, see [the installation guide](d
 
 ## Showcase
 
-| Campaign profiles | Pack conflicts & dependencies |
+| Mod thumbnails & inspector | Workshop subscriptions |
 |---|---|
+| ![Mod thumbnails and inspector](docs/screenshots/showcase/mods__selected-inspector__1920x1080__comfortable.png) | ![Workshop subscriptions](docs/screenshots/showcase/workshop__subscribed__1920x1080__comfortable.png) |
+| **Campaign profiles** | **Pack conflicts & dependencies** |
 | ![Campaign profiles](docs/screenshots/showcase/profiles__active__1920x1080__comfortable.png) | ![Conflict report](docs/screenshots/showcase/conflicts__report__1920x1080__comfortable.png) |
 | **Launch options** | **Preferences & density** |
 | ![Launch options](docs/screenshots/showcase/launch__dialog__1920x1080__comfortable.png) | ![Settings](docs/screenshots/showcase/settings__general__1920x1080__comfortable.png) |
 
-Screenshots use the repository's synthetic QA fixtures. See the
+Screenshots use sample profiles and states. Mod-list captures include installed
+Workshop mod thumbnails to show how artwork appears in the app. See the
 [screenshot record](docs/screenshots/showcase/README.md) for capture details.
 
 ## Quick Start
