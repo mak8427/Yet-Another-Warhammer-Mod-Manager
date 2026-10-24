@@ -506,9 +506,16 @@ const USED_MODS_VALID = [
 ].join('\n')
 
 const USED_MODS_UNKNOWN_DIRECTIVE = [
-  'add_working_directory "C:\\\\Games\\\\Steam\\\\steamapps\\\\common\\\\Warhammer3\\\\data";',
+  'custom_directive "C:\\Games\\Steam\\steamapps\\common\\Warhammer3\\data";',
   'mod "mod_a.pack";',
-  'add_working_directory "C:\\\\Games\\\\Steam\\\\steamapps\\\\workshop\\\\content\\\\1142710";',
+  'another_unknown_directive "value";',
+  'mod "mod_b.pack";',
+  '',
+].join('\n')
+
+const USED_MODS_WORKING_DIRECTORY = [
+  'add_working_directory "C:\\Games\\Steam\\steamapps\\workshop\\content\\1142710\\2858184271";',
+  'mod "mod_a.pack";',
   'mod "mod_b.pack";',
   '',
 ].join('\n')
@@ -533,7 +540,8 @@ const USED_MODS_CORRUPT = [
 const CONFIG_VALID = {
   schemaVersion: 1,
   paths: { gamePathOverride: null },
-  ui: { density: 'comfortable', showThumbnails: true, lastScrollTop: 0 },
+  ui: { density: 'comfortable', showThumbnails: true, lastScrollTop: 0, zoom: 100 },
+  window: null,
   activeProfileId: 'b0f4e7f0-3a55-4b8e-9d4a-8a2f6f4b1c21',
   profiles: [
     {
@@ -577,6 +585,7 @@ function committedTextFixtures() {
     'load_order/used_mods_bom.txt': `\ufeff${USED_MODS_VALID}`,
     'load_order/used_mods_empty.txt': '',
     'load_order/used_mods_unknown_directive.txt': USED_MODS_UNKNOWN_DIRECTIVE,
+    'load_order/used_mods_working_directory.txt': USED_MODS_WORKING_DIRECTORY,
     'load_order/used_mods_duplicates.txt': USED_MODS_DUPLICATES,
     'load_order/used_mods_corrupt.txt': USED_MODS_CORRUPT,
     'load_order/used_mods_no_final_newline.txt': USED_MODS_VALID.trimEnd(),

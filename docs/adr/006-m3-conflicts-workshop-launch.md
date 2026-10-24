@@ -79,8 +79,12 @@ M1/M2 data model.
 
 ## Launch
 
-- Launch command: `<steam> -applaunch 1142710`. The command never runs the game
-  executable directly on Windows or Linux; Steam owns the app lifecycle.
+> Superseded for Linux by ADR-009 and for Windows by ADR-010. This ADR remains
+> the historical M3 launch contract; current builds start the game directly and
+> do not use `steam -applaunch` for WH3.
+
+- Historical launch command: `<steam> -applaunch 1142710`. Current Windows and
+  Linux builds start the game executable directly; see ADR-009 and ADR-010.
 - A running `Warhammer3.exe` (case-insensitive process/cmdline match) blocks
   another launch with a `validation` error.
 - Options are persisted per profile in `config.json` under

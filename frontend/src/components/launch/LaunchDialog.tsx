@@ -32,7 +32,7 @@ export function LaunchDialog() {
           {state.game ? '✓' : '▲'}
         </span>
         {state.game
-          ? 'The manager checks that Warhammer3.exe is not already running before launch.'
+          ? 'Steam must be running. The manager starts the game without the CA launcher and checks that Warhammer3.exe is not already running. The last applied load order is used.'
           : 'Set the game path before launching.'}
       </p>
 
@@ -67,7 +67,7 @@ export function LaunchDialog() {
           <span className="state-check" aria-hidden="true">
             ✓
           </span>
-          {result.message ?? 'Launch requested through Steam'} · {result.method}
+          {result.message ?? 'Launch requested'} · {result.method}
         </p>
       )}
 

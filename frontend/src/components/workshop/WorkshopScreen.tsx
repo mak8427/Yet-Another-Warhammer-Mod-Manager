@@ -77,7 +77,7 @@ export function WorkshopScreen({
   }, [viewportHeightOverride])
 
   return (
-    <section className="workshop-screen" aria-labelledby="workshop-heading">
+    <section className="workshop-screen" data-faction="copper" aria-labelledby="workshop-heading">
       <div className="screen-bar">
         <div className="screen-title">
           <h2 id="workshop-heading" tabIndex={-1}>

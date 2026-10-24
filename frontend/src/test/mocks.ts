@@ -39,6 +39,7 @@ export const UI: UiPreferences = {
   density: 'comfortable',
   showThumbnails: true,
   lastScrollTop: 0,
+  zoom: 100,
 }
 
 export const EMPTY_LOAD_ORDER: LoadOrderReadReport = {
@@ -178,8 +179,14 @@ const LAUNCH_OPTIONS: LaunchOptions = {
 
 const LAUNCH_RESULT: LaunchResult = {
   launched: true,
-  method: 'steam',
-  message: 'Warhammer III launch requested through Steam.',
+  method: 'direct',
+  message: 'Warhammer III launch requested directly.',
+}
+
+export const PROTON_LAUNCH_RESULT: LaunchResult = {
+  launched: true,
+  method: 'proton',
+  message: 'Warhammer III launch requested through Proton.',
 }
 
 export const RESET_REPORT: ResetDefaultsReport = {

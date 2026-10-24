@@ -6,20 +6,20 @@
       "bytes": 57
     },
     "config/config_future_version.json": {
-      "sha256": "d69e153c1d8243be465aea7f6928c899384039d899982ecab33a58de9ce1daa2",
-      "bytes": 899
+      "sha256": "b2ce9672a0bab3e11e3a5f967fa916fca17952f96390e5c94afe6445492b3ba6",
+      "bytes": 934
     },
     "config/config_truncated.json": {
       "sha256": "f40bcbc032db34576f6c2551e8452ac0c1e72566ceef64e4802805136d010492",
       "bytes": 27
     },
     "config/config_unknown_fields.json": {
-      "sha256": "784e392e738f9523df739e7b6d5f781ad98d60ecfa14a24a74ee962408c7876e",
-      "bytes": 1038
+      "sha256": "a0c5cd7edc749730ddf3ecda3de71a8b3d433e0b4900311e73247c1bf72c3be6",
+      "bytes": 1073
     },
     "config/config_valid.json": {
-      "sha256": "83fd7dd80742d4b3cd39c2f08df65bfc5283a2d29960535e8dad266160fb36be",
-      "bytes": 899
+      "sha256": "25b6e872b673b3113f0483d3dee12861e489105cc3e7317b67296ffdd3d58eec",
+      "bytes": 934
     },
     "load_order/used_mods_bom.txt": {
       "sha256": "4d80bea6235b7b3709b99f0556f5091165350d301750b0f03b00fb8c7d4b5578",
@@ -46,12 +46,16 @@
       "bytes": 87
     },
     "load_order/used_mods_unknown_directive.txt": {
-      "sha256": "addbb6c0ac38810e4535334ab0174db2ca214ffe37623ea4fda5a3637e6fa34b",
-      "bytes": 196
+      "sha256": "b8bff3001b16a63c7b23491a4f364efd2002df397565b3d17de96b39ccc241b0",
+      "bytes": 139
     },
     "load_order/used_mods_valid.txt": {
       "sha256": "b5932c38da056e18de1bbf9f436eebea169e35e0b6528f0488e0bedea9695275",
       "bytes": 88
+    },
+    "load_order/used_mods_working_directory.txt": {
+      "sha256": "d0598473981e5899081a6b592d636d43c36ea983c6dff646b5a4ffe086590f95",
+      "bytes": 122
     },
     "packs/malformed_bad_magic.pack": {
       "sha256": "534646c1653a1f5f563f95927d2dbf3f39bb354dfe1991826c276da9aaa3cf11",

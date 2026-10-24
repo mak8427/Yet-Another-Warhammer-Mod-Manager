@@ -66,7 +66,7 @@ export function ProfilesScreen({
   }
 
   return (
-    <section className="profiles-screen" aria-labelledby="profiles-heading">
+    <section className="profiles-screen" data-faction="azure" aria-labelledby="profiles-heading">
       <div className="screen-bar">
         <div className="screen-title">
           <h2 id="profiles-heading" tabIndex={-1}>

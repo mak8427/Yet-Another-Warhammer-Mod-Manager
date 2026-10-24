@@ -50,7 +50,7 @@ export function ModsScreen({ state }: ModsScreenProps) {
     : { label: 'Set game path', onClick: () => store.setView('settings') }
 
   return (
-    <div className="mods-screen">
+    <div className="mods-screen" data-faction="brass">
       {snapshot.warnings.length > 0 && (
         <div className="banner banner-warning" role="status">
           <span className="state-icon state-icon-warning" aria-hidden="true">

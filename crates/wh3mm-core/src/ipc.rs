@@ -210,12 +210,35 @@ impl<'de> Deserialize<'de> for Density {
     }
 }
 
+/// Webview zoom bounds, in percent. The UI moves in [`ZOOM_STEP`] steps; the
+/// backend clamps any value it receives or reads from an older config.
+pub const ZOOM_MIN: u16 = 80;
+pub const ZOOM_MAX: u16 = 200;
+pub const ZOOM_STEP: u16 = 10;
+pub const ZOOM_DEFAULT: u16 = 100;
+
+pub fn clamp_zoom(percent: u16) -> u16 {
+    percent.clamp(ZOOM_MIN, ZOOM_MAX)
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct UiPreferences {
     pub density: Density,
     pub show_thumbnails: bool,
     pub last_scroll_top: u64,
+    /// Whole-interface webview zoom in percent (`80..=200`).
+    pub zoom: u16,
+}
+
+impl UiPreferences {
+    /// Clamps persisted or caller-supplied values without rejecting the whole
+    /// document. An older config has no `zoom` and deserializes to the default.
+    pub fn normalized(mut self) -> Self {
+        self.zoom = clamp_zoom(self.zoom);
+        self.last_scroll_top = self.last_scroll_top.min(10_000_000);
+        self
+    }
 }
 
 impl Default for UiPreferences {
@@ -224,6 +247,7 @@ impl Default for UiPreferences {
             density: Density::Comfortable,
             show_thumbnails: true,
             last_scroll_top: 0,
+            zoom: ZOOM_DEFAULT,
         }
     }
 }

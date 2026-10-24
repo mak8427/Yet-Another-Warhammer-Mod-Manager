@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { store, type AppState } from '../../store'
 import { DENSITIES, DENSITY_LABEL } from '../../lib/ui'
+import { ZOOM_DEFAULT, ZOOM_MAX, ZOOM_MIN } from '../../lib/zoom'
 import type { Density, ResetDefaultsReport } from '../../lib/ipc'
 import { Modal } from '../common/Modal'
 import { ErrorBanner } from '../shell/ErrorBanner'
@@ -33,7 +34,7 @@ export function SettingsScreen({ state }: SettingsScreenProps) {
   }
 
   return (
-    <section className="settings-screen" aria-labelledby="settings-heading">
+    <section className="settings-screen" data-faction="jade" aria-labelledby="settings-heading">
       <div className="screen-bar">
         <div className="screen-title">
           <h2 id="settings-heading" tabIndex={-1}>
@@ -110,6 +111,49 @@ export function SettingsScreen({ state }: SettingsScreenProps) {
                   </option>
                 ))}
               </select>
+            </div>
+          </div>
+          <div className="setting-row">
+            <div className="setting-label">
+              <span id="settings-zoom-label">Zoom</span>
+              <p>Scales the whole interface. Shortcuts: Ctrl +, Ctrl −, Ctrl 0.</p>
+            </div>
+            <div
+              className="setting-control zoom-control"
+              role="group"
+              aria-labelledby="settings-zoom-label"
+            >
+              <button
+                type="button"
+                className="btn btn-small"
+                onClick={() => store.zoomOut()}
+                disabled={state.ui.zoom <= ZOOM_MIN}
+                aria-label="Zoom out"
+                aria-keyshortcuts="Control+-"
+              >
+                −
+              </button>
+              <output className="zoom-value mono" aria-live="polite" aria-label="Current zoom">
+                {state.ui.zoom}%
+              </output>
+              <button
+                type="button"
+                className="btn btn-small"
+                onClick={() => store.zoomIn()}
+                disabled={state.ui.zoom >= ZOOM_MAX}
+                aria-label="Zoom in"
+                aria-keyshortcuts="Control+="
+              >
+                +
+              </button>
+              <button
+                type="button"
+                className="btn btn-small btn-ghost"
+                onClick={() => store.resetZoom()}
+                disabled={state.ui.zoom === ZOOM_DEFAULT}
+              >
+                Reset
+              </button>
             </div>
           </div>
           <label className="setting-row setting-row-check">

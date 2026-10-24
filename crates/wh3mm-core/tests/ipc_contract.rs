@@ -32,7 +32,7 @@ fn reset_defaults_report_uses_camel_case_on_the_wire() {
         load_order: ResetLoadOrderReport {
             status: ResetLoadOrderStatus::UnmanagedDirectives,
             message: Some("confirm first".into()),
-            unmanaged_directives: vec!["add_working_directory \"C:/tools\";".into()],
+            unmanaged_directives: vec!["custom_directive \"C:/tools\";".into()],
             requires_unmanaged_confirmation: true,
         },
     };
@@ -43,7 +43,7 @@ fn reset_defaults_report_uses_camel_case_on_the_wire() {
     assert_eq!(json["loadOrder"]["message"], "confirm first");
     assert_eq!(
         json["loadOrder"]["unmanagedDirectives"][0],
-        "add_working_directory \"C:/tools\";"
+        "custom_directive \"C:/tools\";"
     );
     assert_eq!(json["loadOrder"]["requiresUnmanagedConfirmation"], true);
     assert!(
@@ -102,6 +102,7 @@ fn error_codes_use_snake_case_on_the_wire() {
         (ErrorCode::Io, "io"),
         (ErrorCode::ConfigCorrupt, "config_corrupt"),
         (ErrorCode::SteamNotFound, "steam_not_found"),
+        (ErrorCode::SteamNotRunning, "steam_not_running"),
         (
             ErrorCode::ProcessDetectionFailed,
             "process_detection_failed",
@@ -110,6 +111,12 @@ fn error_codes_use_snake_case_on_the_wire() {
         (ErrorCode::NotFound, "not_found"),
         (ErrorCode::Validation, "validation"),
         (ErrorCode::Internal, "internal"),
+        (ErrorCode::ProtonNotConfigured, "proton_not_configured"),
+        (ErrorCode::CompatDataMissing, "compat_data_missing"),
+        (ErrorCode::ProtonNotInstalled, "proton_not_installed"),
+        (ErrorCode::ProtonRuntimeMissing, "proton_runtime_missing"),
+        (ErrorCode::LaunchFailed, "launch_failed"),
+        (ErrorCode::LoadOrderOverridden, "load_order_overridden"),
     ];
 
     for (code, expected) in cases {
@@ -203,7 +210,7 @@ fn write_report_exposes_confirmation_requirements() {
         backup_path: None,
         written: 0,
         skipped: vec!["missing.pack".into()],
-        unmanaged_directives: vec!["add_working_directory \"x\";".into()],
+        unmanaged_directives: vec!["custom_directive \"x\";".into()],
         would_drop_unmanaged: true,
         existing_mod_count: 3,
         resulting_mod_count: 0,
@@ -217,8 +224,51 @@ fn write_report_exposes_confirmation_requirements() {
     assert_eq!(json["requiresEmptyConfirmation"], true);
     assert_eq!(json["requiresUnmanagedConfirmation"], true);
     assert_eq!(json["hardBlocked"], false);
-    assert_eq!(
-        json["unmanagedDirectives"][0],
-        "add_working_directory \"x\";"
-    );
+    assert_eq!(json["unmanagedDirectives"][0], "custom_directive \"x\";");
+}
+
+#[test]
+fn launch_method_wire_values_include_proton() {
+    use wh3mm_core::launch::LaunchMethod;
+
+    let cases = [
+        (LaunchMethod::Steam, "steam"),
+        (LaunchMethod::Proton, "proton"),
+        (LaunchMethod::Direct, "direct"),
+    ];
+
+    for (method, expected) in cases {
+        let json = serde_json::to_value(method).expect("LaunchMethod must serialize");
+        assert_eq!(json, expected);
+    }
+}
+
+#[test]
+fn every_error_code_is_documented() {
+    const TROUBLESHOOTING: &str = include_str!("../../../docs/TROUBLESHOOTING.md");
+    let codes = [
+        "io",
+        "config_corrupt",
+        "game_not_found",
+        "steam_not_found",
+        "steam_not_running",
+        "process_detection_failed",
+        "pack_parse_failed",
+        "not_found",
+        "validation",
+        "internal",
+        "proton_not_configured",
+        "compat_data_missing",
+        "proton_not_installed",
+        "proton_runtime_missing",
+        "launch_failed",
+        "load_order_overridden",
+    ];
+
+    for code in codes {
+        assert!(
+            TROUBLESHOOTING.contains(&format!("`{code}`")),
+            "{code} is missing from docs/TROUBLESHOOTING.md"
+        );
+    }
 }
