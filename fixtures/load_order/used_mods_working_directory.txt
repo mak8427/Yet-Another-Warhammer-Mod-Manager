@@ -1,0 +1,3 @@
+add_working_directory "C:\Games\Steam\steamapps\workshop\content\1142710\2858184271";
+mod "mod_a.pack";
+mod "mod_b.pack";

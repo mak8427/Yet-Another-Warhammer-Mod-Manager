@@ -126,6 +126,8 @@ disabled dependencies are reported separately.
    Expected: the runtime entry point, `--verb=waitforexitandrun`, `--`, the
    selected Proton `proton` script, `waitforexitandrun`, `Warhammer3.exe`, and
    the literal `used_mods.txt;` argument. Steam must not be the parent launcher.
+   For a Workshop mod, `used_mods.txt` must contain its
+   `add_working_directory` line before the `mod` line.
 6. Expected: `data/wh3mm_skip_intro.pack` and
    `data/script/enable_console_logging` exist while the options are enabled.
    The game reaches the main menu and loads the selected mods, not just an

@@ -152,6 +152,8 @@ Expected:
 
 - `Warhammer3.exe` is started directly by the manager with the literal
   `used_mods.txt;` argument and the game directory as cwd;
+- a Workshop mod's folder appears in `add_working_directory` before its `mod`
+  line in `used_mods.txt`;
 - no CA launcher window appears, and Steam is not the launch parent;
 - the game loads the applied mod and the file hash is unchanged at startup and
   after exit;

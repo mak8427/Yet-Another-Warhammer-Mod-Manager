@@ -32,7 +32,7 @@ fn reset_defaults_report_uses_camel_case_on_the_wire() {
         load_order: ResetLoadOrderReport {
             status: ResetLoadOrderStatus::UnmanagedDirectives,
             message: Some("confirm first".into()),
-            unmanaged_directives: vec!["add_working_directory \"C:/tools\";".into()],
+            unmanaged_directives: vec!["custom_directive \"C:/tools\";".into()],
             requires_unmanaged_confirmation: true,
         },
     };
@@ -43,7 +43,7 @@ fn reset_defaults_report_uses_camel_case_on_the_wire() {
     assert_eq!(json["loadOrder"]["message"], "confirm first");
     assert_eq!(
         json["loadOrder"]["unmanagedDirectives"][0],
-        "add_working_directory \"C:/tools\";"
+        "custom_directive \"C:/tools\";"
     );
     assert_eq!(json["loadOrder"]["requiresUnmanagedConfirmation"], true);
     assert!(
@@ -210,7 +210,7 @@ fn write_report_exposes_confirmation_requirements() {
         backup_path: None,
         written: 0,
         skipped: vec!["missing.pack".into()],
-        unmanaged_directives: vec!["add_working_directory \"x\";".into()],
+        unmanaged_directives: vec!["custom_directive \"x\";".into()],
         would_drop_unmanaged: true,
         existing_mod_count: 3,
         resulting_mod_count: 0,
@@ -224,10 +224,7 @@ fn write_report_exposes_confirmation_requirements() {
     assert_eq!(json["requiresEmptyConfirmation"], true);
     assert_eq!(json["requiresUnmanagedConfirmation"], true);
     assert_eq!(json["hardBlocked"], false);
-    assert_eq!(
-        json["unmanagedDirectives"][0],
-        "add_working_directory \"x\";"
-    );
+    assert_eq!(json["unmanagedDirectives"][0], "custom_directive \"x\";");
 }
 
 #[test]

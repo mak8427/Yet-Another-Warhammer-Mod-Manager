@@ -84,6 +84,10 @@ Environment:
 directory. Arguments are passed as an array; the manager never builds a shell
 command.
 
+The mod-list file also contains managed `add_working_directory` lines for every
+enabled pack outside the game's `data` directory. Proton does not provide the
+Workshop search path by itself, so the same rule as ADR-010 applies on Linux.
+
 `GameLocation.proton_prefix` points at `.../compatdata/1142710/pfx`. The
 resolver uses its parent for `STEAM_COMPAT_DATA_PATH`; passing the `pfx`
 directory itself would be wrong.

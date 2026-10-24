@@ -260,7 +260,7 @@ describe('App', () => {
       loadOrder: {
         status: 'unmanagedDirectives',
         message: 'used_mods.txt contains unmanaged directives that this write would remove',
-        unmanagedDirectives: ['add_working_directory "C:/tools";'],
+        unmanagedDirectives: ['custom_directive "C:/tools";'],
         requiresUnmanagedConfirmation: true,
       },
     })
@@ -275,7 +275,7 @@ describe('App', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Reset settings and load order' }))
 
     const warning = await screen.findByRole('dialog', { name: 'Drop unmanaged directives?' })
-    expect(warning).toHaveTextContent('add_working_directory "C:/tools";')
+    expect(warning).toHaveTextContent('custom_directive "C:/tools";')
     expect(ipc.resetToDefaults).toHaveBeenCalledWith(true, false)
     expect(screen.queryByText('Settings and load order reset to defaults')).not.toBeInTheDocument()
 

@@ -54,6 +54,35 @@ invoked. Do not launch WH3 through Steam manually: that path still opens the CA
 launcher and can rewrite `used_mods.txt`. The manager will detect the mismatch
 on the next launch and ask you to apply the order again.
 
+### The game opens but a mod does not load
+
+A Workshop or custom-folder pack needs a working-directory line before its
+`mod` line:
+
+```text
+add_working_directory "C:\...\steamapps\workshop\content\1142710\<workshop-id>";
+mod "the-mod.pack";
+```
+
+`used_mods.txt` must contain the folder that holds the pack. A local pack in
+`<game>/data/` does not need one.
+
+Check, in order:
+
+1. The pack path. A Workshop mod lives under
+   `steamapps/workshop/content/1142710/<id>`; a local mod usually lives under
+   `<game>/data`.
+2. That the Workshop folder appears in `add_working_directory`; if it is missing,
+   click **Apply Load Order** again with the current build.
+3. That the pack name in `mod "…";` is the actual `.pack` file name, not the
+   Workshop title.
+4. That the mod's dependencies and game-version compatibility are satisfied.
+5. That Steam was running before the direct launch and is logged in.
+
+For a controlled comparison, launch once through Steam/the CA launcher with the
+same mod, copy the working `used_mods.txt`, then compare it byte-for-byte with
+the manager's file. The CA file is the ground truth for the current game build.
+
 ## General codes
 
 | Code | Meaning | Likely cause | What to check |

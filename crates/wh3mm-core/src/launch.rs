@@ -518,7 +518,7 @@ impl Session {
     /// after the user pressed Apply.
     fn ensure_load_order_matches_selection(
         &self,
-        _location: &GameLocation,
+        location: &GameLocation,
         baseline: &Option<Vec<u8>>,
     ) -> Result<(), AppError> {
         let parsed = match baseline {
@@ -556,16 +556,23 @@ impl Session {
             .with_details(format!("directives: {}", parsed.unmanaged.join(" | "))));
         }
 
-        let expected: Vec<&str> = self
-            .enabled_ids
-            .iter()
-            .filter_map(|id| {
-                self.mods
-                    .iter()
-                    .find(|module| module.id == *id)
-                    .map(|module| module.name.as_str())
-            })
-            .collect();
+        let mut expected = Vec::new();
+        let mut expected_directories = Vec::new();
+        let mut seen_directories = std::collections::HashSet::new();
+        for id in &self.enabled_ids {
+            let Some(module) = self.mods.iter().find(|module| module.id == *id) else {
+                continue;
+            };
+            expected.push(module.name.as_str());
+            if let Some(parent) = module.path.parent() {
+                if parent != location.data_path.as_path() {
+                    let directory = parent.to_string_lossy().into_owned();
+                    if seen_directories.insert(directory.to_lowercase()) {
+                        expected_directories.push(directory);
+                    }
+                }
+            }
+        }
         let actual: Vec<&str> = parsed.mod_names.iter().map(String::as_str).collect();
         let matches = expected.len() == actual.len()
             && expected
@@ -586,6 +593,31 @@ impl Session {
             return Err(AppError::new(
                 ErrorCode::LoadOrderOverridden,
                 "The load order on disk does not match the selected mods; apply the load order before launching",
+            )
+            .with_details(format!(
+                "expected: {expected_text}; on disk: {actual_text}"
+            )));
+        }
+
+        let directories_match = expected_directories.len() == parsed.working_directories.len()
+            && expected_directories
+                .iter()
+                .zip(parsed.working_directories.iter())
+                .all(|(expected, actual)| expected.eq_ignore_ascii_case(actual));
+        if !directories_match {
+            let expected_text = if expected_directories.is_empty() {
+                "<empty>".to_string()
+            } else {
+                expected_directories.join(", ")
+            };
+            let actual_text = if parsed.working_directories.is_empty() {
+                "<empty>".to_string()
+            } else {
+                parsed.working_directories.join(", ")
+            };
+            return Err(AppError::new(
+                ErrorCode::LoadOrderOverridden,
+                "The working directories on disk do not match the selected mods; apply the load order before launching",
             )
             .with_details(format!(
                 "expected: {expected_text}; on disk: {actual_text}"
@@ -1418,6 +1450,73 @@ mod tests {
     }
 
     #[test]
+    fn windows_launch_writes_and_requires_workshop_working_directory() {
+        let mut fixture = launch_fixture("launch-workshop-directory", true);
+        let workshop = fixture._dir.path().join("workshop").join("1142710");
+        let workshop_mod_dir = workshop.join("2858184271");
+        write(
+            &workshop_mod_dir.join("workshop_mod.pack"),
+            crate::pack::synthetic_pack_bytes(0, &[], 0),
+        );
+        fixture.session.location.as_mut().unwrap().workshop_path = workshop;
+        let (mods, report) = crate::mod_index::scan(fixture.session.location.as_ref().unwrap());
+        fixture.session.mods = mods;
+        fixture.session.index_report = report;
+        let id = fixture
+            .session
+            .snapshot()
+            .mods
+            .iter()
+            .find(|module| module.name == "workshop_mod.pack")
+            .unwrap()
+            .id
+            .clone();
+        fixture.session.set_mods_enabled(&[id], true).unwrap();
+        fixture.session.write_load_order(false, false).unwrap();
+
+        let used_mods = fs::read_to_string(fixture.game.join("used_mods.txt")).unwrap();
+        assert!(used_mods.contains("add_working_directory"));
+        assert!(used_mods.contains("workshop_mod.pack"));
+        assert!(
+            used_mods.find("add_working_directory").unwrap()
+                < used_mods.find("mod \"workshop_mod.pack\";").unwrap()
+        );
+
+        let spawner = RecordingSpawner::default();
+        fixture
+            .session
+            .launch_game_with_seams(
+                LaunchOptions::default(),
+                &StubProbe(Ok(false)),
+                &spawner,
+                &fast_guard(),
+                &StubSteamProbe(Ok(true)),
+                LaunchPlatform::Windows,
+            )
+            .unwrap();
+        assert_eq!(spawner.attempts.get(), 1);
+
+        write(
+            &fixture.game.join("used_mods.txt"),
+            b"mod \"workshop_mod.pack\";",
+        );
+        let mismatch_spawner = RecordingSpawner::default();
+        let error = fixture
+            .session
+            .launch_game_with_seams(
+                LaunchOptions::default(),
+                &StubProbe(Ok(false)),
+                &mismatch_spawner,
+                &fast_guard(),
+                &StubSteamProbe(Ok(true)),
+                LaunchPlatform::Windows,
+            )
+            .expect_err("a missing Workshop directory must block launch");
+        assert_eq!(error.code, ErrorCode::LoadOrderOverridden);
+        assert_eq!(mismatch_spawner.attempts.get(), 0);
+    }
+
+    #[test]
     fn windows_guard_rewrite_restores_the_snapshot() {
         let mut fixture = launch_fixture("launch-windows-guard", true);
         let used_mods = fixture.game.join("used_mods.txt");
@@ -1560,7 +1659,7 @@ mod tests {
         let mut fixture = launch_fixture("launch-unmanaged-order", true);
         write(
             &fixture.game.join("used_mods.txt"),
-            b"add_working_directory \"C:/tools\";",
+            b"custom_directive \"C:/tools\";",
         );
         let spawner = RecordingSpawner::default();
 

@@ -64,6 +64,22 @@ not start the game. Duplicate managed entries and unmanaged directives are also
 rejected, because either can change what the game loads. The UI tells the user
 to apply the load order first.
 
+### Workshop working directories
+
+A Workshop pack is not in the game's `data` directory. Direct launch therefore
+requires the CA-launcher/upstream format:
+
+```text
+add_working_directory "<workshop content folder>";
+mod "<pack name>";
+```
+
+`write_load_order` emits one deduplicated `add_working_directory` line for every
+enabled mod whose pack directory is not `<game>/data`, before the `mod` lines.
+The pre-launch check compares both the mod order and the working-directory set.
+Without this, the game starts normally, finds no Workshop pack, and silently
+loads no mod; that is the observed failure mode this decision fixes.
+
 This catches a CA-launcher rewrite from a previous manual Steam launch, another
 tool changing the file, or a selection changed without an Apply.
 

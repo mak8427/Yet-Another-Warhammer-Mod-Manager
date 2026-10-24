@@ -824,10 +824,20 @@ impl Session {
         let mut unresolved = Vec::new();
         for id in &self.enabled_ids {
             match by_id.get(id.as_str()) {
-                Some(module) => resolved.push(PlannedName {
-                    id: id.clone(),
-                    name: module.name.clone(),
-                }),
+                Some(module) => {
+                    let directory = module.path.parent().and_then(|parent| {
+                        if parent == location.data_path.as_path() {
+                            None
+                        } else {
+                            Some(parent.to_path_buf())
+                        }
+                    });
+                    resolved.push(PlannedName {
+                        id: id.clone(),
+                        name: module.name.clone(),
+                        directory,
+                    });
+                }
                 None => unresolved.push(id.rsplit('/').next().unwrap_or(id.as_str()).to_string()),
             }
         }

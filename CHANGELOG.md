@@ -24,6 +24,11 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   opens the Creative Assembly launcher. Launch refuses a stale file, requires
   Steam to be running, and restores the snapshot if the file is rewritten
   during the launch guard.
+- **Workshop working directories**: `used_mods.txt` now includes managed
+  `add_working_directory "…";` lines for enabled Workshop/custom-folder packs,
+  before the `mod` lines, so a directly launched game can find their packs. The
+  parser, preview, pre-launch check, and fixtures treat this directive as
+  managed rather than unmanaged.
 
 ## [1.0.0] - unreleased
 
