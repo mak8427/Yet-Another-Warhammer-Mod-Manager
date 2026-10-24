@@ -101,3 +101,22 @@ parchment lettering, aged metal rims, capsule buttons with inset highlights,
 and cyan/teal selected states. Only structural material shading is added;
 mod-list geometry, focus outlines, density and keyboard behaviour remain
 unchanged. Forced-colors mode removes material shading.
+
+## Owner palette refinement (2026-10-24)
+
+After seeing the integrated preview, the owner rejected the dominant green
+cast and explicitly asked to retain the blue buttons. Neutral charcoal and
+slate now replace the jade surfaces and grey-green material ramps. Parchment
+text and restrained aged-metal detail remain; the primary blue button
+gradients and their geometry are unchanged. Green is limited to existing
+status and faction identity accents. Contrast thresholds remain unchanged.
+
+The owner then supplied the Fiery Forge palette: charcoal `#2c2f33`, greys
+`#5c5c5c`/`#d3d3d3`, ivory `#fffaf0`, gold `#ffd700`, oranges `#ff4500` and
+`#ff8c00`, sienna `#a0522d`, tomato `#ff6347`, and indigo `#4b0082`. Dark
+surfaces and ivory text dominate; warm colours and indigo are accents. Blue
+primary button gradients remain unchanged as explicitly requested.
+
+The owner requested the darker grey variant: `#2c2f33` is used for raised
+panels and header plates, with darker related charcoal fields (`#1c1e21`)
+behind the list. The lighter `#5c5c5c` is limited to metal edges/details.
