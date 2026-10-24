@@ -281,10 +281,12 @@ describe('design tokens', () => {
     expect(tokens.get('--row-h')).toBe('var(--row-h-comfortable)')
   })
 
-  it('forbids decorative gradients, glows, and external assets in every stylesheet', () => {
+  it('keeps material gradients in tokens and forbids remote assets and web fonts', () => {
     for (const { file, css } of allStyles) {
       const checked = withoutLegacyShell(css)
-      expect(checked, `${file} uses a gradient`).not.toMatch(/(linear|radial|conic)-gradient\(/i)
+      if (!file.endsWith('tokens.css')) {
+        expect(checked, `${file} bypasses the material tokens`).not.toMatch(/(linear|radial|conic)-gradient\(/i)
+      }
       expect(checked, `${file} uses a decorative shadow`).not.toMatch(/(drop|text)-shadow\(/i)
       expect(checked, `${file} loads a remote asset`).not.toMatch(/url\(\s*['"]?https?:/i)
       expect(checked, `${file} loads a web font`).not.toMatch(/@font-face/i)

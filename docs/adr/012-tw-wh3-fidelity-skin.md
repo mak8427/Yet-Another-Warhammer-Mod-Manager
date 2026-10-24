@@ -18,7 +18,7 @@ shell geometry, row heights, scroll ownership, keyboard map, or accessibility
 contract proven by the v1.0 acceptance suite.
 
 ADR-006 forbade double borders, inner shadows, bevels, and ornamental corner
-marks. A faithful TW:WH3 chrome needs a warm wine/gold palette, banner plates,
+marks. A faithful TW:WH3 chrome needs a jade/stone/metal palette, banner plates,
 brass frames, and small corner studs. Keeping the old ban would make the task
 contradict the design contract.
 
@@ -28,9 +28,10 @@ contradict the design contract.
 
 The private primitives are renamed and retuned:
 
-- `--iron-*` is replaced by `--obsidian-*` (warm near-black stone).
-- `--wine-*` is added for banner plates, rail plates, tabs, and the primary
-  action.
+- `--iron-*` is replaced by `--obsidian-*` (jade-black stone).
+- Banner plates use grey-green stone; teal action plates and selected tabs
+  follow the supplied Forbidden Workshop reference. Crimson is reserved for
+  destructive actions.
 - `--parchment-*`, `--brass-*`, `--signal-*`, and `--oxide-*` keep their names
   and roles.
 
@@ -45,8 +46,10 @@ only. The contrast pairs enforced by `tokens.test.ts` are recomputed and pass.
 - A single 14×14 brass corner stud, `--ornament-corner`, is permitted on
   framed panels. It is an inline SVG data URI drawn for this project; it is
   not game art and it is not fetched at runtime.
-- Banner plates are flat fills with a brass frame and a faction-accent left
-  rule. No gradients, glow, blur, backdrop-filter, or imported textures.
+- Banner plates use muted aged-metal frames. Token-defined linear gradients
+  reproduce the supplied stone and bevelled metal buttons. Primary actions and
+  active tabs have teal capsule plates with a bright inset lip. No imported
+  textures, background blur, remote art, or web fonts are introduced.
 - The display serif is used for banners, section labels, and buttons; rows and
   data cells stay in the body face.
 
@@ -72,7 +75,8 @@ them at 1920×1080 and 1366×768:
   ADR. Its token-source, density, contrast, and single-source clauses still
   apply.
 - `tokens.test.ts` now requires the chrome tokens and the local ornament, and
-  still forbids gradients, glow, external assets, and web fonts.
+  permits material gradients only in tokens and still forbids external assets
+  and web fonts.
 - Any future palette change must update `docs/UI_DIRECTION.md` §2.8,
   `docs/UI_ACCEPTANCE.md`, and this ADR's mapping table.
 - No layout code changes. The pass is CSS plus `data-faction` attributes.
@@ -84,3 +88,16 @@ them at 1920×1080 and 1366×768:
   before/after pairs, and the reference study plate.
 - `frontend/src/styles/tokens.test.ts` and
   `frontend/src/components/shell/SectionRail.test.tsx`.
+
+## User reference update (2026-10-24)
+
+The repository owner supplied three screenshots and explicitly requested their
+colour palette and button style: a campaign parchment panel, the jade Cathay
+character screen, and the Forbidden Workshop. This direction supersedes the
+earlier flat wine/gold mapping and its blanket gradient restriction.
+
+The implementation uses jade-black content fields, grey-green stone headers,
+parchment lettering, aged metal rims, capsule buttons with inset highlights,
+and cyan/teal selected states. Only structural material shading is added;
+mod-list geometry, focus outlines, density and keyboard behaviour remain
+unchanged. Forced-colors mode removes material shading.

@@ -26,11 +26,11 @@ Three rules decide every visual question:
 
 1. **The mod list is the product.** Chrome recedes; the list gets the pixels.
    Every pixel spent on framing is a row the user cannot see.
-2. **TW:WH3 is a material language, not a decoration budget.** Wine-dark stone
-   surfaces, parchment text, stamped brass frames and banner plates, square
-   heraldic accents, and a serif display face for titles. Structural bevels and
-   one token-defined brass corner stud are the only ornament. No imported art,
-   no textures, no glow, no gradients.
+2. **TW:WH3 is a material language, not a decoration budget.** Jade-black stone
+   surfaces, parchment text, aged metal frames and grey-green banner plates,
+   with a serif display face for titles. The supplied campaign, Cathay and
+   Forbidden Workshop references guide the palette and bevelled teal buttons.
+   Material shading stays in semantic tokens; no imported game art or textures.
 3. **State is explicit.** Enabled, selected, conflicting, missing a dependency,
    loading, empty, and failed are each expressed with at least two channels:
    shape/icon + text + colour, in that order of importance.
@@ -47,16 +47,16 @@ Keep:
 
 Drop:
 
-- gradients, glow, hero panels, and decorative panel corners;
+- ornamental motion, hero panels, and decoration that reduces list space;
 - cards-for-rows and dashboard tiles;
 - oversized empty states and promotional copy;
 - Flowbite, FontAwesome, and mixed icon families;
-- the blue system accent; this product uses brass for interaction and faction
-  accents only for identity.
+- generic system accents; selected actions use the supplied teal metal style,
+  while faction accents retain their existing identity role.
 
 ### Visual references, in order
 
-1. TW:WH3 campaign UI: wine-dark stone, brass frames, parchment readability,
+1. User-supplied campaign/Cathay/Workshop UI: jade stone, metal frames, parchment readability,
    heraldic accents used sparingly.
 2. A professional desktop tool: precise alignment, 1px rules, tabular numbers,
    no ornamental motion.
@@ -77,28 +77,28 @@ hard-code colours.
 
 | Token | Value | Use |
 |---|---|---|
-| `--color-bg-app` | `#0c0809` | App and list background |
-| `--color-bg-rail` | `#120d0e` | Title strip, left rail, status bar |
-| `--color-bg-content` | `#0c0809` | Main pane behind lists |
-| `--color-bg-surface` | `#1a1214` | Panels, inspector, list header, menus |
-| `--color-bg-surface-raised` | `#221719` | Hovered controls, tag background |
-| `--color-bg-row` | `#0c0809` | Mod/table row |
-| `--color-bg-row-alt` | `#120d0e` | Alternating row, if used |
-| `--color-bg-row-hover` | `#241315` | Pointer hover |
-| `--color-bg-row-selected` | `#331114` | Selected row |
-| `--color-bg-row-dragging` | `#221719` | Source row during drag |
-| `--color-bg-list-header` | `#1b0b0e` | Column header |
-| `--color-bg-toolbar` | `#140c0e` | Toolbar, filter bar |
-| `--color-bg-inspector` | `#140c0e` | Inspector sidebar |
-| `--color-bg-input` | `#070405` | Text input, search field |
-| `--color-bg-menu` | `#1c1214` | Context menu, dropdown |
-| `--color-bg-dialog` | `#1a1012` | Dialog surface |
-| `--color-bg-banner` | `#1f0d10` | Screen/dialog banner plate |
-| `--color-bg-banner-raised` | `#321317` | Hovered menu item on a banner |
-| `--color-bg-rail-plate` | `#2b1013` | Active rail plate |
-| `--color-bg-tab` | `#1b0b0e` | Idle tab |
-| `--color-bg-tab-active` | `#4a1215` | Active tab |
-| `--color-bg-tooltip` | `#e8dcc4` | Parchment tooltip |
+| `--color-bg-app` | `#0d1513` | App and list background |
+| `--color-bg-rail` | `#121d19` | Title strip, left rail, status bar |
+| `--color-bg-content` | `#0d1513` | Main pane behind lists |
+| `--color-bg-surface` | `#192520` | Panels, inspector, list header, menus |
+| `--color-bg-surface-raised` | `#22302a` | Hovered controls, tag background |
+| `--color-bg-row` | `#0d1513` | Mod/table row |
+| `--color-bg-row-alt` | `#121d19` | Alternating row, if used |
+| `--color-bg-row-hover` | `#1d302a` | Pointer hover |
+| `--color-bg-row-selected` | `#193334` | Selected row |
+| `--color-bg-row-dragging` | `#22302a` | Source row during drag |
+| `--color-bg-list-header` | `#26332e` | Column header |
+| `--color-bg-toolbar` | `#1d2b25` | Toolbar, filter bar |
+| `--color-bg-inspector` | `#141f1c` | Inspector sidebar |
+| `--color-bg-input` | `#080e0d` | Text input, search field |
+| `--color-bg-menu` | `#202b25` | Context menu, dropdown |
+| `--color-bg-dialog` | `#1b2721` | Dialog surface |
+| `--color-bg-banner` | `#29372f` | Screen/dialog banner plate |
+| `--color-bg-banner-raised` | `#35473b` | Hovered menu item on a banner |
+| `--color-bg-rail-plate` | `#1a4042` | Active rail plate |
+| `--color-bg-tab` | `#26312b` | Idle tab |
+| `--color-bg-tab-active` | `#174851` | Active tab |
+| `--color-bg-tooltip` | `#eee7cd` | Parchment tooltip |
 | `--color-bg-overlay` | `rgb(5 2 3 / 0.78)` | Modal backdrop |
 
 State fills: `--color-state-success-bg` `#1c2418`,
@@ -111,13 +111,13 @@ State fills: `--color-state-success-bg` `#1c2418`,
 
 | Token | Value | Minimum contrast |
 |---|---|---|
-| `--color-text-primary` | `#e8dcc4` | 14.67:1 on app, 13.56:1 on surface |
-| `--color-text-secondary` | `#d6c8ac` | 12.06:1 on app, 11.15:1 on surface |
-| `--color-text-muted` | `#a59a83` | 7.16:1 on app, 6.62:1 on surface, 6.13:1 on selected row |
-| `--color-text-disabled` | `#948a76` | 5.40:1 on surface; inactive controls only |
+| `--color-text-primary` | `#eee7cd` | 14.67:1 on app, 13.56:1 on surface |
+| `--color-text-secondary` | `#d8d3bb` | 12.06:1 on app, 11.15:1 on surface |
+| `--color-text-muted` | `#aaa997` | 7.16:1 on app, 6.62:1 on surface, 6.13:1 on selected row |
+| `--color-text-disabled` | `#959785` | 5.40:1 on surface; inactive controls only |
 | `--color-text-inverse` | `#1a1408` | On brass/parchment fills |
-| `--color-text-accent` | `#d7b45f` | 10.04:1 on app, 9.42:1 on banner |
-| `--color-text-link` | `#d7b45f` | Same as accent; underline on hover |
+| `--color-text-accent` | `#c9bd88` | 10.04:1 on app, 9.42:1 on banner |
+| `--color-text-link` | `#c9bd88` | Same as accent; underline on hover |
 | `--color-text-success` | `#a3c178` | 7.95:1 on success fill |
 | `--color-text-warning` | `#e0b45c` | 8.03:1 on warning fill |
 | `--color-text-danger` | `#e07a63` | 5.58:1 on danger fill, 5.70:1 on surface |
@@ -131,16 +131,16 @@ inspector status carry the disabled meaning.
 
 | Token | Value | Use |
 |---|---|---|
-| `--color-border-subtle` | `#2c1e20` | Row separators, section rules |
-| `--color-border-default` | `#38282a` | Panel, rail, toolbar edges |
-| `--color-border-strong` | `#493537` | Menus, dialogs, tag edges |
-| `--color-border-control` | `#66717e` | Input/select/button boundary (>=3:1) |
-| `--color-border-accent` | `#9a7a32` | Brass frame detail |
-| `--color-border-frame` | `#8f6c32` | Outer brass frame on chrome plates |
-| `--color-border-frame-strong` | `#c9a24d` | Hover/selected brass frame |
-| `--color-border-frame-inner` | `#120b0c` | Dark inner line of a frame |
-| `--color-border-focus` | `#d7b45f` | Focus ring |
-| `--color-border-selected` | `#c9a24d` | Selected-row left rule |
+| `--color-border-subtle` | `#2c3932` | Row separators, section rules |
+| `--color-border-default` | `#3b473e` | Panel, rail, toolbar edges |
+| `--color-border-strong` | `#536054` | Menus, dialogs, tag edges |
+| `--color-border-control` | `#838f80` | Input/select/button boundary (>=3:1) |
+| `--color-border-accent` | `#827b59` | Brass frame detail |
+| `--color-border-frame` | `#7e8269` | Outer brass frame on chrome plates |
+| `--color-border-frame-strong` | `#c2ba8e` | Hover/selected brass frame |
+| `--color-border-frame-inner` | `#0a1512` | Dark inner line of a frame |
+| `--color-border-focus` | `#8cdae0` | Focus ring |
+| `--color-border-selected` | `#6aa4a2` | Selected-row left rule |
 | `--color-border-success` / `warning` / `danger` | signal colours | State boundaries |
 
 `--color-action-primary-bg` `#6e1b1e` with
@@ -267,7 +267,8 @@ layout.
   (`--shadow-dialog`), drag ghost (`--shadow-drag`). Inset bevels
   (`--bevel-plate`, `--bevel-sunken`, `--bevel-frame`) are structural; no other
   shadow.
-- No gradients, glow, blur, backdrop-filter, or imported ornament. The only
+- Token-defined material gradients are allowed by the user reference update.
+  No background blur, backdrop-filter, or imported ornament. The only
   corner mark is the token-defined brass stud (`--ornament-corner`), drawn by
   this project, placed at the four corners of a framed panel.
 - No CSS texture. Surfaces are flat fills; the material read comes from the
@@ -309,47 +310,27 @@ Reference sources:
 - Total War Academy, campaign UI overview:
   <https://academy.totalwar.com/campaign-what-the-ui-is-and-does>
 
-#### Observed chrome anatomy
+#### User-supplied reference mapping (2026-10-24)
 
-| Reference element | Observation | Our token / rule |
-|---|---|---|
-| Panel field | Near-black warm brown, not neutral grey: sampled `#0b0706`–`#160a0b` | `--color-bg-app` `#0c0809`, `--color-bg-surface` `#1a1214` |
-| Banner / header plate | Dark wine field with a pale serif title, sampled `#1e0c0a` | `--color-bg-banner` `#1f0d10`; `.toolbar-title`, `.screen-title`, `.modal-header` |
-| Active section / selected row | Deep crimson wash, brighter than the field, sampled `#460a09` for engraved bars | `--color-bg-row-selected` `#331114`, `--color-bg-tab-active` `#4a1215` |
-| Frame | Double brass rule: bright outer line, dark inner line, corner studs | `--color-border-frame` `#8f6c32`, `--bevel-frame`, `--ornament-corner` |
-| Title type | Serif capitals / small caps with wide tracking | `--font-display`; banner rules use `font-variant: small-caps` |
-| Body type | Serif in game panels; sans retained for dense desktop rows | Display face for titles, `--font-body` for rows and controls |
-| Buttons | Dark plate, brass border, capitals; primary is crimson with brass frame | `.btn`, `.btn-primary`, `--color-action-primary-*` |
-| Tabs | Dark plates; the active tab is a crimson plate with a brass edge | `--color-bg-tab-active`, `.filter-tab.is-active` |
-| Faction identity | Accent is a rule or diamond beside a visible label, never the only signal | eight `--faction-accent-*` slots; `data-faction` on rail items and screen headers |
+The owner supplied campaign, Cathay character-screen and Forbidden Workshop
+captures directly in Codex and asked to copy their palette and button style.
+These supersede the original wine/gold interpretation. Their pixels are used
+as visual references; no game art is embedded in the app.
 
-Palette mapping (semantic tokens; reference values are sampled approximations
-because the captures are JPEG and scene-lit):
+| Reference element | Implementation |
+|---|---|
+| Cathay jade-black fields | App `#0d1513`, surfaces `#192520`, rail `#121d19` |
+| Stone/metal header plates | Grey-green `--material-header` and jade `--material-stone` |
+| Parchment lettering | Primary `#eee7cd`, secondary `#d8d3bb`, muted `#aaa997` |
+| Aged metal rims | Frame `#7e8269`, highlight `#c2ba8e`, dark inset `#0a1512` |
+| Workshop capsule controls | 12px rounded ends, inset lip and metal gradient; serif labels |
+| Teal selected controls | `--material-primary`, rim `#7fb6b6`, focus `#8cdae0` |
+| Destructive character-screen red | `--material-red` and existing danger semantic tokens |
+| Layout | Existing 40/40/28/24 shell and 32/40/48 row heights retained |
 
-| Semantic token | Old (M4) | New (v1.1) | Reference role |
-|---|---|---|---|
-| `--color-bg-app` | `#0f1215` | `#0c0809` | Panel/void field |
-| `--color-bg-rail` | `#14181c` | `#120d0e` | Title strip, rail, status bar |
-| `--color-bg-surface` | `#191e23` | `#1a1214` | Raised plate |
-| `--color-bg-list-header` | `#191e23` | `#1b0b0e` | Engraved column strip |
-| `--color-bg-row-selected` | `#262d34` | `#331114` | Crimson selection wash |
-| `--color-border-frame` | — | `#8f6c32` | Brass frame |
-| `--color-action-primary-bg` | `#c9a24d` | `#6e1b1e` | Crimson primary plate |
-| `--color-action-primary-text` | `#1a1408` | `#f6efe0` | Parchment label |
-
-Typography mapping:
-
-| Role | Reference | Our token |
-|---|---|---|
-| App title | Serif capitals / small caps, brass or parchment | `--font-display`, 16px, `small-caps`, `0.04em` |
-| Screen title | Large serif title on a banner plate | `--font-display`, 22px, banner plate |
-| Section labels | Gold capitals with wide tracking and flanking rules | `--font-display`, 11px, `0.18em`, `--color-text-accent` |
-| Buttons | Small serif capitals | `--font-display`, 11px, `text-transform: uppercase`, `0.07em` |
-| Rows | Readable body, tabular numbers | `--font-body`, 11–14px; `--font-mono` for counts |
-
-Rule: the display serif is used for banners, titles, section labels, and
-buttons; it is **not** used inside mod names, metadata, tags, or table cells,
-where density and legibility win.
+Material gradients are defined only in tokens.css. Components consume those
+tokens; forced-colors mode removes gradients and bevels. Visible labels,
+focus outlines and existing density/keyboard contracts remain in force.
 
 ## 3. Shell
 

@@ -578,8 +578,8 @@ this section adds the visual-fidelity checks for the skin.
 - `[x]` F-06 Density, virtualization, and keyboard behaviour are unchanged:
   `pnpm test` includes the v1.0 density, scroll-preservation, bounded-row, and
   keyboard tests.
-  Evidence: test output in `docs/UI_FIDELITY_EVIDENCE.md`; no test changed its
-  assertions for this pass.
+  Evidence: test output in `docs/UI_FIDELITY_EVIDENCE.md`; the density, geometry and interaction
+  assertions are unchanged; the material-style policy follows the user references.
 - `[x]` F-07 Contrast, focus visibility, forced-colors, and reduced-motion
   rules still pass; the brass frame does not clip the focus ring.
   Evidence: `tokens.test.ts`; `.btn` keeps an outer outline and no `clip-path`;
@@ -587,10 +587,10 @@ this section adds the visual-fidelity checks for the skin.
 - `[x]` F-08 Before/after side-by-side captures exist for every screen at
   1920×1080 and 1366×768.
   Evidence: `docs/screenshots/WAR-147/side-by-side/`.
-- `[x]` F-09 No gradient, glow, blur, backdrop-filter, or remote asset was
-  introduced.
-  Evidence: `tokens.test.ts` — `forbids decorative gradients, glows, and
-  external assets in every stylesheet`.
+- `[x]` F-09 Material shading follows the user-provided references and is
+  defined only in semantic tokens; no remote asset or web font was introduced.
+  Evidence: `tokens.test.ts` — `keeps material gradients in tokens and
+  forbids remote assets and web fonts`.
 - `[ ]` F-10 The PR links WAR-147, lists the changed screens, and carries the
   verification table, merged SHA, and screenshot paths.
   Evidence: PR #59 + `docs/UI_FIDELITY_EVIDENCE.md`.

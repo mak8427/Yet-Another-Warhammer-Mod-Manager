@@ -50,6 +50,18 @@ pub fn used_mods_path(game_dir: &Path) -> PathBuf {
     game_dir.join(USED_MODS_FILE)
 }
 
+/// Formats a search directory for the Windows game, including under Proton.
+/// A bare Unix absolute path is rooted on the current Windows drive; Proton exposes the
+/// Unix filesystem through its default Z: drive instead.
+pub(crate) fn game_working_directory(directory: &Path) -> String {
+    let directory = directory.to_string_lossy().into_owned();
+    if cfg!(target_os = "linux") && directory.starts_with('/') {
+        format!("Z:{directory}")
+    } else {
+        directory
+    }
+}
+
 pub fn backup_path(path: &Path) -> PathBuf {
     let name = path
         .file_name()
@@ -303,7 +315,7 @@ pub fn plan_write(
         }
         names.push(planned.name.clone());
         if let Some(directory) = &planned.directory {
-            let directory = directory.to_string_lossy().into_owned();
+            let directory = game_working_directory(directory);
             validate_working_directory(&directory)?;
             if seen_directories.insert(directory.to_lowercase()) {
                 working_directories.push(directory);
@@ -500,6 +512,45 @@ mod tests {
     fn rejects_invalid_utf8() {
         let error = parse_used_mods(&[0xff, 0xfe]).unwrap_err();
         assert_eq!(error.code, ErrorCode::ConfigCorrupt);
+    }
+
+    #[test]
+    fn windows_and_relative_working_directories_are_preserved() {
+        for directory in [
+            "C:/Steam/workshop/123",
+            r"D:\Steam\workshop\123",
+            "Z:/mnt/mods",
+            "../mods",
+        ] {
+            assert_eq!(game_working_directory(Path::new(directory)), directory);
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn unix_workshop_paths_are_written_for_proton_with_order_and_backup_preserved() {
+        let dir = TempDir::new("used-mods-proton");
+        let path = dir.path().join(USED_MODS_FILE);
+        let original =
+            "add_working_directory \"/mnt/Steam Library/mods ü/123\";\nmod \"old.pack\";"
+                .as_bytes();
+        fs::write(&path, original).unwrap();
+        let mut resolved = names(&[("1", "b.pack"), ("2", "a.pack")]);
+        for planned in &mut resolved {
+            planned.directory = Some(PathBuf::from("/mnt/Steam Library/mods ü/123"));
+        }
+
+        let plan = plan_write(&path, &resolved, &[], false, false).unwrap();
+        let expected = "add_working_directory \"Z:/mnt/Steam Library/mods ü/123\";\nmod \"b.pack\";\nmod \"a.pack\";";
+        assert!(plan.can_write);
+        assert_eq!(plan.content, expected.as_bytes());
+        assert_eq!(
+            plan.working_directories,
+            vec!["Z:/mnt/Steam Library/mods ü/123"]
+        );
+        write_plan(&plan).unwrap();
+        assert_eq!(fs::read(backup_path(&path)).unwrap(), original);
+        assert_eq!(fs::read(&path).unwrap(), expected.as_bytes());
     }
 
     #[test]

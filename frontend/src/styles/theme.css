@@ -2902,6 +2902,106 @@ textarea:hover:not(:disabled) {
   background: var(--color-border-frame);
 }
 
+/* User reference pass: jade campaign stone and inset workshop metal plates. */
+.title-bar,
+.status-bar {
+  background-image: var(--material-stone);
+  border-color: var(--color-border-frame);
+  box-shadow: var(--bevel-plate);
+}
+
+.toolbar,
+.screen-bar,
+.mod-list-header,
+.inspector-header,
+.modal-header,
+.toolbar-title,
+.screen-title {
+  background-image: var(--material-header);
+}
+
+.section-rail {
+  background-color: var(--color-bg-rail);
+  box-shadow: inset -1px 0 0 var(--color-border-frame-inner), inset -3px 0 0 var(--color-border-subtle);
+}
+
+.btn,
+.filter-tab {
+  border-radius: 12px;
+  background-image: var(--material-button);
+  border-color: var(--color-action-secondary-border);
+  box-shadow: var(--bevel-plate), inset 0 0 0 2px var(--color-border-frame-inner);
+  color: var(--color-text-primary);
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-title);
+  text-transform: none;
+}
+
+.btn:hover:not(:disabled),
+.filter-tab:hover {
+  background-image: var(--material-button-hover);
+  border-color: var(--color-border-frame-strong);
+}
+
+.btn-primary,
+.filter-tab.is-active,
+.rail-item.rail-item-active,
+.rail-item.rail-item-active:hover {
+  background-image: var(--material-primary);
+  border-color: var(--color-action-primary-border);
+  box-shadow: var(--bevel-plate), inset 0 0 0 2px var(--color-border-frame-inner);
+  color: var(--color-action-primary-text);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-image: var(--material-primary-hover);
+  border-color: var(--color-border-focus);
+}
+
+.btn-danger {
+  background-image: var(--material-red);
+}
+
+.btn:active:not(:disabled) {
+  box-shadow: var(--bevel-sunken), inset 0 0 0 1px var(--color-border-frame);
+  background-image: none;
+}
+
+.btn:disabled {
+  background-image: none;
+  box-shadow: none;
+  color: var(--color-action-disabled-text);
+}
+
+.btn-ghost {
+  background-image: none;
+  box-shadow: none;
+}
+
+.btn-icon {
+  border-radius: 50%;
+}
+
+.rail-item {
+  border-radius: 4px;
+}
+
+.toolbar-title,
+.screen-title {
+  border-left-color: var(--color-border-frame-strong);
+  box-shadow: var(--bevel-plate), inset 0 0 0 1px var(--color-border-frame-inner);
+}
+
+.modal,
+.toolbar-popover,
+.row-menu-popover {
+  border-width: 2px;
+  border-color: var(--color-border-frame);
+  box-shadow: var(--shadow-dialog), var(--bevel-frame);
+}
+
 /* ---------------------------------------------------------- Responsive rules */
 
 @media (max-width: 1500px) {
@@ -2991,5 +3091,20 @@ textarea:hover:not(:disabled) {
 
   :focus-visible {
     outline-color: Highlight;
+  }
+}
+
+@media (forced-colors: active) {
+  .title-bar, .status-bar, .toolbar, .screen-bar, .mod-list-header,
+  .inspector-header, .modal-header, .toolbar-title, .screen-title,
+  .btn, .btn:hover:not(:disabled), .filter-tab, .filter-tab.is-active,
+  .rail-item.rail-item-active, .rail-item.rail-item-active:hover {
+    background-image: none;
+    box-shadow: none;
+    border-color: ButtonText;
+  }
+  .modal::after, .toolbar-popover::after, .row-menu-popover::after,
+  .inspector::after, .setup-column::after, .fatal-column::after {
+    background-image: none;
   }
 }
