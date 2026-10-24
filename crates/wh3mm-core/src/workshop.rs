@@ -5,7 +5,7 @@
 //! unsubscribe, or update succeeded: it opens the item in the Steam client and
 //! the UI re-reads the ACF state afterwards.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, SystemTime};
@@ -14,14 +14,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::clock::system_time_to_iso8601;
 use crate::error::{AppError, ErrorCode};
-use crate::paths::{self, GameLocation, VdfValue};
+use crate::paths::{self, GameLocation, VdfValue, WH3_APP_ID};
 use crate::session::Session;
 
 /// WH3's Workshop metadata app id. The issue contract names this file
 /// explicitly; the game's own app id is the fallback for installations that
 /// use the conventional name.
 pub const WORKSHOP_APP_ID: &str = "3247630";
-pub const WH3_APP_ID: &str = "1142710";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -341,12 +340,10 @@ fn launch_workshop_action(
 
 impl Session {
     pub fn workshop_items(&self) -> Result<Vec<WorkshopItem>, AppError> {
-        let location = self.location.as_ref().ok_or_else(|| {
-            AppError::new(
-                ErrorCode::GameNotFound,
-                "Could not find a Total War: Warhammer III installation",
-            )
-        })?;
+        let location = self
+            .location
+            .as_ref()
+            .ok_or_else(AppError::game_not_found)?;
         let acf = read_workshop_acf(&location.steam_root)?;
         let local_titles: HashMap<String, String> = self
             .mods
@@ -359,8 +356,7 @@ impl Session {
             })
             .collect();
         let mut items = items_from_acf(&acf, &local_titles);
-        let known: std::collections::HashSet<String> =
-            items.iter().map(|item| item.workshop_id.clone()).collect();
+        let known: HashSet<String> = items.iter().map(|item| item.workshop_id.clone()).collect();
         for module in &self.mods {
             if let Some(id) = &module.workshop_id {
                 if !known.contains(id) {
@@ -392,12 +388,10 @@ impl Session {
         spawn: impl FnOnce(&Path, &str) -> Result<(), AppError>,
     ) -> Result<SteamActionResult, AppError> {
         validate_workshop_id(workshop_id)?;
-        let location = self.location.as_ref().ok_or_else(|| {
-            AppError::new(
-                ErrorCode::GameNotFound,
-                "Could not find a Total War: Warhammer III installation",
-            )
-        })?;
+        let location = self
+            .location
+            .as_ref()
+            .ok_or_else(AppError::game_not_found)?;
         launch_workshop_action(location, action, workshop_id, spawn)
     }
 }

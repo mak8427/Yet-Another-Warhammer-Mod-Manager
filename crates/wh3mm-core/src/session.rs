@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use crate::config::{self, AppConfig, ConfigStatus};
-use crate::error::{AppError, ErrorCode};
+use crate::error::AppError;
 use crate::ipc::{
     GameLocation as IpcGameLocation, LoadOrderReadReport, LoadOrderWriteReport, ModListSnapshot,
     ModSummary, Profile, ProfilesState, ResetDefaultsReport, ResetLoadOrderReport,
@@ -742,19 +742,6 @@ impl Session {
         confirm_unmanaged_loss: bool,
     ) -> Result<LoadOrderWriteReport, AppError> {
         let plan = self.plan_write(allow_empty, confirm_unmanaged_loss)?;
-        if !plan.can_write {
-            let code = if plan.corrupt || plan.unreadable {
-                ErrorCode::ConfigCorrupt
-            } else {
-                ErrorCode::Validation
-            };
-            return Err(AppError::new(
-                code,
-                plan.blocked_reason
-                    .clone()
-                    .unwrap_or_else(|| "The load-order write was refused".to_string()),
-            ));
-        }
         let backup = load_order::write_plan(&plan)?;
         let report = write_report(&plan, backup);
         self.refresh_load_order_after_write()?;
@@ -871,7 +858,7 @@ impl Session {
         }
     }
 
-    fn require_game_location(&self) -> Result<&GameLocation, AppError> {
+    pub(crate) fn require_game_location(&self) -> Result<&GameLocation, AppError> {
         self.location
             .as_ref()
             .ok_or_else(|| self.game_not_found_error())
@@ -904,10 +891,7 @@ impl Session {
         if !self.detection.problems.is_empty() {
             details.push(self.detection.problems.join("; "));
         }
-        let error = AppError::new(
-            ErrorCode::GameNotFound,
-            "Could not find a Total War: Warhammer III installation",
-        );
+        let error = AppError::game_not_found();
         if details.is_empty() {
             error.with_details("No Steam or Flatpak/Snap library was found")
         } else {

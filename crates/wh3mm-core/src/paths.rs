@@ -12,8 +12,8 @@ use crate::error::{AppError, ErrorCode};
 use crate::ipc::{GameLocation as IpcGameLocation, LocationSource};
 
 pub const WH3_APP_ID: &str = "1142710";
-pub const WH3_GAME_DIR_NAME: &str = "Total War WARHAMMER III";
 pub const WH3_EXE_NAME: &str = "Warhammer3.exe";
+pub const WH3_GAME_DIR_NAME: &str = "Total War WARHAMMER III";
 
 /// Value tree produced by the small VDF parser used for `libraryfolders.vdf`
 /// and Steam app manifests.
@@ -687,11 +687,6 @@ pub fn autodetect(candidates: &[PathBuf]) -> (Option<GameLocation>, DetectionRep
     let (libraries, report) = discover_libraries(&roots);
     let location = detect_game(&libraries);
     (location, report)
-}
-
-/// True when the path can serve as a WH3 game directory.
-pub fn is_valid_game_dir(path: &Path) -> bool {
-    is_wh3_game_dir(path)
 }
 
 /// Lexically normalizes a path to an absolute path without resolving symlinks.
