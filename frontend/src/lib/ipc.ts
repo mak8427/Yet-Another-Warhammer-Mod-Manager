@@ -138,6 +138,45 @@ export interface ProfilesState {
   activeProfileId: string
 }
 
+/** Wire shape of `wh3mm_core::ipc::ExportProfileReport`. */
+export interface ExportProfileReport {
+  path: string
+  profileName: string
+  exportedMods: number
+  /** Enabled mods this install could not resolve; they were not written. */
+  skippedMods: number
+  replacedExisting: boolean
+}
+
+/** One entry of an imported profile that is not installed here. */
+export interface MissingShareMod {
+  /** Pack file name, the portable identity used for matching. */
+  pack: string
+  /** Display name carried by the file; never used for matching. */
+  name: string | null
+  workshopId: string | null
+  /** Canonical Workshop page URL from the file, for display only. */
+  url: string | null
+}
+
+/**
+ * Wire shape of `wh3mm_core::ipc::ImportProfileOutcome`, tagged by `status`.
+ * A profile is only created when every mod in the file is installed.
+ */
+export type ImportProfileOutcome =
+  | {
+      status: 'imported'
+      profile: Profile
+      renamedFrom: string | null
+      totalMods: number
+    }
+  | {
+      status: 'missingMods'
+      profileName: string
+      totalMods: number
+      missing: MissingShareMod[]
+    }
+
 export interface Tag {
   id: string
   name: string
@@ -317,6 +356,8 @@ type CommandName =
   | 'duplicate_profile'
   | 'delete_profile'
   | 'apply_profile'
+  | 'export_profile'
+  | 'import_profile'
   | 'list_tags'
   | 'create_tag'
   | 'delete_tag'
@@ -396,6 +437,14 @@ async function deleteProfile(profileId: string): Promise<ProfilesState> {
 
 async function applyProfile(profileId: string): Promise<ModListSnapshot> {
   return invokeCommand<ModListSnapshot>('apply_profile', { profileId })
+}
+
+async function exportProfile(profileId: string, path: string): Promise<ExportProfileReport> {
+  return invokeCommand<ExportProfileReport>('export_profile', { profileId, path })
+}
+
+async function importProfile(path: string): Promise<ImportProfileOutcome> {
+  return invokeCommand<ImportProfileOutcome>('import_profile', { path })
 }
 
 async function listTags(): Promise<Tag[]> {
@@ -505,6 +554,8 @@ export const ipc = {
   duplicateProfile,
   deleteProfile,
   applyProfile,
+  exportProfile,
+  importProfile,
   listTags,
   createTag,
   deleteTag,

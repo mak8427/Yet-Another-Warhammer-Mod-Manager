@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Start a packaged WH3 Mod Manager binary under Xvfb and wait for its window.
+# Start a packaged Yet Another Warhammer Mod Manager binary under Xvfb and wait for its window.
 #
 # Usage: smoke-test.sh /path/to/wh3mm
 #
@@ -41,7 +41,7 @@ xvfb-run -a --server-args="-screen 0 1280x900x24" dbus-run-session -- bash -c '
   "$BINARY" >"$LOG" 2>&1 &
   pid=$!
   for _ in $(seq 1 "$SMOKE_TIMEOUT"); do
-    if xdotool search --name "WH3 Mod Manager" >/dev/null 2>&1; then
+    if xdotool search --name "Yet Another Warhammer Mod Manager" >/dev/null 2>&1; then
       echo "smoke-test: window found ($BINARY)"
       kill "$pid" 2>/dev/null || true
       wait "$pid" 2>/dev/null || true

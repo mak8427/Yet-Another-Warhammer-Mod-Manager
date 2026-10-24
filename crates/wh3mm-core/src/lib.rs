@@ -16,6 +16,7 @@ pub mod load_order;
 pub mod mod_index;
 pub mod pack;
 pub mod paths;
+pub mod profile_share;
 pub(crate) mod proton_launch;
 pub mod session;
 pub mod test_support;

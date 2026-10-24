@@ -178,6 +178,55 @@ pub struct ProfilesState {
     pub active_profile_id: String,
 }
 
+/// Result of writing one profile to a share file.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportProfileReport {
+    pub path: String,
+    pub profile_name: String,
+    pub exported_mods: u32,
+    /// Enabled mods the running install could not resolve; they were not written.
+    pub skipped_mods: u32,
+    pub replaced_existing: bool,
+}
+
+/// One entry of an imported profile that is not installed locally.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MissingShareMod {
+    /// Pack file name, the portable identity used for matching.
+    pub pack: String,
+    /// Display name carried by the file; never used for matching.
+    pub name: Option<String>,
+    /// Steam Workshop id when the file carried one.
+    pub workshop_id: Option<String>,
+    /// Canonical Workshop page URL from the file, for display only.
+    pub url: Option<String>,
+}
+
+/// Outcome of a profile import. A profile is only created when every mod in the
+/// file is installed; otherwise the caller receives the missing entries.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(
+    tag = "status",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+pub enum ImportProfileOutcome {
+    Imported {
+        profile: Profile,
+        /// Set when the requested name was taken and a suffix was added.
+        renamed_from: Option<String>,
+        total_mods: u32,
+    },
+    MissingMods {
+        /// Name requested by the file; no profile with this name was created.
+        profile_name: String,
+        total_mods: u32,
+        missing: Vec<MissingShareMod>,
+    },
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Tag {

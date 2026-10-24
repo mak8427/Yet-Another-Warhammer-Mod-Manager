@@ -6,8 +6,10 @@ import {
   type AppInfo,
   type ConflictReport,
   type Density,
+  type ExportProfileReport,
   type GameLocation,
   type IpcClient,
+  type ImportProfileOutcome,
   type LaunchOptions,
   type LaunchResult,
   type LoadOrderWriteReport,
@@ -22,6 +24,7 @@ import {
   type WorkshopItem,
 } from './lib/ipc'
 import { clampZoom, stepZoom, ZOOM_DEFAULT } from './lib/zoom'
+import { profileFiles, suggestedProfileFileName, type ProfileFiles } from './lib/files'
 
 export type AppStatus = 'loading' | 'ready' | 'no-game' | 'error'
 export type View = 'mods' | 'profiles' | 'conflicts' | 'workshop' | 'settings'
@@ -71,6 +74,10 @@ export interface AppState {
   game: GameLocation | null
   snapshot: ModListSnapshot | null
   profiles: ProfilesState | null
+  /** Set when an import is blocked by mods that are not installed. */
+  importOutcome: ImportProfileOutcome | null
+  /** Profile created by the last successful import; the screens select it. */
+  lastImportedProfileId: string | null
   tags: Tag[]
   ui: UiPreferences
   query: string
@@ -114,6 +121,8 @@ function initialState(): AppState {
     game: null,
     snapshot: null,
     profiles: null,
+    importOutcome: null,
+    lastImportedProfileId: null,
     tags: [],
     ui: DEFAULT_UI,
     query: '',
@@ -178,6 +187,12 @@ export function visibleMods(state: Pick<AppState, 'snapshot' | 'query' | 'active
   return sorted
 }
 
+function exportProfileMessage(report: ExportProfileReport): string {
+  const base = `Exported ${report.exportedMods} mods from "${report.profileName}" to ${report.path}`
+  if (report.skippedMods === 0) return base
+  return `${base}. ${report.skippedMods} enabled mods are not installed here and were left out`
+}
+
 interface WorkspaceData {
   snapshot: ModListSnapshot
   profiles: ProfilesState
@@ -189,6 +204,7 @@ export class AppStore {
   private state: AppState = initialState()
   private readonly listeners = new Set<() => void>()
   private readonly client: IpcClient
+  private readonly files: ProfileFiles
   private initialized = false
   private initPromise: Promise<void> | null = null
   private scrollTimer: ReturnType<typeof setTimeout> | null = null
@@ -196,8 +212,9 @@ export class AppStore {
   private readonly modEdits: ModEdit[] = []
   private conflictRefreshPending = false
 
-  constructor(client: IpcClient = ipc) {
+  constructor(client: IpcClient = ipc, files: ProfileFiles = profileFiles) {
     this.client = client
+    this.files = files
   }
 
   subscribe = (listener: () => void): (() => void) => {
@@ -656,6 +673,89 @@ export class AppStore {
     } catch (cause) {
       this.set({ busy: null, error: toIpcError(cause) })
       return false
+    }
+  }
+
+  /** Writes the selected profile to a share file the user chooses. */
+  async exportProfile(profileId: string): Promise<void> {
+    const profile = this.state.profiles?.profiles.find((item) => item.id === profileId)
+    if (!profile || this.state.busy) return
+
+    this.set({ busy: 'Exporting profile' })
+    let path: string | null
+    try {
+      path = await this.files.chooseExportPath(suggestedProfileFileName(profile.name))
+    } catch (cause) {
+      this.set({ busy: null, error: toIpcError(cause) })
+      return
+    }
+    if (!path) {
+      this.set({ busy: null })
+      return
+    }
+
+    try {
+      const report = await this.client.exportProfile(profileId, path)
+      this.set({ busy: null, notice: { kind: 'success', message: exportProfileMessage(report) } })
+    } catch (cause) {
+      this.set({ busy: null, error: toIpcError(cause) })
+    }
+  }
+
+  /**
+   * Creates a profile from a share file only when every mod is installed.
+   * Otherwise the missing entries are kept for the dialog and nothing is saved.
+   */
+  async importProfile(): Promise<void> {
+    if (this.state.busy) return
+
+    this.set({ busy: 'Importing profile' })
+    let path: string | null
+    try {
+      path = await this.files.chooseImportPath()
+    } catch (cause) {
+      this.set({ busy: null, error: toIpcError(cause) })
+      return
+    }
+    if (!path) {
+      this.set({ busy: null })
+      return
+    }
+
+    try {
+      const outcome = await this.client.importProfile(path)
+      if (outcome.status === 'missingMods') {
+        this.set({ busy: null, importOutcome: outcome })
+        return
+      }
+      const profiles = await this.client.listProfiles()
+      const renamed = outcome.renamedFrom !== null
+      this.set({
+        profiles,
+        busy: null,
+        importOutcome: null,
+        lastImportedProfileId: outcome.profile.id,
+        notice: {
+          kind: 'success',
+          message: `Imported ${renamed ? 'as ' : ''}"${outcome.profile.name}" with ${outcome.totalMods} mods. Press Apply to use it.`,
+        },
+      })
+    } catch (cause) {
+      this.set({ busy: null, error: toIpcError(cause) })
+    }
+  }
+
+  dismissImportOutcome(): void {
+    this.set({ importOutcome: null })
+  }
+
+  /** Opens a Workshop page through the existing Steam action; errors stay inline. */
+  async openWorkshopPage(workshopId: string): Promise<{ ok: boolean; message: string }> {
+    try {
+      const result = await this.client.workshopAction('open', workshopId)
+      return { ok: true, message: result.message }
+    } catch (cause) {
+      return { ok: false, message: toIpcError(cause).message }
     }
   }
 

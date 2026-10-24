@@ -9,11 +9,15 @@ import { ProfileDialog, type ProfileDialogMode } from './ProfileDialog'
 interface ProfilesScreenProps {
   profiles: ProfilesState
   busy: boolean
+  /** Profile created by the last import; selected so Apply is one click away. */
+  highlightProfileId?: string | null
   onApply: (profileId: string) => void
   onCreate: (name: string) => Promise<boolean>
   onRename: (profileId: string, name: string) => Promise<boolean>
   onDuplicate: (profileId: string, name: string) => Promise<boolean>
   onDelete: (profileId: string) => Promise<boolean>
+  onImport: () => void
+  onExport: (profileId: string) => void
 }
 
 interface DialogState {
@@ -24,13 +28,20 @@ interface DialogState {
 export function ProfilesScreen({
   profiles,
   busy,
+  highlightProfileId,
   onApply,
   onCreate,
   onRename,
   onDuplicate,
   onDelete,
+  onImport,
+  onExport,
 }: ProfilesScreenProps) {
-  const [selectedId, setSelectedId] = useState<string | null>(profiles.activeProfileId)
+  // The caller remounts this screen when an import creates a profile, so the
+  // imported row is selected without an effect.
+  const [selectedId, setSelectedId] = useState<string | null>(
+    highlightProfileId ?? profiles.activeProfileId,
+  )
   const [dialog, setDialog] = useState<DialogState | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Profile | null>(null)
 
@@ -82,6 +93,24 @@ export function ProfilesScreen({
             onClick={() => setDialog({ mode: 'create' })}
           >
             New profile
+          </button>
+          <button
+            type="button"
+            className="btn btn-small"
+            disabled={busy}
+            title="Import a profile shared as a JSON file"
+            onClick={onImport}
+          >
+            Import Profile
+          </button>
+          <button
+            type="button"
+            className="btn btn-small"
+            disabled={busy || !exactlyOne}
+            title={exactlyOne ? 'Export the selected profile as a JSON file' : 'Select exactly one profile'}
+            onClick={() => selected && onExport(selected.id)}
+          >
+            Export Profile
           </button>
           <button
             type="button"

@@ -1,6 +1,6 @@
 <div align="center">
 
-# YAWHMM
+# Yet Another Warhammer Mod Manager
 
 **Your mod collection. Your load order. Your campaign.**
 
@@ -16,7 +16,7 @@ A mod manager for **Total War: Warhammer III**, built with a Rust core and a Tau
 
 </div>
 
-![WH3 Mod Manager — mods, load order, and selected-pack inspector](docs/screenshots/showcase/mods__selected-inspector__1920x1080__comfortable.png)
+![Yet Another Warhammer Mod Manager — mods, load order, and selected-pack inspector](docs/screenshots/showcase/mods__selected-inspector__1920x1080__comfortable.png)
 
 ## Downloads & Installation
 
@@ -67,11 +67,11 @@ Flathub supplies the GNOME runtime.
 Download the `.deb` and install it with apt:
 
 ```bash
-sudo apt install ./wh3mm_1.0.0_amd64.deb
+sudo apt install ./wh3mm_1.1.0_amd64.deb
 wh3mm
 ```
 
-Commands use `1.0.0` as an example; substitute your downloaded version. Native
+Commands use `1.1.0` as an example; substitute your downloaded version. Native
 release binaries require glibc 2.39+ and WebKitGTK 4.1. They are built on Ubuntu
 24.04; for older distributions use Flatpak.
 
@@ -81,10 +81,10 @@ Download the `.rpm`, then use your distribution's package manager:
 
 ```bash
 # Fedora
-sudo dnf install ./wh3mm-1.0.0-1.x86_64.rpm
+sudo dnf install ./wh3mm-1.1.0-1.x86_64.rpm
 
 # openSUSE Tumbleweed
-sudo zypper install ./wh3mm-1.0.0-1.x86_64.rpm
+sudo zypper install ./wh3mm-1.1.0-1.x86_64.rpm
 
 wh3mm
 ```
@@ -99,7 +99,7 @@ for local packages, use the signed repository or another format; see
 Install the prebuilt package:
 
 ```bash
-sudo pacman -U ./wh3mm-bin-1.0.0-1-x86_64.pkg.tar.zst
+sudo pacman -U ./wh3mm-bin-1.1.0-1-x86_64.pkg.tar.zst
 wh3mm
 ```
 
@@ -117,10 +117,10 @@ configure an activated repository and verify its signing-key fingerprint.
 After repository setup, install/update with:
 
 ```bash
-sudo apt update && sudo apt install wh3-mod-manager        # Debian / Ubuntu
-sudo dnf install wh3-mod-manager                          # Fedora
-sudo zypper refresh && sudo zypper install wh3-mod-manager # openSUSE
-sudo pacman -Syu wh3mm-bin                                 # Arch
+sudo apt update && sudo apt install yet-another-warhammer-mod-manager # Debian / Ubuntu
+sudo dnf install yet-another-warhammer-mod-manager                     # Fedora
+sudo zypper refresh && sudo zypper install yet-another-warhammer-mod-manager # openSUSE
+sudo pacman -Syu wh3mm-bin                                             # Arch
 flatpak update                                           # Flatpak remote installs
 ```
 
@@ -133,9 +133,9 @@ Download the release's `wh3mm-nix-<version>.tar.gz`. It contains a flake and a
 binary derivation with the release tarball's URL and SHA-256:
 
 ```bash
-tar -xzf wh3mm-nix-1.0.0.tar.gz
-nix run ./wh3mm-nix-1.0.0
-nix profile install ./wh3mm-nix-1.0.0
+tar -xzf wh3mm-nix-1.1.0.tar.gz
+nix run ./wh3mm-nix-1.1.0
+nix profile install ./wh3mm-nix-1.1.0
 ```
 
 Enable Nix's `nix-command` and `flakes` features. Updates use a new release
@@ -158,12 +158,12 @@ Gentoo-tree listing is assumed.
 ### AppImage / portable archive
 
 ```bash
-chmod +x wh3mm_1.0.0_amd64.AppImage
-./wh3mm_1.0.0_amd64.AppImage
+chmod +x wh3mm_1.1.0_amd64.AppImage
+./wh3mm_1.1.0_amd64.AppImage
 
 # Or use the portable archive:
-tar -xzf wh3mm-1.0.0-linux-x86_64.tar.gz
-./wh3mm-1.0.0-linux-x86_64/wh3mm
+tar -xzf wh3mm-1.1.0-linux-x86_64.tar.gz
+./wh3mm-1.1.0-linux-x86_64/wh3mm
 ```
 
 Both need host WebKitGTK 4.1 / GTK3. AppImage also needs FUSE 2, or run it with
@@ -288,7 +288,7 @@ server; filesystem and game actions require the Tauri app.
 | Game & Steam discovery | Implemented; platform caveats | Steam libraries and manual game-folder selection; Flatpak/Snap/XDG discovery is best-effort |
 | Mod browsing | Implemented | Local/Workshop packs, search, sort, tags, thumbnails, and selected-pack inspection |
 | Load order | Implemented | Enable/disable, batch actions, drag/move controls, atomic writes, and backups |
-| Profiles | Implemented | Create, rename, duplicate, delete, switch, and apply saved configurations |
+| Profiles | Implemented | Create, rename, duplicate, delete, switch, apply, and share as a portable JSON file (import requires every listed mod to be installed) |
 | Conflict inspection | Implemented | Overlapping pack entries, duplicate pack names, and missing/disabled dependencies |
 | Workshop | Partial | Read installed/subscribed metadata and open Steam pages; subscribe/unsubscribe/update through Steam |
 | Game launch | Implemented; manual QA required | Direct Windows / Proton paths, launch options, running-game checks, and load-order protection |

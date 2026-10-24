@@ -5,8 +5,9 @@ use std::time::Instant;
 use wh3mm_core::conflicts::ConflictReport;
 use wh3mm_core::error::AppError;
 use wh3mm_core::ipc::{
-    AppInfo, GameLocation, LoadOrderReadReport, LoadOrderWriteReport, ModListSnapshot, Profile,
-    ProfilesState, ResetDefaultsReport, Tag, UiPreferences,
+    AppInfo, ExportProfileReport, GameLocation, ImportProfileOutcome, LoadOrderReadReport,
+    LoadOrderWriteReport, ModListSnapshot, Profile, ProfilesState, ResetDefaultsReport, Tag,
+    UiPreferences,
 };
 use wh3mm_core::launch::{LaunchOptions, LaunchResult};
 use wh3mm_core::session::{Session, SessionOptions};
@@ -124,6 +125,20 @@ impl Manager {
         self.with_mut(|session| session.apply_profile(&profile_id))
     }
 
+    pub fn export_profile(
+        &self,
+        profile_id: String,
+        path: String,
+    ) -> Result<ExportProfileReport, AppError> {
+        let path = PathBuf::from(path);
+        self.with(|session| session.export_profile(&profile_id, &path, env!("CARGO_PKG_VERSION")))?
+    }
+
+    pub fn import_profile(&self, path: String) -> Result<ImportProfileOutcome, AppError> {
+        let path = PathBuf::from(path);
+        self.with_mut(|session| session.import_profile(&path))
+    }
+
     pub fn list_tags(&self) -> Result<Vec<Tag>, AppError> {
         self.with(|session| session.list_tags())
     }
@@ -239,7 +254,7 @@ impl Manager {
 #[cfg_attr(any(windows, target_os = "linux"), tauri::command)]
 pub fn app_info() -> AppInfo {
     AppInfo {
-        name: "WH3 Mod Manager".to_string(),
+        name: "Yet Another Warhammer Mod Manager".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         core_version: wh3mm_core::VERSION.to_string(),
         platform: std::env::consts::OS.to_string(),
@@ -364,6 +379,23 @@ mod tauri_commands {
         profile_id: String,
     ) -> Result<ModListSnapshot, AppError> {
         run_blocking(move || app.state::<Manager>().apply_profile(profile_id)).await
+    }
+
+    #[tauri::command]
+    pub async fn export_profile(
+        app: tauri::AppHandle,
+        profile_id: String,
+        path: String,
+    ) -> Result<ExportProfileReport, AppError> {
+        run_blocking(move || app.state::<Manager>().export_profile(profile_id, path)).await
+    }
+
+    #[tauri::command]
+    pub async fn import_profile(
+        app: tauri::AppHandle,
+        path: String,
+    ) -> Result<ImportProfileOutcome, AppError> {
+        run_blocking(move || app.state::<Manager>().import_profile(path)).await
     }
 
     #[tauri::command]
@@ -523,7 +555,7 @@ mod tests {
     fn app_info_reports_both_crate_versions() {
         let info = app_info();
 
-        assert_eq!(info.name, "WH3 Mod Manager");
+        assert_eq!(info.name, "Yet Another Warhammer Mod Manager");
         assert_eq!(info.version, env!("CARGO_PKG_VERSION"));
         assert_eq!(info.core_version, wh3mm_core::VERSION);
         assert!(!info.platform.is_empty());
@@ -717,5 +749,81 @@ mod tests {
             ticker.await.unwrap();
             assert_eq!(ticks.load(Ordering::SeqCst), 4);
         });
+    }
+
+    fn manager_for(dir: &TempDir, config: &str, packs: &[&str]) -> Manager {
+        let game = dir.path().join("games").join(config);
+        fs::create_dir_all(game.join("data")).unwrap();
+        for name in packs {
+            fs::write(
+                game.join("data").join(name),
+                synthetic_pack_bytes(0, &[], 0),
+            )
+            .unwrap();
+        }
+        let session = Session::initialize(SessionOptions {
+            config_path: dir.path().join(format!("{config}.json")),
+            steam_root_candidates: Some(Vec::new()),
+            manual_game_path: Some(game),
+            log_timings: false,
+        })
+        .unwrap();
+        Manager::from_session(session)
+    }
+
+    #[test]
+    fn manager_round_trips_a_profile_share_file() {
+        let dir = TempDir::new("app-profile-share");
+        let source = manager_for(&dir, "source", &["a.pack", "b.pack"]);
+        let ids: Vec<String> = source
+            .list_mods()
+            .unwrap()
+            .mods
+            .iter()
+            .map(|module| module.id.clone())
+            .collect();
+        source.set_mods_enabled(ids.clone(), true).unwrap();
+        let profile = source
+            .save_profile(None, "Campaign".to_string(), ids)
+            .unwrap();
+        let file = dir.path().join("campaign.wh3mm-profile.json");
+        let path = file.to_string_lossy().into_owned();
+
+        let report = source.export_profile(profile.id, path.clone()).unwrap();
+        assert_eq!(report.profile_name, "Campaign");
+        assert_eq!(report.exported_mods, 2);
+        assert_eq!(report.skipped_mods, 0);
+
+        // One pack missing: no profile is created.
+        let target = manager_for(&dir, "target", &["a.pack"]);
+        let before = target.list_profiles().unwrap().profiles.len();
+        match target.import_profile(path.clone()).unwrap() {
+            ImportProfileOutcome::MissingMods {
+                total_mods,
+                missing,
+                ..
+            } => {
+                assert_eq!(total_mods, 2);
+                assert_eq!(missing.len(), 1);
+                assert_eq!(missing[0].pack, "b.pack");
+            }
+            other => panic!("expected missing mods, got {other:?}"),
+        }
+        assert_eq!(target.list_profiles().unwrap().profiles.len(), before);
+
+        // Install the missing pack, rescan, and import again.
+        let refreshed = manager_for(&dir, "target", &["a.pack", "b.pack"]);
+        match refreshed.import_profile(path).unwrap() {
+            ImportProfileOutcome::Imported {
+                profile,
+                renamed_from,
+                total_mods,
+            } => {
+                assert_eq!(renamed_from, None);
+                assert_eq!(total_mods, 2);
+                assert_eq!(profile.enabled_mod_ids.len(), 2);
+            }
+            other => panic!("expected an imported profile, got {other:?}"),
+        }
     }
 }

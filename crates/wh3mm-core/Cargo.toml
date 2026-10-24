@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-description = "Pure domain logic for the WH3 Mod Manager (no Tauri or WebView dependencies)"
+description = "Pure domain logic for Yet Another Warhammer Mod Manager (no Tauri or WebView dependencies)"
 
 [dependencies]
 serde.workspace = true

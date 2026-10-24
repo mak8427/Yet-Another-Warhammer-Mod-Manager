@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { GameSetup } from './components/game/GameSetup'
 import { LaunchDialog } from './components/launch/LaunchDialog'
 import { LoadOrderDialog } from './components/load-order/LoadOrderDialog'
+import { MissingModsDialog } from './components/profiles/MissingModsDialog'
 import { FatalScreen } from './components/shell/FatalScreen'
 import { LoadingScreen } from './components/shell/LoadingScreen'
 import { NoticeBanner } from './components/shell/NoticeBanner'
@@ -183,6 +184,7 @@ export function App() {
   }, [searchFocusRequest, state.view])
 
   const fatal = state.status === 'error' ? state.error : null
+  const missingImport = state.importOutcome?.status === 'missingMods' ? state.importOutcome : null
 
   return (
     <div className="app-shell" data-view={state.view}>
@@ -235,6 +237,14 @@ export function App() {
       )}
 
       <LaunchDialog />
+
+      {missingImport && (
+        <MissingModsDialog
+          outcome={missingImport}
+          onClose={() => store.dismissImportOutcome()}
+          onOpenWorkshop={(id) => store.openWorkshopPage(id)}
+        />
+      )}
 
       {state.previewOpen && (
         <LoadOrderDialog

@@ -19,6 +19,10 @@ use crate::window::WindowGeometry;
 
 pub const SCHEMA_VERSION: u32 = 1;
 pub const CONFIG_FILE: &str = "config.json";
+/// Longest accepted profile name, in bytes. Share-file imports must fit it too.
+pub const MAX_PROFILE_NAME_LEN: usize = 80;
+/// Imported profiles get `(imported N)` suffixes; this bounds the search.
+const MAX_IMPORT_NAME_ATTEMPTS: u32 = 999;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -236,6 +240,40 @@ impl AppConfig {
             )));
         }
         Ok(())
+    }
+
+    /// Returns a name for an imported profile. The requested name is kept when
+    /// it is free; otherwise `(imported)`, `(imported 2)`, … is appended. The
+    /// second value is true when the returned name differs from the request.
+    pub fn unique_import_name(&self, base: &str) -> (String, bool) {
+        let requested =
+            validate_profile_name(base).unwrap_or_else(|_| "Imported profile".to_string());
+        let changed = requested != base.trim();
+        if !self.profile_name_taken(&requested) {
+            return (requested, changed);
+        }
+        for attempt in 1..=MAX_IMPORT_NAME_ATTEMPTS {
+            let suffix = if attempt == 1 {
+                " (imported)".to_string()
+            } else {
+                format!(" (imported {attempt})")
+            };
+            let candidate = append_suffix(&requested, &suffix);
+            if !self.profile_name_taken(&candidate) {
+                return (candidate, true);
+            }
+        }
+        let fallback = format!(
+            "Imported profile {}",
+            &uuid::Uuid::new_v4().to_string()[..8]
+        );
+        (fallback, true)
+    }
+
+    fn profile_name_taken(&self, name: &str) -> bool {
+        self.profiles
+            .iter()
+            .any(|profile| profile.name.eq_ignore_ascii_case(name))
     }
 
     /// Returns the document to the documented defaults while keeping profiles,
@@ -530,17 +568,40 @@ pub fn backup_path(path: &Path) -> PathBuf {
     path.with_file_name(format!("{name}.bak"))
 }
 
-fn validate_profile_name(name: &str) -> Result<String, AppError> {
+pub(crate) fn validate_profile_name(name: &str) -> Result<String, AppError> {
     let name = name.trim();
     if name.is_empty() {
         return Err(AppError::validation("A profile name is required"));
     }
-    if name.len() > 80 {
+    if name.len() > MAX_PROFILE_NAME_LEN {
         return Err(AppError::validation(
             "A profile name must be 80 characters or fewer",
         ));
     }
     Ok(name.to_string())
+}
+
+/// Appends `suffix` to `base`, truncating `base` on a character boundary so the
+/// result still fits [`MAX_PROFILE_NAME_LEN`].
+fn append_suffix(base: &str, suffix: &str) -> String {
+    let available = MAX_PROFILE_NAME_LEN.saturating_sub(suffix.len());
+    let truncated = truncate_to_char_boundary(base.trim_end(), available).trim_end();
+    format!("{truncated}{suffix}")
+}
+
+fn truncate_to_char_boundary(text: &str, max_bytes: usize) -> &str {
+    if text.len() <= max_bytes {
+        return text;
+    }
+    let mut end = 0;
+    for (index, character) in text.char_indices() {
+        let next = index + character.len_utf8();
+        if next > max_bytes {
+            break;
+        }
+        end = next;
+    }
+    &text[..end]
 }
 
 fn validate_tag_name(name: &str) -> Result<String, AppError> {
@@ -843,5 +904,43 @@ mod tests {
         fs::write(&path, serde_json::to_vec(&value).unwrap()).unwrap();
         let reloaded = load_or_create(&path).unwrap();
         assert_eq!(reloaded.config.ui.density, crate::ipc::Density::Comfortable);
+    }
+
+    #[test]
+    fn import_name_is_kept_when_unused() {
+        let config = AppConfig::new();
+
+        let (name, renamed) = config.unique_import_name(" Campaign ");
+
+        assert_eq!(name, "Campaign");
+        assert!(!renamed);
+    }
+
+    #[test]
+    fn import_name_gets_a_suffix_on_collision() {
+        let mut config = AppConfig::new();
+        config.save_profile(None, "Campaign", Vec::new()).unwrap();
+
+        let (first, renamed) = config.unique_import_name("campaign");
+        assert_eq!(first, "campaign (imported)");
+        assert!(renamed);
+
+        config.save_profile(None, &first, Vec::new()).unwrap();
+        let (second, renamed) = config.unique_import_name("Campaign");
+        assert_eq!(second, "Campaign (imported 2)");
+        assert!(renamed);
+    }
+
+    #[test]
+    fn import_name_truncates_to_the_byte_cap() {
+        let mut config = AppConfig::new();
+        let long = "a".repeat(MAX_PROFILE_NAME_LEN);
+        config.save_profile(None, &long, Vec::new()).unwrap();
+
+        let (name, renamed) = config.unique_import_name(&long);
+
+        assert!(renamed);
+        assert!(name.len() <= MAX_PROFILE_NAME_LEN);
+        assert!(name.ends_with(" (imported)"));
     }
 }

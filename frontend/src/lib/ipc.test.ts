@@ -6,6 +6,8 @@ import {
   ipc,
   toIpcError,
   type AppInfo,
+  type ExportProfileReport,
+  type ImportProfileOutcome,
   type LoadOrderWriteReport,
   type ModListSnapshot,
 } from './ipc'
@@ -19,7 +21,7 @@ const invokeMock = vi.mocked(invoke)
 const convertFileSrcMock = vi.mocked(convertFileSrc)
 
 const APP_INFO: AppInfo = {
-  name: 'WH3 Mod Manager',
+  name: 'Yet Another Warhammer Mod Manager',
   version: '0.1.0',
   coreVersion: '0.1.0',
   platform: 'windows',
@@ -107,6 +109,44 @@ describe('ipc', () => {
     })
     expect(invokeMock).toHaveBeenLastCalledWith('update_ui_preferences', {
       preferences: { density: 'compact', showThumbnails: true, lastScrollTop: 42, zoom: 110 },
+    })
+  })
+
+  it('forwards profile share commands with camelCase arguments', async () => {
+    const report: ExportProfileReport = {
+      path: 'C:/tmp/campaign.wh3mm-profile.json',
+      profileName: 'Campaign',
+      exportedMods: 2,
+      skippedMods: 0,
+      replacedExisting: false,
+    }
+    invokeMock.mockResolvedValue(report)
+
+    await ipc.exportProfile('profile-1', 'C:/tmp/campaign.wh3mm-profile.json')
+
+    expect(invokeMock).toHaveBeenLastCalledWith('export_profile', {
+      profileId: 'profile-1',
+      path: 'C:/tmp/campaign.wh3mm-profile.json',
+    })
+
+    const imported: ImportProfileOutcome = {
+      status: 'imported',
+      profile: {
+        id: 'profile-2',
+        name: 'Campaign',
+        enabledModIds: ['mod-a'],
+        createdAt: '2026-10-20T12:00:00Z',
+        updatedAt: '2026-10-20T12:00:00Z',
+      },
+      renamedFrom: null,
+      totalMods: 1,
+    }
+    invokeMock.mockResolvedValue(imported)
+
+    await ipc.importProfile('C:/tmp/campaign.wh3mm-profile.json')
+
+    expect(invokeMock).toHaveBeenLastCalledWith('import_profile', {
+      path: 'C:/tmp/campaign.wh3mm-profile.json',
     })
   })
 

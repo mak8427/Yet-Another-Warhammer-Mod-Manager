@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-description = "Tauri 2 desktop shell for the WH3 Mod Manager"
+description = "Tauri 2 desktop shell for Yet Another Warhammer Mod Manager"
 
 [lib]
 name = "wh3mm_app_lib"
@@ -25,6 +25,9 @@ serde.workspace = true
 # custom-protocol makes cargo-built binaries use the embedded frontend instead
 # of `devUrl`; this repository does not run the Tauri CLI dev server.
 tauri = { version = "2", features = ["protocol-asset", "custom-protocol"] }
+# Native save/open dialogs for profile share files. All file IO stays in the
+# core commands; the plugin only returns the chosen path.
+tauri-plugin-dialog = "2"
 
 # Backs the blocking seam in tests; the desktop shell uses Tauri's runtime.
 [dev-dependencies]

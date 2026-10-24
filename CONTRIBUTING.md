@@ -1,6 +1,6 @@
 # Contributing
 
-WH3 Mod Manager is a Rust/Tauri manager for Total War: Warhammer III mods.
+Yet Another Warhammer Mod Manager is a Rust/Tauri manager for Total War: Warhammer III mods.
 Start with [README](README.md), [architecture](ARCHITECTURE.md), and
 [development setup](docs/DEVELOPMENT.md).
 

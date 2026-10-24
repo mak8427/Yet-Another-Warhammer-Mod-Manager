@@ -1,9 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
 import { IpcError } from './lib/ipc'
+import type { ProfileFiles } from './lib/files'
 import { AppStore, moveEnabled, visibleMods } from './store'
 import {
   GAME,
   EMPTY_CONFLICTS,
+  IMPORTED_OUTCOME,
+  IMPORTED_PROFILE,
+  MISSING_OUTCOME,
   PROFILE_CAMPAIGN,
   PROFILES,
   RESET_REPORT,
@@ -12,6 +16,14 @@ import {
   makeMod,
   makeSnapshot,
 } from './test/mocks'
+
+function makeFiles(overrides: Partial<ProfileFiles> = {}): ProfileFiles {
+  return {
+    chooseExportPath: vi.fn(async () => 'C:/tmp/campaign.wh3mm-profile.json'),
+    chooseImportPath: vi.fn(async () => 'C:/tmp/shared.wh3mm-profile.json'),
+    ...overrides,
+  }
+}
 
 const MOD_A = makeMod({ id: 'mod-a', name: 'alpha.pack', isEnabled: true, loadOrder: 0 })
 const MOD_B = makeMod({ id: 'mod-b', name: 'beta.pack', isEnabled: true, loadOrder: 1 })
@@ -400,6 +412,122 @@ describe('AppStore', () => {
     expect(visibleMods(seeded.getState()).map((mod) => mod.id)).toEqual(['mod-b'])
     seeded.clearFilters()
     expect(visibleMods(seeded.getState())).toHaveLength(3)
+  })
+
+  it('exports the selected profile to the path chosen in the dialog', async () => {
+    const client = makeClient()
+    const files = makeFiles()
+    const store = new AppStore(client, files)
+    await store.init()
+
+    await store.exportProfile(PROFILE_CAMPAIGN.id)
+
+    expect(files.chooseExportPath).toHaveBeenCalledWith('Campaign.wh3mm-profile.json')
+    expect(client.exportProfile).toHaveBeenCalledWith(
+      PROFILE_CAMPAIGN.id,
+      'C:/tmp/campaign.wh3mm-profile.json',
+    )
+    expect(store.getState().notice?.message).toContain('C:/Users/me/Downloads')
+    expect(store.getState().busy).toBeNull()
+  })
+
+  it('treats a cancelled export dialog as a no-op', async () => {
+    const client = makeClient()
+    const store = new AppStore(client, makeFiles({ chooseExportPath: vi.fn(async () => null) }))
+    await store.init()
+
+    await store.exportProfile(PROFILE_CAMPAIGN.id)
+
+    expect(client.exportProfile).not.toHaveBeenCalled()
+    expect(store.getState().error).toBeNull()
+    expect(store.getState().notice).toBeNull()
+    expect(store.getState().busy).toBeNull()
+  })
+
+  it('imports a fully installed profile, selects it, and asks for Apply', async () => {
+    const client = makeClient({
+      listProfiles: vi.fn(async () => ({
+        profiles: [...PROFILES.profiles, IMPORTED_PROFILE],
+        activeProfileId: PROFILES.activeProfileId,
+      })),
+    })
+    const files = makeFiles()
+    const store = new AppStore(client, files)
+    await store.init()
+
+    await store.importProfile()
+
+    expect(files.chooseImportPath).toHaveBeenCalledTimes(1)
+    expect(client.importProfile).toHaveBeenCalledWith('C:/tmp/shared.wh3mm-profile.json')
+    expect(store.getState().lastImportedProfileId).toBe(IMPORTED_PROFILE.id)
+    expect(store.getState().profiles?.profiles).toContainEqual(IMPORTED_PROFILE)
+    expect(store.getState().importOutcome).toBeNull()
+    expect(store.getState().notice?.message).toContain('Press Apply')
+    expect(store.getState().busy).toBeNull()
+  })
+
+  it('creates nothing and lists the missing mods when one is not installed', async () => {
+    const listProfiles = vi.fn(async () => PROFILES)
+    const client = makeClient({
+      importProfile: vi.fn(async () => MISSING_OUTCOME),
+      listProfiles,
+    })
+    const store = new AppStore(client, makeFiles())
+    await store.init()
+
+    await store.importProfile()
+
+    expect(store.getState().importOutcome).toEqual(MISSING_OUTCOME)
+    expect(store.getState().lastImportedProfileId).toBeNull()
+    expect(store.getState().error).toBeNull()
+    expect(store.getState().notice).toBeNull()
+    expect(listProfiles).toHaveBeenCalledTimes(1)
+
+    store.dismissImportOutcome()
+    expect(store.getState().importOutcome).toBeNull()
+  })
+
+  it('surfaces a failed file dialog as an error without leaving the store busy', async () => {
+    const failure = new IpcError({
+      code: 'internal',
+      message: 'Could not open the file dialog',
+      details: null,
+      retryable: false,
+    })
+    const store = new AppStore(
+      makeClient({ importProfile: vi.fn(async () => IMPORTED_OUTCOME) }),
+      makeFiles({
+        chooseImportPath: vi.fn(async () => {
+          throw failure
+        }),
+      }),
+    )
+    await store.init()
+
+    await store.importProfile()
+
+    expect(store.getState().error).toBe(failure)
+    expect(store.getState().busy).toBeNull()
+  })
+
+  it('reports Workshop link failures inline without using the global error banner', async () => {
+    const client = makeClient({
+      workshopAction: vi.fn(async () => {
+        throw new IpcError({
+          code: 'steam_not_found',
+          message: 'Steam was not found',
+          details: null,
+          retryable: false,
+        })
+      }),
+    })
+    const store = new AppStore(client, makeFiles())
+    await store.init()
+
+    const result = await store.openWorkshopPage('2921395471')
+
+    expect(result).toEqual({ ok: false, message: 'Steam was not found' })
+    expect(store.getState().error).toBeNull()
   })
 })
 

@@ -42,7 +42,7 @@ Build locally after creating the release tarball:
 
 ```bash
 flatpak install --user flathub org.gnome.Platform//50 org.gnome.Sdk//50
-bash packaging/flatpak/build.sh wh3mm-1.0.0-linux-x86_64.tar.gz flatpak-out
+bash packaging/flatpak/build.sh wh3mm-1.1.0-linux-x86_64.tar.gz flatpak-out
 flatpak install --user ./flatpak-out/wh3mm-linux-x86_64.flatpak
 ```
 
@@ -94,16 +94,20 @@ fingerprint before running it. No script can establish independent trust by
 comparing two values downloaded from the same compromised origin.
 
 After setup use the package-manager commands in the README. apt/dnf/zypper package
-name: `wh3-mod-manager`; pacman package name: `wh3mm-bin`; executable: `wh3mm`.
-The `.flatpakref` sets up Flatpak separately.
+name: `yet-another-warhammer-mod-manager`; pacman package name: `wh3mm-bin`;
+executable: `wh3mm`. The `.flatpakref` sets up Flatpak separately. Version 1.1.0
+renamed the product, so remove the 1.0.x `wh3-mod-manager` package before installing
+the renamed package from a repository.
 
 Repository builds fail if the signing key, required package formats, or public
 URL are absent. There is no unsigned-repository fallback. Publishing a later
 release replaces the current packages; previous binaries remain in GitHub Releases.
 Do not publish an older tag over an active repository except for an intentional rollback.
 
-Remove the app using `apt remove wh3-mod-manager`, `dnf remove wh3-mod-manager`,
-`zypper remove wh3-mod-manager`, or `pacman -R wh3mm-bin`. Repository removal is
+Remove the app using `apt remove yet-another-warhammer-mod-manager`,
+`dnf remove yet-another-warhammer-mod-manager`,
+`zypper remove yet-another-warhammer-mod-manager`, or `pacman -R wh3mm-bin`.
+Repository removal is
 separate: delete the corresponding `wh3mm` sources/repo file; for pacman also
 remove its Include line from `/etc/pacman.conf` before deleting `/etc/pacman.d/wh3mm.conf`.
 
@@ -115,11 +119,11 @@ the exact CI-built tarball. `autoPatchelfHook` fixes the ELF interpreter/library
 paths and `wrapGAppsHook3` provides GTK resources. Only `x86_64-linux` is supported.
 
 ```bash
-tar -xzf wh3mm-nix-1.0.0.tar.gz
-nix run ./wh3mm-nix-1.0.0
-nix profile install ./wh3mm-nix-1.0.0
+tar -xzf wh3mm-nix-1.1.0.tar.gz
+nix run ./wh3mm-nix-1.1.0
+nix profile install ./wh3mm-nix-1.1.0
 # Non-flake Nix users:
-nix-build ./wh3mm-nix-1.0.0/default.nix
+nix-build ./wh3mm-nix-1.1.0/default.nix
 ```
 
 The flake's first invocation resolves nixpkgs; keep its generated `flake.lock`
@@ -129,7 +133,7 @@ hash-pinned. Updates use the recipe for a new release.
 For NixOS, enable `programs.steam.enable = true`. The game's unpatched Proton
 scripts require a conventional filesystem layout; run the manager within the
 Steam FHS environment, for example `steam-run ./result/bin/wh3mm` after
-`nix build ./wh3mm-nix-1.0.0`. Install `pkgs.steam-run` if needed. The CI startup
+`nix build ./wh3mm-nix-1.1.0`. Install `pkgs.steam-run` if needed. The CI startup
 check verifies the manager window, not real Proton game launching on NixOS;
 that requires a real Steam/game installation and manual QA.
 
@@ -144,9 +148,9 @@ Gentoo tree or an independently maintained external overlay. Download/extract it
 then copy it into a root-owned location:
 
 ```bash
-tar -xzf wh3mm-gentoo-1.0.0.tar.gz
+tar -xzf wh3mm-gentoo-1.1.0.tar.gz
 sudo mkdir -p /var/db/repos/wh3mm
-sudo cp -a wh3mm-gentoo-1.0.0/. /var/db/repos/wh3mm/
+sudo cp -a wh3mm-gentoo-1.1.0/. /var/db/repos/wh3mm/
 sudo mkdir -p /etc/portage/repos.conf /etc/portage/package.accept_keywords
 printf '[wh3mm]\nlocation = /var/db/repos/wh3mm\nauto-sync = no\n' | sudo tee /etc/portage/repos.conf/wh3mm.conf
 echo 'games-util/wh3mm-bin ~amd64' | sudo tee /etc/portage/package.accept_keywords/wh3mm

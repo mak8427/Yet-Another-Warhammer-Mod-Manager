@@ -45,9 +45,9 @@ export function TitleBar({
           III
         </span>
         <div className="brand-text">
-          <span className="brand-kicker">Total War</span>
+          <span className="brand-kicker">Total War: Warhammer III</span>
           <h1>
-            Warhammer III <span>Mod Manager</span>
+            Yet Another Warhammer <span>Mod Manager</span>
           </h1>
         </div>
       </div>

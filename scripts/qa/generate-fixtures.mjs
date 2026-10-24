@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Deterministic, licence-clean fixture generator for the WH3 Mod Manager QA suite.
+ * Deterministic, licence-clean fixture generator for the
+ * Yet Another Warhammer Mod Manager QA suite.
  *
  * Everything this script writes is synthetic. No game data, no user mods and no
  * Workshop downloads are involved.

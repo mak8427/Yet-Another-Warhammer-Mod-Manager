@@ -61,7 +61,7 @@ cat > "$out/flatpak/wh3mm.flatpakref" <<REF
 [Flatpak Ref]
 Name=com.warhammerlabs.wh3mm
 Branch=master
-Title=WH3 Mod Manager
+Title=Yet Another Warhammer Mod Manager
 Url=$BASE_URL/flatpak
 GPGKey=$key
 RuntimeRepo=https://flathub.org/repo/flathub.flatpakrepo
@@ -70,5 +70,5 @@ REF
 sed -e "s|@BASE_URL@|$BASE_URL|g" -e "s|@FINGERPRINT@|$SIGNING_KEY|g" "$script_dir/setup.sh.in" > "$out/setup.sh"
 printf '%s\n' "$SIGNING_KEY" > "$out/KEY_FINGERPRINT.txt"
 touch "$out/.nojekyll"
-printf '<!doctype html><title>WH3 Mod Manager packages</title><h1>WH3 Mod Manager packages</h1><p>Signing key: <code>%s</code></p><a href="flatpak/wh3mm.flatpakref">Install Flatpak</a> · <a href="setup.sh">Native repository setup</a>\n' "$SIGNING_KEY" > "$out/index.html"
+printf '<!doctype html><title>Yet Another Warhammer Mod Manager packages</title><h1>Yet Another Warhammer Mod Manager packages</h1><p>Signing key: <code>%s</code></p><a href="flatpak/wh3mm.flatpakref">Install Flatpak</a> · <a href="setup.sh">Native repository setup</a>\n' "$SIGNING_KEY" > "$out/index.html"
 echo "Signed repository staged in $out"

@@ -4,7 +4,7 @@ use wh3mm_core::ipc::AppInfo;
 #[test]
 fn app_info_serializes_camel_case_fields() {
     let info = AppInfo {
-        name: "WH3 Mod Manager".into(),
+        name: "Yet Another Warhammer Mod Manager".into(),
         version: "0.1.0".into(),
         core_version: "0.1.0".into(),
         platform: "linux".into(),
@@ -13,7 +13,7 @@ fn app_info_serializes_camel_case_fields() {
 
     let json = serde_json::to_value(&info).expect("AppInfo must serialize");
 
-    assert_eq!(json["name"], "WH3 Mod Manager");
+    assert_eq!(json["name"], "Yet Another Warhammer Mod Manager");
     assert_eq!(json["version"], "0.1.0");
     assert_eq!(json["coreVersion"], "0.1.0");
     assert_eq!(json["platform"], "linux");
@@ -271,4 +271,121 @@ fn every_error_code_is_documented() {
             "{code} is missing from docs/INSTALLATION.md"
         );
     }
+}
+
+#[test]
+fn export_profile_report_uses_camel_case_fields() {
+    use wh3mm_core::ipc::ExportProfileReport;
+
+    let report = ExportProfileReport {
+        path: "C:/Users/me/Downloads/Campaign.wh3mm-profile.json".into(),
+        profile_name: "Campaign".into(),
+        exported_mods: 12,
+        skipped_mods: 2,
+        replaced_existing: true,
+    };
+
+    let json = serde_json::to_value(report).unwrap();
+
+    assert_eq!(json["profileName"], "Campaign");
+    assert_eq!(json["exportedMods"], 12);
+    assert_eq!(json["skippedMods"], 2);
+    assert_eq!(json["replacedExisting"], true);
+    assert!(json.get("profile_name").is_none());
+    assert!(json.get("skipped_mods").is_none());
+}
+
+#[test]
+fn import_profile_outcome_is_tagged_and_camel_case() {
+    use wh3mm_core::ipc::{ImportProfileOutcome, MissingShareMod, Profile};
+
+    let imported = ImportProfileOutcome::Imported {
+        profile: Profile {
+            id: "profile-1".into(),
+            name: "Campaign".into(),
+            enabled_mod_ids: vec!["mod-a".into()],
+            created_at: "2026-10-20T12:00:00Z".into(),
+            updated_at: "2026-10-20T12:00:00Z".into(),
+        },
+        renamed_from: Some("Campaign".into()),
+        total_mods: 1,
+    };
+    let json = serde_json::to_value(&imported).unwrap();
+    assert_eq!(json["status"], "imported");
+    assert_eq!(json["renamedFrom"], "Campaign");
+    assert_eq!(json["totalMods"], 1);
+    assert_eq!(json["profile"]["enabledModIds"][0], "mod-a");
+    assert!(json.get("renamed_from").is_none());
+
+    let missing = ImportProfileOutcome::MissingMods {
+        profile_name: "Campaign".into(),
+        total_mods: 2,
+        missing: vec![MissingShareMod {
+            pack: "absent.pack".into(),
+            name: Some("Absent".into()),
+            workshop_id: Some("2921395471".into()),
+            url: Some("https://steamcommunity.com/sharedfiles/filedetails/?id=2921395471".into()),
+        }],
+    };
+    let json = serde_json::to_value(&missing).unwrap();
+    assert_eq!(json["status"], "missingMods");
+    assert_eq!(json["profileName"], "Campaign");
+    assert_eq!(json["missing"][0]["pack"], "absent.pack");
+    assert_eq!(json["missing"][0]["workshopId"], "2921395471");
+    assert_eq!(
+        json["missing"][0]["url"],
+        "https://steamcommunity.com/sharedfiles/filedetails/?id=2921395471"
+    );
+    assert!(json["missing"][0].get("workshop_id").is_none());
+}
+
+#[test]
+fn profile_share_file_never_contains_local_mod_ids_or_paths() {
+    use std::path::PathBuf;
+    use wh3mm_core::ipc::Profile;
+    use wh3mm_core::mod_index::DiscoveredMod;
+    use wh3mm_core::profile_share;
+
+    let module = |name: &str, workshop_id: Option<&str>| DiscoveredMod {
+        id: format!("C:/game/data/{name}"),
+        path: PathBuf::from(format!("C:/game/data/{name}")),
+        name: name.to_string(),
+        human_name: name.trim_end_matches(".pack").to_string(),
+        is_workshop: workshop_id.is_some(),
+        workshop_id: workshop_id.map(str::to_string),
+        thumbnail_path: None,
+        updated_at: None,
+        dependencies: Vec::new(),
+        pack_error: None,
+        is_movie: false,
+        size_bytes: 1,
+    };
+    let mods = vec![
+        module("local.pack", None),
+        module("shared.pack", Some("42")),
+    ];
+    let profile = Profile {
+        id: "profile-1".into(),
+        name: "Campaign".into(),
+        enabled_mod_ids: vec![mods[0].id.clone(), mods[1].id.clone()],
+        created_at: "2026-10-20T12:00:00Z".into(),
+        updated_at: "2026-10-20T12:00:00Z".into(),
+    };
+
+    let built = profile_share::build(&profile, &mods, "1.0.0");
+    let text = String::from_utf8(profile_share::encode(&built.document).unwrap()).unwrap();
+
+    assert!(!text.contains("enabledModIds"));
+    assert!(!text.contains("C:/game"));
+    assert!(!text.contains("authorization"));
+    assert!(text.contains("\"pack\": \"local.pack\""));
+    assert!(text.contains("https://steamcommunity.com/sharedfiles/filedetails/?id=42"));
+
+    let decoded = profile_share::decode(text.as_bytes()).unwrap();
+    assert_eq!(decoded.profile.mods[0].pack, "local.pack");
+    assert_eq!(decoded.profile.mods[1].workshop_id.as_deref(), Some("42"));
+
+    let resolved = profile_share::resolve(&decoded, &mods);
+    assert_eq!(resolved.ids, profile.enabled_mod_ids);
+    assert!(resolved.missing.is_empty());
 }

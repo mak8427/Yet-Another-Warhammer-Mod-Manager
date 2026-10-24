@@ -14,6 +14,7 @@ pub fn run() -> tauri::Result<()> {
     use tauri::Manager as _;
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let config_dir = app.path().app_config_dir()?;
             let manager = commands::Manager::new(config_dir)?;
@@ -36,6 +37,8 @@ pub fn run() -> tauri::Result<()> {
             commands::duplicate_profile,
             commands::delete_profile,
             commands::apply_profile,
+            commands::export_profile,
+            commands::import_profile,
             commands::list_tags,
             commands::create_tag,
             commands::delete_tag,

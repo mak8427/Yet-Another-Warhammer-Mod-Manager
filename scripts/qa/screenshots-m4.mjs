@@ -410,9 +410,9 @@ function fixtureScript() {
     source: 'auto',
   }
   const appInfo = {
-    name: 'WH3 Mod Manager',
-    version: '0.1.0',
-    coreVersion: '0.1.0',
+    name: 'Yet Another Warhammer Mod Manager',
+    version: '1.1.0',
+    coreVersion: '1.1.0',
     platform: 'windows',
     arch: 'x86_64',
   }

@@ -11,13 +11,14 @@ use std::time::{Duration, Instant};
 use crate::config::{self, AppConfig, ConfigStatus};
 use crate::error::AppError;
 use crate::ipc::{
-    GameLocation as IpcGameLocation, LoadOrderReadReport, LoadOrderWriteReport, ModListSnapshot,
-    ModSummary, Profile, ProfilesState, ResetDefaultsReport, ResetLoadOrderReport,
-    ResetLoadOrderStatus, Tag, UiPreferences,
+    ExportProfileReport, GameLocation as IpcGameLocation, ImportProfileOutcome,
+    LoadOrderReadReport, LoadOrderWriteReport, ModListSnapshot, ModSummary, Profile, ProfilesState,
+    ResetDefaultsReport, ResetLoadOrderReport, ResetLoadOrderStatus, Tag, UiPreferences,
 };
 use crate::load_order::{self, LoadOrderFile, PlannedName, WritePlan};
 use crate::mod_index::{self, DiscoveredMod, IndexReport};
 use crate::paths::{self, DetectionReport, GameLocation};
+use crate::profile_share;
 use crate::timing::{log_timing, Timings};
 use crate::window::WindowGeometry;
 
@@ -539,6 +540,67 @@ impl Session {
         self.commit_config(|config| config.set_active_profile(profile_id))?;
         self.enabled_ids = self.config.active_profile().enabled_mod_ids.clone();
         Ok(self.snapshot())
+    }
+
+    /// Writes one profile to a portable share file. Enabled mods that the
+    /// running scan cannot resolve are reported through `skipped_mods`.
+    pub fn export_profile(
+        &self,
+        profile_id: &str,
+        path: &Path,
+        app_version: &str,
+    ) -> Result<ExportProfileReport, AppError> {
+        self.require_game_location()?;
+        let profile = self
+            .config
+            .profile(profile_id)
+            .ok_or_else(|| AppError::not_found(format!("Unknown profile {profile_id}")))?;
+        let built = profile_share::build(profile, &self.mods, app_version);
+        let replaced_existing = path.exists();
+        profile_share::write_to(path, &built.document)?;
+        Ok(ExportProfileReport {
+            path: path.to_string_lossy().into_owned(),
+            profile_name: profile.name.clone(),
+            exported_mods: built.document.profile.mods.len() as u32,
+            skipped_mods: built.skipped,
+            replaced_existing,
+        })
+    }
+
+    /// Imports a share file. A profile is created only when every mod in the
+    /// file is installed; otherwise the missing entries come back and no state
+    /// changes, so the user can install them and import the file again.
+    pub fn import_profile(&mut self, path: &Path) -> Result<ImportProfileOutcome, AppError> {
+        self.require_game_location()?;
+        let document = profile_share::read_from(path)?;
+        let total_mods = document.profile.mods.len() as u32;
+        let resolved = profile_share::resolve(&document, &self.mods);
+        if !resolved.missing.is_empty() {
+            return Ok(ImportProfileOutcome::MissingMods {
+                profile_name: document.profile.name.clone(),
+                total_mods,
+                missing: resolved.missing,
+            });
+        }
+
+        let requested_name = document.profile.name.clone();
+        let (profile, renamed_from) = self.commit_config(|config| {
+            let (name, renamed) = config.unique_import_name(&requested_name);
+            let profile = config.save_profile(None, &name, resolved.ids.clone())?;
+            Ok((
+                profile,
+                if renamed {
+                    Some(requested_name.clone())
+                } else {
+                    None
+                },
+            ))
+        })?;
+        Ok(ImportProfileOutcome::Imported {
+            profile,
+            renamed_from,
+            total_mods,
+        })
     }
 
     pub fn list_tags(&self) -> Vec<Tag> {

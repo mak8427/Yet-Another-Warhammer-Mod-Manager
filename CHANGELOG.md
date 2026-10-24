@@ -1,9 +1,10 @@
 # Changelog
 
-Notable changes to WH3 Mod Manager. Versioned entries marked unreleased describe
-implemented work, not a public download. See [installation and release steps](docs/INSTALLATION.md).
+Notable changes to Yet Another Warhammer Mod Manager. Versioned entries marked
+unreleased describe implemented work, not a public download. See
+[installation and release steps](docs/INSTALLATION.md).
 
-## [1.1.0] - unreleased
+## [1.1.0] - 2026-10-24
 
 ### Added
 
@@ -14,6 +15,10 @@ implemented work, not a public download. See [installation and release steps](do
   publishing is implemented; persistent signing and public hosting require activation.
 - Persisted window geometry and whole-interface zoom (`#53`).
 - Dark-grey surfaces and blue controls, with updated README screenshots (`#59`, `#64`).
+- Profile export and import as a portable `wh3mm-profile` JSON file. A profile is
+  identified by pack names and Workshop ids, never machine paths, and an import
+  creates the profile only when every listed mod is installed; otherwise the
+  missing mods are listed with their Workshop links and nothing is saved.
 
 ### Fixed
 
@@ -25,6 +30,10 @@ implemented work, not a public download. See [installation and release steps](do
 
 ### Changed
 
+- Renamed the application to Yet Another Warhammer Mod Manager. The `wh3mm` binary,
+  `com.warhammerlabs.wh3mm` Flatpak id, config directory, and `wh3mm-bin` Arch package
+  are unchanged. The Debian/RPM package is now `yet-another-warhammer-mod-manager`, so
+  remove a 1.0.x `wh3-mod-manager` package before installing from a repository.
 - Removed unused core APIs, duplicated parsing/constants, and redundant session
   operations while retaining current launch protections (`#50`).
 - Removed unused frontend exports/actions/styles and centralized workspace state

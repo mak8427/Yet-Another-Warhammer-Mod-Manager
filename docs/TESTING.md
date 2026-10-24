@@ -73,6 +73,9 @@ version, OS, artifact checksum, and outcome:
 2. Scan a real collection; confirm pack thumbnails, filtering, sorting, selection,
    virtualization, keyboard navigation, and the inspector.
 3. Toggle/reorder mods, save/apply/switch profiles, restart, and verify persistence.
+   Export a profile, then import it on a second install. A file with any mod missing
+   must list the missing packs with their Workshop links and create nothing; after
+   installing them, importing again creates an inactive profile that Apply selects.
 4. Verify load-order backups and explicit corrupt-file recovery without touching
    pack archives. Unknown directives and empty writes must ask for intent.
 5. With Steam running, launch through the manager and verify the game actually
@@ -93,13 +96,13 @@ Run `pnpm build`, then `node scripts/qa/screenshots-m4.mjs` with Chromium instal
 Use `SHOT_OUT` to choose a separate output directory and comma-separated `SHOT_ONLY`
 to capture specific views. Do not overwrite historical evidence unintentionally.
 
-The README's `docs/screenshots/showcase/` uses the dark grey/blue palette from main
-`6ae9103` and 1920×1080 comfortable density. Profiles, tags, enabled states, and
-conflict reports are simulated. The mod-list/launch images include real installed
-Workshop pack names/artwork through `SHOT_WORKSHOP_DIR`; they do not claim to be a
-real user's load order or conflict report. Raw artwork is read locally and embedded
-only in screenshots. Without that optional directory, captures remain deterministic
-and use thumbnail placeholders.
+The README's `docs/screenshots/showcase/` uses 1920×1080 comfortable density.
+Profiles, tags, enabled states, and conflict reports are simulated. The mod list
+and inspector embed thumbnails read from the maintainer's installed Workshop packs
+through `SHOT_WORKSHOP_DIR`; they do not claim to be a real user's load order or
+conflict report. Raw artwork is read locally and embedded only in screenshots.
+Without that optional directory, captures remain deterministic and use thumbnail
+placeholders.
 
 All showcase captures were checked for page overflow and visually reviewed. The
 mod list has 23 visible rows at the stated viewport. Historical screenshot artifacts remain in their directories. Retired cross-app

@@ -2,7 +2,7 @@
 # Download and inspect this script before running it. No packages are installed.
 set -euo pipefail
 if [[ ${1:-} == --help ]]; then
-  echo 'Configure the signed WH3 Mod Manager apt, dnf, zypper, or pacman repository.'
+  echo 'Configure the signed Yet Another Warhammer Mod Manager apt, dnf, zypper, or pacman repository.'
   echo 'Usage: bash setup.sh (needs curl, gpg, and sudo/root; x86_64 Linux only)'
   exit 0
 fi
@@ -38,13 +38,13 @@ case "$manager" in
     "${root[@]}" install -Dm644 "$work/wh3mm.gpg" /usr/share/keyrings/wh3mm.gpg
     echo "deb [arch=amd64 signed-by=/usr/share/keyrings/wh3mm.gpg] $base/apt stable main" > "$work/wh3mm.list"
     "${root[@]}" install -Dm644 "$work/wh3mm.list" /etc/apt/sources.list.d/wh3mm.list
-    echo 'Repository configured. Run: sudo apt update && sudo apt install wh3-mod-manager'
+    echo 'Repository configured. Run: sudo apt update && sudo apt install yet-another-warhammer-mod-manager'
     ;;
   dnf|zypper)
     "${root[@]}" rpm --import "$work/key.asc"
     cat > "$work/wh3mm.repo" <<REPO
 [wh3mm]
-name=WH3 Mod Manager
+name=Yet Another Warhammer Mod Manager
 baseurl=$base/rpm
 enabled=1
 gpgcheck=1
@@ -53,10 +53,10 @@ gpgkey=$base/repository-key.asc
 REPO
     if [[ $manager == dnf ]]; then
       "${root[@]}" install -Dm644 "$work/wh3mm.repo" /etc/yum.repos.d/wh3mm.repo
-      echo 'Repository configured. Run: sudo dnf install wh3-mod-manager'
+      echo 'Repository configured. Run: sudo dnf install yet-another-warhammer-mod-manager'
     else
       "${root[@]}" install -Dm644 "$work/wh3mm.repo" /etc/zypp/repos.d/wh3mm.repo
-      echo 'Repository configured. Run: sudo zypper refresh && sudo zypper install wh3-mod-manager'
+      echo 'Repository configured. Run: sudo zypper refresh && sudo zypper install yet-another-warhammer-mod-manager'
     fi
     ;;
   pacman)

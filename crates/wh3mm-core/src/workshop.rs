@@ -245,6 +245,12 @@ pub fn workshop_url(action: WorkshopAction, workshop_id: &str) -> String {
     }
 }
 
+/// Canonical Steam Community page for a Workshop item. Profile share files use
+/// this link, and it is the page the Steam client opens for a Workshop action.
+pub fn community_page_url(workshop_id: &str) -> String {
+    format!("https://steamcommunity.com/sharedfiles/filedetails/?id={workshop_id}")
+}
+
 pub fn action_message(action: WorkshopAction) -> &'static str {
     match action {
         WorkshopAction::Open => "Steam opened the Workshop page.",

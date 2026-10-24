@@ -1,8 +1,8 @@
 # Architecture
 
-WH3 Mod Manager manages Total War: Warhammer III packs, profiles, load order,
-conflicts, and Steam Workshop metadata. It is a Rust/Tauri desktop app with a
-React/TypeScript interface. Supported desktop targets are Windows x86_64 and
+Yet Another Warhammer Mod Manager manages Total War: Warhammer III packs, profiles,
+load order, conflicts, and Steam Workshop metadata. It is a Rust/Tauri desktop app
+with a React/TypeScript interface. Supported desktop targets are Windows x86_64 and
 Linux x86_64. Native Steam and Proton are required for Linux game launching.
 
 ## Repository and boundaries
@@ -70,6 +70,14 @@ Config stores profiles, launch options, tags, UI preferences, and optional windo
 geometry. Writes are atomic and keep the existing backup/recovery contract.
 Future config schemas are refused without overwriting them. Corrupt primary and
 backup files require explicit recovery; do not replace them with empty defaults.
+
+Profiles can be exported as `wh3mm-profile` JSON and imported on another install.
+The file identifies mods by pack name and Steam Workshop id, never by the session's
+path-derived ids, and carries the Workshop page link for each mod. Import is
+all-or-nothing: every listed mod must already be installed, otherwise nothing is
+written and the unresolved entries are reported for installation. A successful
+import is an ordinary atomic profile save, so it inherits the same backup and
+write-blocking rules as any other profile change.
 
 `used_mods.txt` preserves ordering and managed working-directory directives.
 Unknown directives and unexpectedly empty output require explicit intent. Absolute

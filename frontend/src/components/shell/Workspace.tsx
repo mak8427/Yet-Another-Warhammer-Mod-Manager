@@ -36,13 +36,17 @@ export function Workspace({ state }: WorkspaceProps) {
 
         {state.view === 'profiles' && (
           <ProfilesScreen
+            key={state.lastImportedProfileId ?? 'profiles'}
             profiles={state.profiles}
             busy={Boolean(state.busy)}
+            highlightProfileId={state.lastImportedProfileId}
             onApply={(id) => void store.applyProfile(id)}
             onCreate={(name) => store.saveProfile(name)}
             onRename={(id, name) => store.renameProfile(id, name)}
             onDuplicate={(id, name) => store.duplicateProfile(id, name)}
             onDelete={(id) => store.deleteProfile(id)}
+            onImport={() => void store.importProfile()}
+            onExport={(id) => void store.exportProfile(id)}
           />
         )}
 

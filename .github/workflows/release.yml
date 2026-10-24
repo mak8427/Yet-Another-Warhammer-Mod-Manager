@@ -156,7 +156,7 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" \
             --draft \
-            --title "WH3 Mod Manager ${GITHUB_REF_NAME#v}" \
+            --title "Yet Another Warhammer Mod Manager ${GITHUB_REF_NAME#v}" \
             --notes-file CHANGELOG.md \
             dist/*.exe \
             dist/*.deb \

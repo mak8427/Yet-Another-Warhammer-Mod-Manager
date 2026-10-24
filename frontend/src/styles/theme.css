@@ -1,7 +1,7 @@
 @import './tokens.css';
 
 /*
- * WH3 Mod Manager — shell and screen styles (M4).
+ * Yet Another Warhammer Mod Manager — shell and screen styles (M4).
  * Consumes semantic tokens only. Token definitions live in tokens.css.
  */
 
@@ -2138,6 +2138,52 @@ input[aria-invalid='true'] {
   min-height: 56px;
   padding: 0 var(--space-7);
   border-top: var(--border-hairline) solid var(--color-border-subtle);
+}
+
+/* -------------------------------------------------- Profile import summary */
+
+.missing-mods-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-height: 320px;
+  margin: var(--space-4) 0 0;
+  padding: 0 var(--space-1) 0 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.missing-mod {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-hairline) solid var(--color-border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--color-bg-surface);
+}
+
+.missing-mod-name {
+  font-weight: var(--weight-medium);
+}
+
+.missing-mod-pack,
+.missing-mod-url,
+.missing-mod-note {
+  color: var(--color-text-muted);
+  font-size: var(--text-2xs);
+  overflow-wrap: anywhere;
+}
+
+.missing-mod-action {
+  align-self: flex-start;
+  margin-top: var(--space-2);
+}
+
+.modal-alert {
+  margin: var(--space-3) 0 0;
+  color: var(--color-text-danger);
+  font-size: var(--text-xs);
 }
 
 .field-label {

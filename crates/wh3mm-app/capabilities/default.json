@@ -3,5 +3,5 @@
   "identifier": "default",
   "description": "Default capability for the main window. Custom commands are registered explicitly in lib.rs.",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": ["core:default", "dialog:default"]
 }

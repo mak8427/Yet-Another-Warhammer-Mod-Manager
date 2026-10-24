@@ -4,7 +4,8 @@ use std::path::{Path, PathBuf};
 use wh3mm_core::config::{self, AppConfig, CONFIG_FILE};
 use wh3mm_core::error::ErrorCode;
 use wh3mm_core::ipc::{
-    Density, LocationSource, ResetLoadOrderStatus, UiPreferences, ZOOM_MAX, ZOOM_MIN,
+    Density, ImportProfileOutcome, LocationSource, ResetLoadOrderStatus, UiPreferences, ZOOM_MAX,
+    ZOOM_MIN,
 };
 use wh3mm_core::load_order;
 use wh3mm_core::pack::synthetic_pack_bytes;
@@ -803,5 +804,236 @@ fn fixture_app_config_can_be_seeded_for_other_tools() {
     assert_eq!(
         session.config_status,
         wh3mm_core::config::ConfigStatus::Loaded
+    );
+}
+
+fn enable_all(session: &mut Session) -> Vec<String> {
+    let ids: Vec<String> = session
+        .snapshot()
+        .mods
+        .iter()
+        .map(|module| module.id.clone())
+        .collect();
+    session.set_mods_enabled(&ids, true).unwrap();
+    ids
+}
+
+fn exported_profile(names: &[&str]) -> (TempDir, PathBuf) {
+    let source_dir = TempDir::new("session-share-export");
+    let game = game_fixture(&source_dir, names);
+    let mut source = Session::initialize(options(&source_dir, Some(&game))).unwrap();
+    let ids = enable_all(&mut source);
+    let profile = source.save_profile(None, "Campaign", ids).unwrap();
+    let file = source_dir.path().join("campaign.wh3mm-profile.json");
+    source.export_profile(&profile.id, &file, "1.0.0").unwrap();
+    (source_dir, file)
+}
+
+#[test]
+fn profile_share_round_trips_across_install_paths() {
+    let source_dir = TempDir::new("session-share-source");
+    let source_game = game_fixture(&source_dir, &["a.pack", "b.pack"]);
+    let mut source = Session::initialize(options(&source_dir, Some(&source_game))).unwrap();
+    let ids = enable_all(&mut source);
+    let saved = source.save_profile(None, "Campaign", ids).unwrap();
+    let file = source_dir.path().join("campaign.wh3mm-profile.json");
+
+    let report = source.export_profile(&saved.id, &file, "1.0.0").unwrap();
+    assert_eq!(report.profile_name, "Campaign");
+    assert_eq!(report.exported_mods, 2);
+    assert_eq!(report.skipped_mods, 0);
+    assert!(!report.replaced_existing);
+
+    let text = fs::read_to_string(&file).unwrap();
+    let absolute = source_game.to_string_lossy().replace('\\', "/");
+    assert!(
+        !text.contains(&absolute),
+        "share file leaked the source install path"
+    );
+    assert!(text.contains("\"format\": \"wh3mm-profile\""));
+    assert!(
+        source
+            .export_profile(&saved.id, &file, "1.0.0")
+            .unwrap()
+            .replaced_existing
+    );
+
+    let error = source
+        .export_profile("unknown-profile", &file, "1.0.0")
+        .unwrap_err();
+    assert_eq!(error.code, ErrorCode::NotFound);
+
+    let target_dir = TempDir::new("session-share-target");
+    let target_game = game_fixture(&target_dir, &["b.pack", "a.pack"]);
+    let mut target = Session::initialize(options(&target_dir, Some(&target_game))).unwrap();
+    let active_before = target.profiles_state().active_profile_id;
+    let target_snapshot = target.snapshot();
+    let target_a = target_snapshot
+        .mods
+        .iter()
+        .find(|module| module.name == "a.pack")
+        .unwrap()
+        .id
+        .clone();
+    let target_b = target_snapshot
+        .mods
+        .iter()
+        .find(|module| module.name == "b.pack")
+        .unwrap()
+        .id
+        .clone();
+
+    match target.import_profile(&file).unwrap() {
+        ImportProfileOutcome::Imported {
+            profile,
+            renamed_from,
+            total_mods,
+        } => {
+            assert_eq!(renamed_from, None);
+            assert_eq!(total_mods, 2);
+            assert_eq!(profile.name, "Campaign");
+            assert_eq!(profile.enabled_mod_ids, vec![target_a, target_b]);
+        }
+        other => panic!("expected an imported profile, got {other:?}"),
+    }
+
+    let after = target.profiles_state();
+    assert_eq!(after.active_profile_id, active_before);
+    assert_eq!(
+        after
+            .profiles
+            .iter()
+            .filter(|profile| profile.name == "Campaign")
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn profile_import_requires_every_mod_and_writes_nothing_otherwise() {
+    let (_source_dir, file) = exported_profile(&["a.pack", "b.pack"]);
+
+    let target_dir = TempDir::new("session-share-incomplete");
+    let target_game = game_fixture(&target_dir, &["a.pack"]);
+    let mut target = Session::initialize(options(&target_dir, Some(&target_game))).unwrap();
+    let config_before = fs::read(target_dir.path().join(CONFIG_FILE)).unwrap();
+    let profiles_before = target.profiles_state();
+
+    match target.import_profile(&file).unwrap() {
+        ImportProfileOutcome::MissingMods {
+            profile_name,
+            total_mods,
+            missing,
+        } => {
+            assert_eq!(profile_name, "Campaign");
+            assert_eq!(total_mods, 2);
+            assert_eq!(missing.len(), 1);
+            assert_eq!(missing[0].pack, "b.pack");
+        }
+        other => panic!("expected missing mods, got {other:?}"),
+    }
+
+    assert_eq!(
+        fs::read(target_dir.path().join(CONFIG_FILE)).unwrap(),
+        config_before,
+        "a blocked import must not rewrite the config"
+    );
+    let after = target.profiles_state();
+    assert_eq!(after.profiles, profiles_before.profiles);
+    assert_eq!(after.active_profile_id, profiles_before.active_profile_id);
+}
+
+#[test]
+fn profile_import_names_a_second_copy_with_a_suffix() {
+    let (_source_dir, file) = exported_profile(&["a.pack"]);
+
+    let target_dir = TempDir::new("session-share-collision");
+    let game = game_fixture(&target_dir, &["a.pack"]);
+    let mut target = Session::initialize(options(&target_dir, Some(&game))).unwrap();
+
+    match target.import_profile(&file).unwrap() {
+        ImportProfileOutcome::Imported {
+            profile,
+            renamed_from,
+            ..
+        } => {
+            assert_eq!(profile.name, "Campaign");
+            assert_eq!(renamed_from, None);
+        }
+        other => panic!("expected an imported profile, got {other:?}"),
+    }
+
+    match target.import_profile(&file).unwrap() {
+        ImportProfileOutcome::Imported {
+            profile,
+            renamed_from,
+            ..
+        } => {
+            assert_eq!(profile.name, "Campaign (imported)");
+            assert_eq!(renamed_from.as_deref(), Some("Campaign"));
+        }
+        other => panic!("expected an imported profile, got {other:?}"),
+    }
+}
+
+#[test]
+fn profile_share_imports_an_empty_profile() {
+    let source_dir = TempDir::new("session-share-vanilla");
+    let game = game_fixture(&source_dir, &["a.pack"]);
+    let mut source = Session::initialize(options(&source_dir, Some(&game))).unwrap();
+    let saved = source.save_profile(None, "Vanilla", Vec::new()).unwrap();
+    let file = source_dir.path().join("vanilla.wh3mm-profile.json");
+    source.export_profile(&saved.id, &file, "1.0.0").unwrap();
+
+    let target_dir = TempDir::new("session-share-vanilla-target");
+    let target_game = game_fixture(&target_dir, &["a.pack"]);
+    let mut target = Session::initialize(options(&target_dir, Some(&target_game))).unwrap();
+
+    match target.import_profile(&file).unwrap() {
+        ImportProfileOutcome::Imported {
+            profile,
+            total_mods,
+            ..
+        } => {
+            assert_eq!(total_mods, 0);
+            assert!(profile.enabled_mod_ids.is_empty());
+            assert_eq!(profile.name, "Vanilla");
+        }
+        other => panic!("expected an imported profile, got {other:?}"),
+    }
+}
+
+#[test]
+fn export_counts_enabled_mods_the_install_cannot_see() {
+    let dir = TempDir::new("session-share-skipped");
+    let game = game_fixture(&dir, &["a.pack"]);
+    let mut source = Session::initialize(options(&dir, Some(&game))).unwrap();
+    let profile = source
+        .save_profile(None, "Partial", vec!["/elsewhere/missing.pack".to_string()])
+        .unwrap();
+    let file = dir.path().join("partial.wh3mm-profile.json");
+
+    let report = source.export_profile(&profile.id, &file, "1.0.0").unwrap();
+
+    assert_eq!(report.exported_mods, 0);
+    assert_eq!(report.skipped_mods, 1);
+}
+
+#[test]
+fn profile_share_requires_a_detected_game() {
+    let dir = TempDir::new("session-share-no-game");
+    let mut session = Session::initialize(options(&dir, None)).unwrap();
+    let file = dir.path().join("profile.wh3mm-profile.json");
+
+    assert_eq!(
+        session
+            .export_profile("profile", &file, "1.0.0")
+            .unwrap_err()
+            .code,
+        ErrorCode::GameNotFound
+    );
+    assert_eq!(
+        session.import_profile(&file).unwrap_err().code,
+        ErrorCode::GameNotFound
     );
 }

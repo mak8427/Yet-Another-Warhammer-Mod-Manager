@@ -2,8 +2,10 @@ import { vi } from 'vitest'
 import type {
   AppInfo,
   ConflictReport,
+  ExportProfileReport,
   GameLocation,
   IpcClient,
+  ImportProfileOutcome,
   LaunchOptions,
   LaunchResult,
   LoadOrderReadReport,
@@ -19,7 +21,7 @@ import type {
 } from '../lib/ipc'
 
 export const APP_INFO: AppInfo = {
-  name: 'WH3 Mod Manager',
+  name: 'Yet Another Warhammer Mod Manager',
   version: '0.1.0',
   coreVersion: '0.1.0',
   platform: 'windows',
@@ -105,6 +107,49 @@ export const PROFILE_CAMPAIGN: Profile = {
 export const PROFILES: ProfilesState = {
   profiles: [PROFILE_DEFAULT, PROFILE_CAMPAIGN],
   activeProfileId: PROFILE_DEFAULT.id,
+}
+
+export const EXPORT_REPORT: ExportProfileReport = {
+  path: 'C:/Users/me/Downloads/Campaign.wh3mm-profile.json',
+  profileName: PROFILE_CAMPAIGN.name,
+  exportedMods: 1,
+  skippedMods: 0,
+  replacedExisting: false,
+}
+
+export const IMPORTED_PROFILE: Profile = {
+  id: 'profile-imported',
+  name: 'Shared profile',
+  enabledModIds: ['mod-b'],
+  createdAt: '2026-10-20T12:00:00Z',
+  updatedAt: '2026-10-20T12:00:00Z',
+}
+
+export const IMPORTED_OUTCOME: ImportProfileOutcome = {
+  status: 'imported',
+  profile: IMPORTED_PROFILE,
+  renamedFrom: null,
+  totalMods: 1,
+}
+
+export const MISSING_OUTCOME: ImportProfileOutcome = {
+  status: 'missingMods',
+  profileName: PROFILE_CAMPAIGN.name,
+  totalMods: 2,
+  missing: [
+    {
+      pack: 'missing.pack',
+      name: 'Missing Mod',
+      workshopId: '2921395471',
+      url: 'https://steamcommunity.com/sharedfiles/filedetails/?id=2921395471',
+    },
+    {
+      pack: 'local_missing.pack',
+      name: null,
+      workshopId: null,
+      url: null,
+    },
+  ],
 }
 
 export const TAGS: Tag[] = [
@@ -228,6 +273,8 @@ export function makeClient(overrides: Partial<IpcClient> = {}): IpcClient {
     duplicateProfile: vi.fn(async () => PROFILE_CAMPAIGN),
     deleteProfile: vi.fn(async () => PROFILES),
     applyProfile: vi.fn(async () => makeSnapshot([])),
+    exportProfile: vi.fn(async () => EXPORT_REPORT),
+    importProfile: vi.fn(async () => IMPORTED_OUTCOME),
     listTags: vi.fn(async () => TAGS),
     createTag: vi.fn(async () => TAGS),
     deleteTag: vi.fn(async () => TAGS),
