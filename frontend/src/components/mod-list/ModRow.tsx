@@ -1,4 +1,4 @@
-import type { MouseEvent as ReactMouseEvent } from 'react'
+import { memo, useCallback, type MouseEvent as ReactMouseEvent } from 'react'
 import {
   fileUrl,
   type ConflictModSummary,
@@ -28,7 +28,7 @@ export interface ModRowProps {
   registerRow: (modId: string, element: HTMLDivElement | null) => void
 }
 
-export function ModRow({
+export const ModRow = memo(function ModRow({
   mod,
   selected,
   focused,
@@ -48,6 +48,10 @@ export function ModRow({
   onDragEnd,
   registerRow,
 }: ModRowProps) {
+  const rowRef = useCallback(
+    (element: HTMLDivElement | null) => registerRow(mod.id, element),
+    [mod.id, registerRow],
+  )
   const tags = mod.tags.map((id) => tagsById.get(id)).filter((tag): tag is Tag => Boolean(tag))
   const visibleTags = tags.slice(0, 2)
   const extraTags = tags.length - visibleTags.length
@@ -81,7 +85,7 @@ export function ModRow({
       style={{ height: rowHeight, gridTemplateColumns: columns }}
       tabIndex={focused ? 0 : -1}
       data-mod-id={mod.id}
-      ref={(element) => registerRow(mod.id, element)}
+      ref={rowRef}
       onClick={(event) => onSelect(mod.id, event)}
       onDoubleClick={() => onInspect(mod.id)}
       onContextMenu={(event) => {
@@ -209,7 +213,7 @@ export function ModRow({
       </span>
     </div>
   )
-}
+})
 
 function initials(value: string): string {
   const words = value.replace(/[_-]+/g, ' ').split(/\s+/).filter(Boolean)

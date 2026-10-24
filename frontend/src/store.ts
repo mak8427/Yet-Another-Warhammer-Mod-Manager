@@ -29,6 +29,37 @@ export type SortMode = 'load-order' | 'name' | 'updated'
 export type SelectMode = 'single' | 'toggle' | 'range'
 export type MoveTarget = 'up' | 'down' | 'top' | 'bottom'
 
+interface ModEdit {
+  apply: (snapshot: ModListSnapshot) => ModListSnapshot
+  save: () => Promise<ModListSnapshot>
+  resolve: () => void
+}
+
+function withEnabledOrder(snapshot: ModListSnapshot, enabledIds: string[]): ModListSnapshot {
+  const byId = new Map(snapshot.mods.map((mod) => [mod.id, mod]))
+  const enabled = new Set(enabledIds)
+  const ordered = enabledIds.flatMap((id) => {
+    const mod = byId.get(id)
+    return mod ? [mod] : []
+  })
+  const disabled = snapshot.mods.filter((mod) => !enabled.has(mod.id))
+  disabled.sort((left, right) => {
+    const leftName = left.name.toLowerCase()
+    const rightName = right.name.toLowerCase()
+    return leftName < rightName ? -1 : leftName > rightName ? 1 : left.id.localeCompare(right.id)
+  })
+  return {
+    ...snapshot,
+    enabledCount: ordered.length,
+    mods: [...ordered, ...disabled].map((mod, loadOrder) => {
+      const isEnabled = enabled.has(mod.id)
+      return mod.loadOrder === loadOrder && mod.isEnabled === isEnabled
+        ? mod
+        : { ...mod, loadOrder, isEnabled }
+    }),
+  }
+}
+
 export interface Notice {
   kind: 'info' | 'success' | 'warning' | 'error'
   message: string
@@ -113,9 +144,10 @@ function initialState(): AppState {
   }
 }
 
-export function visibleMods(state: AppState): ModSummary[] {
+export function visibleMods(state: Pick<AppState, 'snapshot' | 'query' | 'activeTagIds' | 'sort'>): ModSummary[] {
   const mods = state.snapshot?.mods ?? []
   const query = state.query.trim().toLowerCase()
+  if (query === '' && state.activeTagIds.length === 0 && state.sort === 'load-order') return mods
   const filtered = mods.filter((mod) => {
     if (state.activeTagIds.length > 0) {
       const tags = new Set(mod.tags)
@@ -161,6 +193,8 @@ export class AppStore {
   private initPromise: Promise<void> | null = null
   private scrollTimer: ReturnType<typeof setTimeout> | null = null
   private pendingScrollTop = 0
+  private readonly modEdits: ModEdit[] = []
+  private conflictRefreshPending = false
 
   constructor(client: IpcClient = ipc) {
     this.client = client
@@ -182,6 +216,9 @@ export class AppStore {
   }
 
   reset(): void {
+    for (const edit of this.modEdits) edit.resolve()
+    this.modEdits.length = 0
+    this.conflictRefreshPending = false
     if (this.scrollTimer) clearTimeout(this.scrollTimer)
     this.scrollTimer = null
     this.initialized = false
@@ -330,7 +367,12 @@ export class AppStore {
   }
 
   async refreshConflicts(): Promise<void> {
-    if (this.state.status !== 'ready' || this.state.conflictLoading) return
+    if (this.state.status !== 'ready') return
+    if (this.state.conflictLoading || this.modEdits.length > 0) {
+      this.conflictRefreshPending = true
+      return
+    }
+    this.conflictRefreshPending = false
     this.set({ conflictLoading: true, conflictError: null })
     try {
       const conflicts = await this.client.getConflicts()
@@ -338,6 +380,7 @@ export class AppStore {
     } catch (cause) {
       this.set({ conflictLoading: false, conflictError: toIpcError(cause) })
     }
+    if (this.conflictRefreshPending && this.modEdits.length === 0) void this.refreshConflicts()
   }
 
   async refreshWorkshop(): Promise<void> {
@@ -415,23 +458,83 @@ export class AppStore {
   async toggleMod(modId: string): Promise<void> {
     const mod = this.state.snapshot?.mods.find((item) => item.id === modId)
     if (!mod) return
-    await this.updateSnapshot(mod.isEnabled ? 'Disabling' : 'Enabling', () =>
-      this.client.setModEnabled(modId, !mod.isEnabled),
-    )
+    await this.editEnabled([modId], !mod.isEnabled, true)
   }
 
   async setModsEnabled(modIds: string[], enabled: boolean): Promise<void> {
     if (modIds.length === 0) return
-    await this.updateSnapshot(enabled ? 'Enabling' : 'Disabling', () =>
-      this.client.setModsEnabled(modIds, enabled),
+    await this.editEnabled(modIds, enabled)
+  }
+
+  private editEnabled(modIds: string[], enabled: boolean, single = false): Promise<void> {
+    const selected = new Set(modIds)
+    return this.enqueueModEdit(
+      (snapshot) => {
+        const enabledIds = snapshot.mods.filter((mod) => mod.isEnabled).map((mod) => mod.id)
+        const alreadyEnabled = new Set(enabledIds)
+        const next = enabled
+          ? [...enabledIds, ...[...selected].filter((id) => !alreadyEnabled.has(id))]
+          : enabledIds.filter((id) => !selected.has(id))
+        return withEnabledOrder(snapshot, next)
+      },
+      () => single
+        ? this.client.setModEnabled(modIds[0], enabled)
+        : this.client.setModsEnabled(modIds, enabled),
     )
+  }
+
+  private enqueueModEdit(
+    apply: ModEdit['apply'],
+    save: ModEdit['save'],
+  ): Promise<void> {
+    const previous = this.state.snapshot
+    if (!previous) return Promise.resolve()
+    const wasEmpty = this.modEdits.length === 0
+    const completion = new Promise<void>((resolve) => {
+      this.modEdits.push({ apply, save, resolve })
+    })
+    const wasDirty = this.state.dirty
+    this.set({ snapshot: apply(previous), busy: 'Saving mods', dirty: true })
+    if (wasEmpty) void this.saveModEdits(previous, wasDirty)
+    return completion
+  }
+
+  private async saveModEdits(confirmed: ModListSnapshot, dirty: boolean): Promise<void> {
+    const completed: ModEdit[] = []
+    while (this.modEdits.length > 0) {
+      const edit = this.modEdits[0]
+      try {
+        const saved = await edit.save()
+        if (this.modEdits[0] !== edit) {
+          for (const finished of completed) finished.resolve()
+          return
+        }
+        confirmed = saved
+        dirty = true
+      } catch (cause) {
+        if (this.modEdits[0] !== edit) {
+          for (const finished of completed) finished.resolve()
+          return
+        }
+        this.set({ error: toIpcError(cause) })
+      }
+      this.modEdits.shift()
+      completed.push(edit)
+      const snapshot = this.modEdits.reduce((current, pending) => pending.apply(current), confirmed)
+      this.set({ snapshot, dirty: dirty || this.modEdits.length > 0 })
+    }
+    this.set({ busy: null })
+    void this.refreshProfiles()
+    void this.refreshConflicts()
+    for (const edit of completed) edit.resolve()
   }
 
   async moveSelection(target: MoveTarget): Promise<void> {
     const snapshot = this.state.snapshot
     if (!snapshot) return
     const enabled = snapshot.mods.filter((mod) => mod.isEnabled).map((mod) => mod.id)
-    const selected = enabled.filter((id) => this.state.selection.includes(id))
+    const selectedIds = new Set(this.state.selection)
+    const selected = enabled.filter((id) => selectedIds.has(id))
     if (selected.length === 0) return
     const next = moveEnabled(enabled, selected, target)
     if (next.join('\u0000') === enabled.join('\u0000')) return
@@ -439,8 +542,13 @@ export class AppStore {
   }
 
   async setLoadOrder(orderedModIds: string[]): Promise<void> {
-    await this.updateSnapshot('Saving load order', () =>
-      this.client.setLoadOrder(orderedModIds),
+    const snapshot = this.state.snapshot
+    if (!snapshot) return
+    const enabled = snapshot.mods.filter((mod) => mod.isEnabled).map((mod) => mod.id)
+    if (enabled.length === orderedModIds.length && enabled.every((id, index) => id === orderedModIds[index])) return
+    await this.enqueueModEdit(
+      (current) => withEnabledOrder(current, orderedModIds),
+      () => this.client.setLoadOrder(orderedModIds),
     )
   }
 
@@ -448,7 +556,8 @@ export class AppStore {
     const snapshot = this.state.snapshot
     if (!snapshot) return
     const enabled = snapshot.mods.filter((mod) => mod.isEnabled).map((mod) => mod.id)
-    const dragged = new Set(draggedIds.filter((id) => enabled.includes(id)))
+    const enabledSet = new Set(enabled)
+    const dragged = new Set(draggedIds.filter((id) => enabledSet.has(id)))
     if (dragged.size === 0) return
     if (targetId && dragged.has(targetId)) return
     const remaining = enabled.filter((id) => !dragged.has(id))

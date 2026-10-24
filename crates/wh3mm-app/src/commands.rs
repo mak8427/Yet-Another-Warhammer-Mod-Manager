@@ -194,7 +194,7 @@ impl Manager {
     }
 
     pub fn get_conflicts(&self) -> Result<ConflictReport, AppError> {
-        self.with(|session| session.conflict_report())?
+        self.with(|session| session.conflict_scan())??.compute()
     }
 
     pub fn list_workshop_items(&self) -> Result<Vec<WorkshopItem>, AppError> {
@@ -579,6 +579,18 @@ mod tests {
         assert_eq!(report.conflicts.len(), 1);
         assert_eq!(report.conflicts[0].winner_mod_id, ids[2]);
         assert_eq!(report.conflicts[0].loser_mod_ids.len(), 2);
+
+        let scan = manager
+            .with(|session| session.conflict_scan())
+            .unwrap()
+            .unwrap();
+        let reversed: Vec<String> = ids.iter().rev().cloned().collect();
+        manager.set_load_order(reversed).unwrap();
+        assert_eq!(scan.compute().unwrap().conflicts[0].winner_mod_id, ids[2]);
+        assert_eq!(
+            manager.get_conflicts().unwrap().conflicts[0].winner_mod_id,
+            ids[0]
+        );
 
         let error = manager.list_workshop_items().unwrap_err();
         assert_eq!(error.code, ErrorCode::SteamNotFound);

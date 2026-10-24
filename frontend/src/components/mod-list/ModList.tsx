@@ -228,23 +228,41 @@ export function ModList({
     flashAndAnnounce(focused.id, position)
   }
 
-  const handleReorder = async (dragged: string[], targetId: string | null) => {
+  const handleReorder = useCallback(async (dragged: string[], targetId: string | null) => {
     const moved = dragged[0]
-    await onReorder(dragged, targetId)
+    const saving = onReorder(dragged, targetId)
     if (moved) {
       const position = targetId ? mods.findIndex((mod) => mod.id === targetId) + 1 : mods.length
       flashAndAnnounce(moved, Math.max(1, position))
     }
-  }
+    await saving
+  }, [onReorder, mods, flashAndAnnounce])
 
-  const openMenuAt = (modId: string, x: number, y: number) => {
+  const openMenuAt = useCallback((modId: string, x: number, y: number) => {
     setFocusedId(modId)
     setMenu({
       modId,
       x: Math.min(x, window.innerWidth - MENU_WIDTH - 8),
       y: Math.min(y, window.innerHeight - MENU_HEIGHT - 8),
     })
-  }
+  }, [])
+
+  const handleDragStart = useCallback((modId: string) => {
+    const enabledIds = new Set(mods.filter((mod) => mod.isEnabled).map((mod) => mod.id))
+    const ids = selectedSet.has(modId) ? selection.filter((id) => enabledIds.has(id)) : [modId]
+    setDraggedIds(ids.length > 0 ? ids : [modId])
+  }, [mods, selectedSet, selection])
+
+  const handleDragEnd = useCallback(() => {
+    setDraggedIds([])
+    setDropTarget(null)
+  }, [])
+
+  const handleDropRow = useCallback((targetId: string) => {
+    if (draggedIds.length > 0) void handleReorder(draggedIds, targetId)
+    setDraggedIds([])
+    setDropTarget(null)
+  }, [draggedIds, handleReorder])
 
   const runMenuAction = (action: MenuAction) => {
     if (!menu) return
@@ -444,23 +462,10 @@ export function ModList({
                   onSelect={handleSelect}
                   onInspect={onInspect}
                   onOpenMenu={openMenuAt}
-                  onDragStart={(modId) => {
-                    const ids =
-                      selectedSet.has(modId) && selection.length > 0
-                        ? selection.filter((id) => mods.find((item) => item.id === id)?.isEnabled)
-                        : [modId]
-                    setDraggedIds(ids.length > 0 ? ids : [modId])
-                  }}
+                  onDragStart={handleDragStart}
                   onDragOverRow={setDropTarget}
-                  onDropRow={(targetId) => {
-                    if (draggedIds.length > 0) void handleReorder(draggedIds, targetId)
-                    setDraggedIds([])
-                    setDropTarget(null)
-                  }}
-                  onDragEnd={() => {
-                    setDraggedIds([])
-                    setDropTarget(null)
-                  }}
+                  onDropRow={handleDropRow}
+                  onDragEnd={handleDragEnd}
                   registerRow={registerRow}
                 />
               </div>

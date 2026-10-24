@@ -1,9 +1,24 @@
-import { useMemo } from 'react'
+import { useMemo, type ComponentProps } from 'react'
 import { store, visibleMods, type AppState } from '../../store'
 import { LoadOrderBanner } from '../load-order/LoadOrderBanner'
 import { ModInspector } from './ModInspector'
 import { ModList } from './ModList'
 import { ModToolbar } from './ModToolbar'
+
+const modListActions = {
+  onToggle: (id) => void store.toggleMod(id),
+  onSelect: (id, mode) => store.select(id, mode),
+  onSelectAll: () => store.selectAllVisible(),
+  onClearSelection: () => store.clearSelection(),
+  onInspect: (id) => {
+    store.select(id, 'single')
+    store.openInspector()
+  },
+  onMove: (target) => void store.moveSelection(target),
+  onSort: (sort) => store.setSort(sort),
+  onReorder: (dragged, target) => store.reorder(dragged, target),
+  onScrollTop: (top) => store.noteScroll(top),
+} satisfies Partial<ComponentProps<typeof ModList>>
 
 interface ModsScreenProps {
   state: AppState
@@ -12,7 +27,11 @@ interface ModsScreenProps {
 export function ModsScreen({ state }: ModsScreenProps) {
   const snapshot = state.snapshot
 
-  const visible = useMemo(() => visibleMods(state), [state])
+  const { query, activeTagIds, sort } = state
+  const visible = useMemo(
+    () => visibleMods({ snapshot, query, activeTagIds, sort }),
+    [snapshot, query, activeTagIds, sort],
+  )
   const selectedMods = useMemo(() => {
     const selected = new Set(state.selection)
     return (snapshot?.mods ?? []).filter((mod) => selected.has(mod.id))
@@ -103,18 +122,7 @@ export function ModsScreen({ state }: ModsScreenProps) {
           emptyTitle={emptyTitle}
           emptyMessage={emptyMessage}
           emptyAction={emptyAction}
-          onToggle={(id) => void store.toggleMod(id)}
-          onSelect={(id, mode) => store.select(id, mode)}
-          onSelectAll={() => store.selectAllVisible()}
-          onClearSelection={() => store.clearSelection()}
-          onInspect={(id) => {
-            store.select(id, 'single')
-            store.openInspector()
-          }}
-          onMove={(target) => void store.moveSelection(target)}
-          onSort={(sort) => store.setSort(sort)}
-          onReorder={(dragged, target) => store.reorder(dragged, target)}
-          onScrollTop={(top) => store.noteScroll(top)}
+          {...modListActions}
         />
         <ModInspector
           selectedMods={selectedMods}
