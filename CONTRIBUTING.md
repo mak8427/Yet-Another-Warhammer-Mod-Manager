@@ -69,10 +69,12 @@ pnpm lint
 pnpm test
 ```
 
-If the Tauri layer changed, also build the Windows shell: `pnpm build`, then
-`cargo build -p wh3mm-app --release` on Windows, or dispatch the `CI` workflow
-with `run_windows` enabled. The Windows job is manual on purpose; the Linux
-jobs are the required PR gates.
+`pnpm build` is required before any workspace-wide cargo command on every
+supported OS, because `generate_context!` embeds `frontend/dist` at compile
+time. If the Tauri layer changed, also build the desktop shell:
+`cargo build -p wh3mm-app --release` on Windows or Linux, or dispatch the `CI`
+workflow with `run_windows` enabled for the manual Windows compile check. The
+Windows job is manual on purpose; the Linux jobs are the required PR gates.
 
 For performance work, follow [docs/PERF.md](docs/PERF.md). The release-time
 gate is:
