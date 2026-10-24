@@ -2626,10 +2626,6 @@ input[aria-invalid='true'] {
   text-transform: uppercase;
 }
 
-.btn-large {
-  font-size: var(--text-xs);
-}
-
 .btn-primary {
   border-color: var(--color-action-primary-border);
   background: var(--color-action-primary-bg);
