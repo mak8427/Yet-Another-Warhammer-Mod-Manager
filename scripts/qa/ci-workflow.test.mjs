@@ -19,6 +19,20 @@ test('CI and packaging avoid duplicate branch-push runs for pull requests', () =
   }
 })
 
+test('test-only frontend changes do not rebuild Linux installers', () => {
+  const packages = parse(readFileSync(join(repoRoot, '.github/workflows/linux-packages.yml'), 'utf8'))
+  for (const event of ['push', 'pull_request']) {
+    const paths = packages.on[event].paths
+    assert.ok(paths.includes('frontend/**'), 'production frontend changes must still build packages')
+    for (const excluded of [
+      '!frontend/**/*.test.ts', '!frontend/**/*.test.tsx', '!frontend/**/*.bench.tsx',
+      '!frontend/src/test/**', '!frontend/vite.perf.config.ts',
+    ]) {
+      assert.ok(paths.indexOf(excluded) > paths.indexOf('frontend/**'), excluded)
+    }
+  }
+})
+
 test('frontend behavior checks run without waiting for a desktop build', () => {
   const frontend = workflow.jobs.frontend
   assert.ok(frontend, 'frontend checks need an independent job')
