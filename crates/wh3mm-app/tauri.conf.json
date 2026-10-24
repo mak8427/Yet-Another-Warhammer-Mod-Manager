@@ -62,6 +62,14 @@
           "libayatana-appindicator3-1",
           "librsvg2-2"
         ]
+      },
+      "rpm": {
+        "depends": [
+          "libwebkit2gtk-4.1.so.0()(64bit)",
+          "libgtk-3.so.0()(64bit)",
+          "libayatana-appindicator3.so.1()(64bit)",
+          "librsvg-2.so.2()(64bit)"
+        ]
       }
     }
   }

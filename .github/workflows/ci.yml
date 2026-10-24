@@ -63,6 +63,9 @@ jobs:
             libssl-dev \
             libdbus-1-dev
 
+      - name: Release installer recipe tests
+        run: python3 scripts/qa/install-recipes.test.py
+
       - name: QA fixture integrity
         run: node scripts/qa/generate-fixtures.mjs --verify
 

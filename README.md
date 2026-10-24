@@ -1,51 +1,225 @@
 # WH3 Mod Manager
 
-A fast, dense mod manager for **Total War: Warhammer III**, rebuilt with a Rust
-backend and a TypeScript frontend.
+A mod manager for **Total War: Warhammer III**, built with Rust, Tauri 2,
+React, and TypeScript. Browse installed mods, arrange load orders, switch
+profiles, inspect conflicts, and launch the game with your selected mods.
 
-- Product scope and v1.0 acceptance criteria: [docs/PRODUCT_SCOPE.md](docs/PRODUCT_SCOPE.md)
-- Architecture decisions: [docs/adr/](docs/adr/)
-- QA plan and release gate: [docs/QA_PLAN.md](docs/QA_PLAN.md)
-- Linux manual QA: [docs/MANUAL_QA_LINUX.md](docs/MANUAL_QA_LINUX.md)
-- Capability parity scorecard: [docs/PARITY.md](docs/PARITY.md)
-- Bug report template: [docs/BUG_REPORT_TEMPLATE.md](docs/BUG_REPORT_TEMPLATE.md)
-- Contributing, review gates, and credit: [CONTRIBUTING.md](CONTRIBUTING.md)
-- Legacy reference (Electron, not copied): https://github.com/Shazbot/WH3-Mod-Manager
+[Downloads](https://github.com/mak8427/Warhammer_mod_manager/releases) ·
+[Installation](#downloads--installation) · [Features](#features) ·
+[Build from source](#build-from-source) · [Troubleshooting](docs/TROUBLESHOOTING.md)
 
-## Status
+![WH3 Mod Manager mod list](docs/screenshots/WAR-10/mods__selected-inspector__1920x1080__comfortable.png)
 
-The v1.0 feature set is implemented. The Tauri 2 desktop shell builds and runs
-on Windows and Linux (native Steam/Proton); macOS is not supported. On Windows
-the manager starts `Warhammer3.exe` directly instead of going through Steam's
-`-applaunch` path, so the Creative Assembly launcher cannot replace the applied
-`used_mods.txt`; Steam must be running for Steamworks and Workshop content.
-Current progress and evidence live in [docs/STATUS.md](docs/STATUS.md).
+## Downloads & installation
 
-## Layout
+[GitHub Releases](https://github.com/mak8427/Warhammer_mod_manager/releases)
+is the download location. Draft releases are visible only to maintainers. If
+there is no public release yet, use [the source build](#build-from-source).
+The table describes the formats built by the release workflows; it does not
+mean an unpublished release or an update repository is already available.
 
+| Platform | Installation formats | Architecture |
+|---|---|---|
+| Windows 10/11 | Per-user `.exe` installer | x86_64 |
+| Linux | Flatpak, `.deb`, `.rpm`, AppImage, Arch package, portable tarball | x86_64 |
+| Linux with Nix or Gentoo | Hash-pinned Nix flake archive or Gentoo binary overlay archive | x86_64 / amd64 |
+
+macOS and ARM packages are not supported. Linux game launching requires native
+Steam, Proton, an existing game prefix, and the Steam Linux Runtime. Start the
+game through Steam with Proton once before using the manager. **Installing the
+manager as a Flatpak does not add support for Flatpak or Snap Steam.**
+
+### Linux: Flatpak
+
+Download `wh3mm-linux-x86_64.flatpak` from a public release. Install the Flathub
+runtime remote if it is not configured, then install and run the bundle:
+
+```bash
+flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+flatpak install --user ./wh3mm-linux-x86_64.flatpak
+flatpak run com.warhammerlabs.wh3mm
 ```
-crates/wh3mm-core/   pure domain logic (no Tauri/WebView; testable on Linux)
-crates/wh3mm-app/    Tauri 2 command layer and `wh3mm` binary (Windows + Linux)
-frontend/            React + TypeScript + Vite UI
-docs/adr/            architecture decisions
-fixtures/            synthetic QA fixtures (see fixtures/README.md)
-scripts/qa/          deterministic fixture generator
+
+This bundles the app against the GNOME runtime; no Rust, Node, or system
+WebKitGTK installation is needed. The manager needs read/write access to Steam
+libraries and permission to start host processes for Steam/Proton. These are
+broad permissions: this package is not a strong isolation boundary for game files.
+See [Flatpak permissions and updates](docs/INSTALLATION.md#flatpak).
+
+An offline bundle alone does not configure automatic app updates. The signed
+Flatpak update remote is enabled through the repository publication process below.
+This project is not listed on Flathub.
+
+### Linux: Debian / Ubuntu
+
+Download the `.deb`, then install it with apt so runtime dependencies are resolved:
+
+```bash
+sudo apt install ./wh3mm_1.0.0_amd64.deb
+wh3mm
 ```
 
-The frontend never touches the filesystem. All game, Steam, pack, and state
-operations go through typed Tauri commands mirrored in
-`frontend/src/lib/ipc.ts` (contract: [ADR-002](docs/adr/002-ipc-contract.md)).
+Examples use `1.0.0`; use the version and filename you downloaded. Native
+binaries are built on Ubuntu 24.04 and require glibc 2.39 or newer plus WebKitGTK
+4.1. Older distributions should use Flatpak.
 
-## Prerequisites
+### Linux: Fedora / openSUSE
 
-### Rust (all platforms)
+Download `wh3mm-<version>-1.x86_64.rpm`, then:
+
+```bash
+# Fedora
+sudo dnf install ./wh3mm-1.0.0-1.x86_64.rpm
+
+# openSUSE Tumbleweed
+sudo zypper install ./wh3mm-1.0.0-1.x86_64.rpm
+
+wh3mm
+```
+
+The release RPM declares shared-library dependencies for both distributions.
+Direct release RPMs have a SHA-256 checksum; repository-distributed RPMs also
+receive a GPG signature. See [verification](docs/INSTALLATION.md#verify-downloads)
+if your package manager requires a signature for a direct download.
+
+### Linux: Arch / pacman
+
+Download the prebuilt Arch package and install it with pacman:
+
+```bash
+sudo pacman -U ./wh3mm-bin-1.0.0-1-x86_64.pkg.tar.zst
+wh3mm
+```
+
+Releases also include `PKGBUILD` and `.SRCINFO` for `makepkg -si`. No AUR listing
+is assumed. `pacman -S wh3mm-bin` requires the signed update repository to be
+configured first.
+
+### Linux: signed update repositories
+
+The repository publisher builds signed **apt, dnf, zypper, pacman, and Flatpak**
+repositories after a release is published. **Public hosting and a persistent
+signing key must be activated by the maintainer before these commands are usable.**
+Until activation, use the downloadable packages above. The setup and activation
+instructions are in [the installation guide](docs/INSTALLATION.md#signed-update-repositories).
+
+After configuring the published repository:
+
+```bash
+sudo apt update && sudo apt install wh3-mod-manager  # Debian / Ubuntu
+sudo dnf install wh3-mod-manager                    # Fedora
+sudo zypper refresh && sudo zypper install wh3-mod-manager  # openSUSE
+sudo pacman -Syu wh3mm-bin                           # Arch
+flatpak update                                     # Flatpak remote installs
+```
+
+Normal system updates then update the manager. The repository setup script
+verifies the pinned GPG fingerprint before changing package-manager configuration.
+
+### Linux: Nix
+
+Download `wh3mm-nix-<version>.tar.gz` from the same release. This contains a
+flake and binary derivation pinned to that release tarball's SHA-256:
+
+```bash
+tar -xzf wh3mm-nix-1.0.0.tar.gz
+nix run ./wh3mm-nix-1.0.0
+nix profile install ./wh3mm-nix-1.0.0
+```
+
+Enable Nix's `nix-command` and `flakes` features. Updates use a new release recipe;
+there is no in-app updater. NixOS game launching additionally needs an FHS
+Steam environment; see [Nix details](docs/INSTALLATION.md#nix).
+
+### Linux: Gentoo
+
+Download `wh3mm-gentoo-<version>.tar.gz`, extract the included local overlay, and
+register it with Portage. Then:
+
+```bash
+sudo emerge --ask games-util/wh3mm-bin
+```
+
+The recipe installs the release binary and provides a checksum Manifest. It needs
+amd64, glibc 2.39+, and the declared GTK/WebKit dependencies. Follow the complete
+[overlay setup instructions](docs/INSTALLATION.md#gentoo) before running emerge.
+
+### Linux: AppImage / portable tarball
+
+```bash
+chmod +x wh3mm_1.0.0_amd64.AppImage
+./wh3mm_1.0.0_amd64.AppImage
+
+# Or extract the portable archive:
+tar -xzf wh3mm-1.0.0-linux-x86_64.tar.gz
+./wh3mm-1.0.0-linux-x86_64/wh3mm
+```
+
+These formats need host WebKitGTK 4.1 and GTK3 libraries. AppImage also needs
+FUSE 2, or `APPIMAGE_EXTRACT_AND_RUN=1`. See
+[runtime dependency commands](docs/INSTALLATION.md#appimage-and-tarball).
+Updates require downloading a new release.
+
+### Windows
+
+Download and run the `*-setup.exe` installer from Releases. It installs for the
+current user and can download WebView2 if needed. The installer is unsigned;
+verify its checksum before running it. Steam must be running for game launching
+and Workshop content. The manager starts `Warhammer3.exe` directly to protect
+the applied `used_mods.txt` from the Creative Assembly launcher.
+
+### Verify downloads
+
+Download `SHA256SUMS.txt` beside your chosen assets, then:
+
+```bash
+sha256sum --ignore-missing -c SHA256SUMS.txt
+```
+
+Every downloaded asset checked must show `OK`. On Windows use `Get-FileHash`
+and compare with the matching entry. See [verification and removal](docs/INSTALLATION.md).
+
+## Features
+
+- Scan game and Workshop mods; filter, tag, enable, and arrange load order.
+- Save profiles and switch between mod configurations.
+- Inspect pack conflicts and missing or disabled dependencies.
+- Write load orders atomically with backup and recovery.
+- Open Workshop pages through Steam; subscription changes stay in the Steam client.
+- Launch directly on Windows and through Proton on Linux, with load-order protection.
+- Choose compact, comfortable, or roomy list density.
+
+The current feature status and accepted limitations are recorded in
+[STATUS](docs/STATUS.md), [product scope](docs/PRODUCT_SCOPE.md), and the
+[capability parity scorecard](docs/PARITY.md).
+
+## Architecture
+
+```text
+crates/wh3mm-core/   Domain logic, Steam discovery, packs, profiles, launch
+crates/wh3mm-app/    Tauri 2 shell and typed command layer
+frontend/           React + TypeScript + Vite interface
+packaging/          Linux installers, Flatpak, recipes, signed repositories
+docs/               Architecture decisions, QA, release and developer guides
+```
+
+The frontend accesses files through typed Tauri commands. The core remains
+independent of the UI and can be tested without a desktop. The legacy
+[WH3 Mod Manager](https://github.com/Shazbot/WH3-Mod-Manager) is a capability
+reference; this repository uses a Rust backend and Tauri shell.
+
+## Build from source
+
+### Prerequisites
+
+#### Rust (all platforms)
 
 Install Rust **stable** with [rustup](https://rustup.rs/). `rust-toolchain.toml`
 selects the stable channel and the `rustfmt` and `clippy` components, and
 `Cargo.toml` requires Rust 1.90 or newer. Rustup installs the pinned components
 the first time `cargo` runs in this repository.
 
-### Node.js and pnpm (all platforms)
+#### Node.js and pnpm (all platforms)
 
 - Node.js **24.x** (the repository requires `>=24.15.0`; CI uses Node 24).
 - pnpm **12.14.0**, pinned in `package.json` as `packageManager`.
@@ -60,7 +234,7 @@ corepack prepare pnpm@12.14.0 --activate
 If Corepack is not bundled with your Node distribution, install the same
 version globally with `npm install -g pnpm@12.14.0`.
 
-### Windows (desktop shell)
+#### Windows (desktop shell)
 
 - Windows 10 or 11.
 - Microsoft C++ Build Tools with the **Desktop development with C++** workload
@@ -69,7 +243,7 @@ version globally with `npm install -g pnpm@12.14.0`.
 - WebView2 Runtime. It ships with Windows 11 and current Windows 10; otherwise
   install the Evergreen runtime from Microsoft.
 
-### Linux (desktop shell)
+#### Linux (desktop shell)
 
 The Tauri shell builds and runs on Linux against native Steam and Proton
 installs. On Linux the game is started through Proton directly, using the
@@ -186,8 +360,8 @@ serve the embedded frontend instead of the Vite dev server.
 
 On Linux, `cargo build -p wh3mm-app --release --locked` produces
 `target/release/wh3mm`. The binary embeds the frontend and requires the
-WebKitGTK 4.1 runtime at run time. CI uploads the same binary as the
-`wh3mm-linux-x64` artifact; there is no Linux installer yet.
+WebKitGTK 4.1 runtime. Release workflows package it as described above;
+see [the release guide](docs/RELEASE.md) to reproduce those packages.
 
 Use `cargo test -p wh3mm-core --locked` and `pnpm dev` for headless work.
 
@@ -209,6 +383,6 @@ Use `cargo test -p wh3mm-core --locked` and `pnpm dev` for headless work.
 ## CI
 
 CI runs all Linux gates plus a Linux Tauri shell build and binary artifact on
-every push and pull request. The Windows Tauri build job is manual
-(`workflow_dispatch`) until packaging lands in M5. See
+every push and pull request. The standalone Windows Tauri check is manual (`workflow_dispatch`); the
+release workflow also builds the Windows installer. See
 `.github/workflows/ci.yml`.

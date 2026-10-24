@@ -100,9 +100,10 @@ format.
 - **Bundle WebKitGTK into the tarball/AppImage.** Rejected: licensing, size, and
   the distro-specific plugin paths make this a maintenance trap; the `.deb`
   dependency path is the supported way to get WebKitGTK.
-- **Publish a signed apt/dnf/pacman repository now.** Out of scope (WAR-149).
-- **Add Flatpak.** Out of scope (WAR-143); it has a separate sandbox and runtime
-  decision.
+- **Publish a signed apt/dnf/pacman repository now.** Originally deferred
+  (WAR-149); the implementation is extended by [ADR-012](012-linux-distribution.md).
+- **Add Flatpak.** Originally deferred (WAR-143); the sandbox/runtime decision
+  and host launch boundary are now recorded in ADR-012.
 
 ## Consequences
 
@@ -116,5 +117,6 @@ format.
 - The `Linux packaging` workflow duplicates part of the Linux quality gates.
   That is deliberate: a release job must be self-contained and the Arch job
   proves the toolchain works on Arch, not only on Ubuntu.
-- Signed package repositories, Flatpak, and a README rewrite stay separate tasks
-  (WAR-149, WAR-143, WAR-148).
+- Signed repositories, Flatpak, RPM, binary Nix/Gentoo recipes, and the README
+  installation section are extended by ADR-012. Public hosting/signing activation
+  remains distinct from implementing those formats.

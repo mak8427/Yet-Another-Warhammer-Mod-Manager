@@ -1,0 +1,27 @@
+{ pkgs ? import <nixpkgs> {} }:
+pkgs.stdenv.mkDerivation {
+  pname = "wh3mm-bin";
+  version = "@VERSION@";
+  src = pkgs.fetchurl {
+    url = "@URL@";
+    sha256 = "@SHA256@";
+  };
+  nativeBuildInputs = [ pkgs.autoPatchelfHook pkgs.wrapGAppsHook3 ];
+  buildInputs = [ pkgs.webkitgtk_4_1 pkgs.gtk3 pkgs.libayatana-appindicator pkgs.librsvg pkgs.openssl pkgs.stdenv.cc.cc.lib ];
+  dontBuild = true;
+  installPhase = ''
+    runHook preInstall
+    install -Dm755 wh3mm $out/bin/wh3mm
+    install -Dm644 wh3mm.desktop $out/share/applications/wh3mm.desktop
+    install -Dm644 wh3mm.png $out/share/icons/hicolor/128x128/apps/wh3mm.png
+    runHook postInstall
+  '';
+  meta = {
+    description = "Mod manager for Total War: Warhammer III";
+    homepage = "https://github.com/mak8427/Warhammer_mod_manager";
+    license = pkgs.lib.licenses.mit;
+    platforms = [ "x86_64-linux" ];
+    mainProgram = "wh3mm";
+    sourceProvenance = [ pkgs.lib.sourceTypes.binaryNativeCode ];
+  };
+}

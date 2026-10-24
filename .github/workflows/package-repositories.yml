@@ -1,0 +1,77 @@
+name: Publish signed package repositories
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Published release tag to distribute (vX.Y.Z)'
+        required: true
+        type: string
+
+concurrency:
+  group: package-repositories
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  stage:
+    name: Sign and stage repositories
+    runs-on: ubuntu-24.04
+    environment: package-repositories
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install repository tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y apt-utils createrepo-c rpm pacman-package-manager makepkg libarchive-tools flatpak ostree zstd
+      - name: Download published release and verify checksums
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = false
+          gh release download "$RELEASE_TAG" --dir assets
+          (cd assets && sha256sum --strict -c SHA256SUMS.txt)
+      - name: Import signing key and build repositories
+        shell: bash
+        env:
+          REPOSITORY_SIGNING_KEY: ${{ secrets.REPOSITORY_SIGNING_KEY }}
+          SIGNING_KEY: ${{ vars.REPOSITORY_KEY_FINGERPRINT }}
+          BASE_URL: ${{ vars.PACKAGE_REPOSITORY_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$REPOSITORY_SIGNING_KEY"
+          export GNUPGHOME="$RUNNER_TEMP/wh3mm-signing"
+          install -d -m700 "$GNUPGHOME"
+          trap 'gpgconf --kill gpg-agent; rm -rf "$GNUPGHOME"' EXIT
+          printf '%s' "$REPOSITORY_SIGNING_KEY" | gpg --batch --import
+          unset REPOSITORY_SIGNING_KEY
+          bash packaging/repositories/build.sh assets public
+          gpg --verify public/apt/dists/stable/InRelease
+          gpg --verify public/rpm/repodata/repomd.xml.asc public/rpm/repodata/repomd.xml
+          gpg --verify public/arch/x86_64/wh3mm.db.sig public/arch/x86_64/wh3mm.db
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+  deploy:
+    name: Deploy package repositories
+    needs: stage
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

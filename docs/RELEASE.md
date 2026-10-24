@@ -233,7 +233,7 @@ To reproduce the release packages locally, after the frontend build:
 
 ```bash
 cd crates/wh3mm-app
-npx --yes @tauri-apps/cli@2.12.4 build --ci --bundles deb,appimage
+npx --yes @tauri-apps/cli@2.12.4 build --ci --bundles deb,appimage,rpm
 ```
 
 The AppImage is `target/release/bundle/appimage/*.AppImage`; the Debian package
@@ -243,15 +243,21 @@ the same release binary.
 
 The Linux acceptance script is [`docs/MANUAL_QA_LINUX.md`](MANUAL_QA_LINUX.md);
 it must be executed on a real Linux desktop before Linux packaging ships.
-Flatpak/Snap Steam launch, signed repositories, and macOS remain out of scope.
+Flatpak/Snap Steam launch and macOS remain unsupported. The manager itself can
+be packaged as a Flatpak. See [INSTALLATION.md](INSTALLATION.md) for Flatpak,
+RPM, Nix/Gentoo recipes, and signed repository activation.
 
 ## Install from a Linux release
 
-A Linux release carries four user paths and one checksum index:
+A Linux release carries the native packages below, a Flatpak bundle, Nix/Gentoo
+recipe archives, and one checksum index. See [the installation guide](INSTALLATION.md)
+for the additional formats and update repositories:
 
 | Format | Asset | Install or run |
 |---|---|---|
 | Debian/Ubuntu | `wh3mm_<version>_amd64.deb` | `sudo apt install ./wh3mm_<version>_amd64.deb`, then `wh3mm` |
+| Fedora/openSUSE | `wh3mm-<version>-1.x86_64.rpm` | `dnf install ./file.rpm` or `zypper install ./file.rpm` |
+| Flatpak | `wh3mm-linux-x86_64.flatpak` | `flatpak install --user ./file.flatpak` |
 | AppImage | `wh3mm_<version>_amd64.AppImage` | `chmod +x`, then run the file |
 | Portable tarball | `wh3mm-<version>-linux-x86_64.tar.gz` | extract, then run `wh3mm` |
 | Arch Linux | `wh3mm-bin-<version>-1-x86_64.pkg.tar.zst`, `PKGBUILD` | `pacman -U`, or `makepkg -si` from the PKGBUILD |
@@ -319,6 +325,7 @@ the same WebKitGTK 4.1 runtime packages as the AppImage. Install the desktop
 entry and icon manually if you want a menu entry:
 
 ```bash
+install -Dm755 wh3mm-1.0.0-linux-x86_64/wh3mm ~/.local/bin/wh3mm
 install -Dm644 wh3mm-1.0.0-linux-x86_64/wh3mm.desktop ~/.local/share/applications/wh3mm.desktop
 install -Dm644 wh3mm-1.0.0-linux-x86_64/wh3mm.png ~/.local/share/icons/hicolor/128x128/apps/wh3mm.png
 ```
@@ -358,8 +365,11 @@ frontend, or the packaging files, and is also the reusable workflow that
 - builds the Arch package from the shipping tarball in `archlinux:latest`,
   installs it with `pacman -U`, and starts the app under Xvfb.
 
-A release therefore cannot ship a Linux format that CI has not installed and
-started.
+Flatpak and Nix have build/startup jobs; RPM runs on Fedora and openSUSE.
+The signed repository integration job uses a disposable test key to verify
+metadata and package trust. Gentoo has recipe/hash tests; a complete Portage
+installation remains a manual check. No automated startup test proves a real
+Steam/Proton game launch.
 
 ## Known limitations (v1.0)
 
@@ -394,7 +404,7 @@ name, type, timestamp, and dependencies.
 4. `publish` downloads every job's artifacts, rebuilds one `SHA256SUMS.txt` over
    all release files, verifies it, and creates a **draft** GitHub release with
    the Windows installer, the three Linux formats, the Arch package, `PKGBUILD`,
-   `.SRCINFO`, and the checksum index.
+   `.SRCINFO`, RPM, Flatpak, Nix/Gentoo recipe archives, and the checksum index.
 
 It never publishes a release automatically. A human reviews the draft, edits the
 notes, and publishes it. Linux PR gates in `.github/workflows/ci.yml` build the
