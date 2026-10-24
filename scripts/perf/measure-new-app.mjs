@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Measures the rebuilt manager against the approved legacy baseline.
+ * Measures this manager's core session pipeline with independent cold-process samples.
  *
- * One command, on the same fixture and host class as the baseline:
+ * Run on a fixed fixture and record the host with each report:
  *
  *   node scripts/perf/measure-new-app.mjs \
  *     --bin target/release/wh3mm-perf.exe \
@@ -25,7 +25,6 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 const RESULT_PREFIX = "WH3MM_PERF_RESULT ";
-const DEFAULT_STEAM_WAIT_MS = 5000;
 
 const args = process.argv.slice(2);
 const readArg = (name, fallback) => {
@@ -35,7 +34,7 @@ const readArg = (name, fallback) => {
 
 const binPath = nodePath.resolve(readArg("bin", ""));
 if (!readArg("bin", "")) {
-  console.error("usage: node scripts/perf/measure-new-app.mjs --bin <wh3mm-perf> [--fixture DIR] [--runs N] [--out FILE] [--stub EXE] [--legacy FILE]");
+  console.error("usage: node scripts/perf/measure-new-app.mjs --bin <wh3mm-perf> [--fixture DIR] [--runs N] [--out FILE] [--stub EXE]");
   process.exit(2);
 }
 const fixture = nodePath.resolve(readArg("fixture", "perf-fixture/wh3-500"));
@@ -48,8 +47,6 @@ const outPath = nodePath.resolve(readArg("out", "docs/perf/new-app.json"));
 const stamp = new Date().toISOString().replaceAll(":", "").replace(/\..+$/, "");
 const rawLogDirectory = nodePath.resolve(readArg("raw-log-dir", `docs/perf/.new-app-${stamp}`));
 const stub = readArg("stub", null);
-const legacyPath = readArg("legacy", "docs/perf/legacy-baseline.json");
-const steamWaitMs = Number(readArg("steam-wait-ms", String(DEFAULT_STEAM_WAIT_MS)));
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -230,86 +227,6 @@ function interaction(runResults, key, verifiedKey, errorPrefix) {
   return { attempted, measured, verified, errors };
 }
 
-function buildComparison(legacy, metrics) {
-  if (!legacy) return null;
-  // A ratio across host classes is not a result. The legacy report records
-  // `win32 x64`; anything else is marked not comparable instead of silently
-  // producing a flattering verdict.
-  const legacyPlatform = legacy.environment?.os?.split(" ")[0] ?? null;
-  const hostMatches = legacyPlatform === null || legacyPlatform === process.platform;
-  const legacyMetric = (key) => legacy.metrics?.[key]?.medianMs ?? null;
-  const specs = [
-    { key: "coldStartMs", label: "Cold start to interactive mod list", bar: 2, proxy: false },
-    {
-      key: "modListPopulatedMs",
-      label: "500-mod list populated",
-      bar: 2,
-      proxy: false,
-      legacyAdjustMs: steamWaitMs,
-      adjustNote: `legacy includes a fixed ${steamWaitMs} ms Steam workshop wait; subtracted here`,
-    },
-    { key: "headerScanMs", label: "PFH5 header scan (500 packs)", bar: 1, proxy: false },
-    { key: "loadOrderPersistMs", label: "Load-order apply/persist", bar: 1, proxy: false },
-    { key: "presetSwitchMs", label: "Profile/preset switch", bar: 1, proxy: false },
-    { key: "gameLaunchHandoffMs", label: "Game-launch handoff", bar: 1, proxy: true },
-  ];
-  const rows = specs.map((spec) => {
-    const legacyMs = legacyMetric(spec.key);
-    const adjusted =
-      legacyMs === null ? null : Math.max(0, legacyMs - (spec.legacyAdjustMs ?? 0));
-    const summary = metrics[spec.key];
-    const newMs = summary?.medianMs ?? null;
-    const ratio = newMs && adjusted ? Number((adjusted / newMs).toFixed(2)) : null;
-    let verdict = "pending";
-    if (!hostMatches) {
-      verdict = "not comparable (host mismatch)";
-    } else if (ratio !== null) {
-      verdict = spec.bar > 1 ? (ratio >= spec.bar ? "pass" : "miss") : ratio > 1 ? "pass" : "miss";
-    }
-    return {
-      key: spec.key,
-      label: spec.label,
-      proxy: spec.proxy,
-      bar: spec.bar > 1 ? `>=${spec.bar}x faster` : "strictly faster",
-      legacyN: legacy.metrics?.[spec.key]?.n ?? null,
-      legacyMedianMs: legacyMs,
-      legacyAdjustedMs: adjusted,
-      legacyAdjustMs: spec.legacyAdjustMs ?? 0,
-      adjustNote: spec.adjustNote ?? null,
-      newN: summary?.n ?? null,
-      newMedianMs: newMs,
-      newIqrMs: summary?.iqrMs ?? null,
-      ratio,
-      verdict,
-    };
-  });
-  return {
-    legacySchema: legacy.schema,
-    legacyCapturedAt: legacy.environment?.capturedAt ?? null,
-    legacyHost: legacy.environment?.osRelease ?? null,
-    legacyPlatform,
-    hostMatches,
-    steamWaitSubtractedMs: steamWaitMs,
-    rows,
-  };
-}
-
-function markdownTable(comparison) {
-  const lines = [
-    "| Metric | Legacy median | Legacy adjusted | New median | New IQR | Ratio | Bar | Verdict |",
-    "| --- | --- | --- | --- | --- | --- | --- | --- |",
-  ];
-  for (const row of comparison.rows) {
-    const label = row.proxy ? `${row.label} (**proxy**)` : row.label;
-    lines.push(
-      `| ${label} | ${row.legacyMedianMs ?? "n/a"} ms | ${row.legacyAdjustedMs ?? "n/a"} ms | ${
-        row.newMedianMs ?? "n/a"
-      } ms | ${row.newIqrMs ?? "n/a"} ms | ${row.ratio ?? "n/a"}x | ${row.bar} | ${row.verdict} |`,
-    );
-  }
-  return lines.join("\n");
-}
-
 async function main() {
   await mkdir(rawLogDirectory, { recursive: true });
   await mkdir(nodePath.dirname(outPath), { recursive: true });
@@ -353,14 +270,6 @@ async function main() {
     ),
   };
 
-  let legacy = null;
-  try {
-    legacy = JSON.parse(await readFile(nodePath.resolve(legacyPath), "utf8"));
-  } catch {
-    console.warn(`no legacy baseline at ${legacyPath}; the report has no comparison rows`);
-  }
-  const comparison = buildComparison(legacy, metrics);
-
   const report = {
     schema: "wh3mm.perf.new-app.v1",
     environment: {
@@ -382,14 +291,13 @@ async function main() {
     },
     runs: results,
     rawLogDirectory: nodePath.relative(process.cwd(), rawLogDirectory).replaceAll("\\", "/"),
-    comparison,
     notes: [
       "Every sample is a fresh wh3mm-perf process with a fresh config directory; used_mods.txt and its backup are removed before each run.",
       "coldStartMs is process start to Session::initialize returning: the work Tauri's Manager::new performs during setup, excluding WebView creation and paint.",
       "modListPopulatedMs is process start to the first ModListSnapshot serialised for IPC. Because startup initialises the session before the window is usable, it measures the same pipeline as coldStartMs.",
       "headerScanMs is the session's scan timing: PFH5 header parsing for the 492 packs the new app sees, not the 8 workshop copies it never enumerates.",
-      "loadOrderPersistMs and presetSwitchMs call the core commands directly; the legacy numbers include CDP DOM drag/key dispatch, so the comparison is favourable to the new app by construction. UI interaction latency is not claimed here.",
-      "gameLaunchHandoffMs is a proxy: used_mods.txt write plus a stub process started by the harness. c1a9cdd has no launch command, so this is not a TW:WH3 launch and not an app launch path.",
+      "loadOrderPersistMs and presetSwitchMs call the core commands directly. UI interaction latency is not included.",
+      "gameLaunchHandoffMs is a proxy: used_mods.txt write plus a stub process started by the harness. this does not start TW:WH3 or measure the real game-launch path.",
       ...(successful[0]?.notes ?? []),
     ],
   };
@@ -407,14 +315,6 @@ async function main() {
       `${key}: n=${summary.n} median=${summary.medianMs}ms IQR=${summary.iqrMs}ms ` +
         `min=${summary.minMs} max=${summary.maxMs} CV=${summary.cvPercent}%`,
     );
-  }
-  if (comparison) {
-    console.log("\nnew app vs legacy (legacy adjusted for the fixed Steam wait where noted):\n");
-    console.log(markdownTable(comparison));
-    const misses = comparison.rows.filter((row) => row.verdict === "miss");
-    if (misses.length > 0) {
-      console.log(`\nMISS: ${misses.map((row) => row.label).join(", ")}`);
-    }
   }
   console.log(`\nreport: ${nodePath.relative(process.cwd(), outPath)}`);
   console.log(`raw logs: ${report.rawLogDirectory}`);

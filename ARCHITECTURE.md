@@ -16,7 +16,7 @@ Linux x86_64. Native Steam and Proton are required for Linux game launching.
 | `frontend/src/lib/ipc.ts` | Frontend's typed interface to registered Tauri commands |
 | `packaging` | Native packages, Flatpak, Nix/Gentoo binary recipes, signed repository staging |
 | `scripts/dev`, `scripts/qa`, `scripts/perf` | Developer helpers, deterministic checks, and performance tooling |
-| `fixtures`, `docs/perf`, `docs/screenshots` | Synthetic test data and measurement/screenshot evidence |
+| `fixtures`, `docs/screenshots` | Synthetic test data and screenshot evidence |
 
 The frontend never reads game files directly. Commands in `wh3mm-app` validate
 requests and call the core. Blocking filesystem and pack work runs off the async

@@ -15,7 +15,6 @@ pnpm lint
 pnpm test
 pnpm qa:scripts
 pnpm fixtures:verify
-pnpm test:reference
 ```
 
 `Linux quality gates` runs on pushes and PRs. Windows shell compilation is available
@@ -25,8 +24,7 @@ phases, and signed repository trust. All required results must be green on the
 exact head being merged. Historical runs on an earlier head are not substitutes.
 
 The retired migration parity scorecard is not a product correctness check and is
-no longer generated or enforced. Keep the actual Rust, IPC, frontend, fixture,
-packaging, and performance checks. Never weaken them to satisfy cleanup.
+no longer generated or enforced. Keep the Rust, IPC, frontend, fixture, packaging, and independent performance checks. Never weaken them to satisfy cleanup.
 
 ## Layers
 
@@ -37,7 +35,7 @@ packaging, and performance checks. Never weaken them to satisfy cleanup.
 - Frontend tests cover store/screen behavior, virtualization, keyboard access,
   zoom, and design-token rules.
 - Script tests cover safe fixture targets, performance validation, packaging
-  scripts, generated install recipes, and reference-fetch behavior.
+  scripts, generated install recipes, and generated install recipe behavior.
 
 Use deterministic inputs. Do not require a real game, Steam login, network, or
 personal configuration in unit tests. Tests that depend on permissions should run
@@ -104,6 +102,6 @@ only in screenshots. Without that optional directory, captures remain determinis
 and use thumbnail placeholders.
 
 All showcase captures were checked for page overflow and visually reviewed. The
-mod list has 23 visible rows at the stated viewport. Historical screenshot and
-performance artifacts remain in their directories; Git history preserves their
-retired migration commentary.
+mod list has 23 visible rows at the stated viewport. Historical screenshot artifacts remain in their directories. Retired cross-app
+comparison reports are preserved in Git history; new performance reports measure
+this app independently.

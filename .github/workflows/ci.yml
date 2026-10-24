@@ -31,9 +31,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Reference fetch script tests
-        run: bash scripts/dev/fetch-reference.test.sh
-
       - uses: pnpm/action-setup@v4
         with:
           run_install: false
@@ -96,7 +93,7 @@ jobs:
 
       - name: QA generator guard tests
         timeout-minutes: 5
-        run: node --test scripts/qa/fixture-target.test.mjs scripts/qa/verify-perf-gate.test.mjs
+        run: pnpm qa:scripts
 
       # generate_context! embeds frontend/dist at compile time, so the frontend
       # must exist before clippy or tests build the app crate.

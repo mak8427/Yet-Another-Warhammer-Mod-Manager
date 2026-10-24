@@ -70,25 +70,15 @@ build environment.
 
 | Command | Purpose |
 |---|---|
-| `pnpm reference` / `pnpm test:reference` | Fetch the pinned legacy comparison source / test the fetch helper |
 | `pnpm fixtures:verify` | Verify committed fixtures and regenerate/check the ignored performance suite |
 | `pnpm fixtures:write` | Regenerate committed synthetic fixture data intentionally |
 | `pnpm fixtures:perf` | Generate the performance suite |
 | `pnpm qa:scripts` | QA script and release-recipe checks |
 | `pnpm bench` / `pnpm bench:budget` | Run Criterion / validate scan budgets |
-| `pnpm perf:gate` | Validate the recorded performance comparison |
+| `pnpm perf:measure -- --bin <path>` | Record independent core-session measurements |
 
 Helpers are organized under `scripts/dev`, `scripts/qa`, and `scripts/perf`.
 See [testing](TESTING.md), [performance](PERFORMANCE.md), and
 [architecture](../ARCHITECTURE.md) for the boundaries each command checks.
-
-## Legacy comparison source
-
-The original [Shazbot/WH3-Mod-Manager](https://github.com/Shazbot/WH3-Mod-Manager)
-is a read-only behavioral/performance reference. `pnpm reference` creates the
-ignored `reference/WH3-Mod-Manager` checkout at commit
-`07fcf3ea1428fe3aa88282ba7aed44d9947ef103`. Do not edit, vendor, or ship it.
-The reference helper is idempotent and rejects a conflicting checkout. If changing
-the pin, update the helper and explain why in the PR.
 
 No ordinary CI check requires a real game install or downloaded Workshop content.

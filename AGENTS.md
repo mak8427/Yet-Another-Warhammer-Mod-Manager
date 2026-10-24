@@ -48,7 +48,6 @@ pnpm lint
 pnpm test
 pnpm qa:scripts
 pnpm fixtures:verify
-pnpm test:reference
 ```
 
 Use checks appropriate to the change. Follow [testing](docs/TESTING.md) for desktop,

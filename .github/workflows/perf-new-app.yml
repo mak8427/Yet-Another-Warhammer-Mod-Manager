@@ -1,8 +1,7 @@
-name: Perf new app vs legacy
+name: Core performance
 
-# Measures the rebuilt manager on the same 500-pack fixture and host class as the approved
-# legacy baseline (docs/PERFORMANCE.md, perf/legacy-baseline @ 348c4a8). Windows-only so the host
-# class matches; the harness itself is headless and does not need a desktop session.
+# Independent core-session measurements on a fixed synthetic fixture. The
+# harness is headless; its launch metric is a process-start proxy.
 on:
   # workflow_dispatch only works once this file is on the default branch; the pull_request
   # trigger lets the job run on the branch that introduces it.
@@ -11,7 +10,6 @@ on:
       - "crates/wh3mm-perf/**"
       - "crates/wh3mm-core/**"
       - "scripts/perf/**"
-      - "docs/perf/legacy-baseline.json"
       - ".github/workflows/perf-new-app.yml"
   workflow_dispatch:
     inputs:
@@ -36,7 +34,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "24"
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -50,7 +48,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "fixture verification failed" }
           $manifest = Get-Content perf-fixture/wh3-500/fixture-manifest.json -Raw | ConvertFrom-Json
           if ($manifest.sha256 -ne "1de7de625da9ee53d1101a764d07d5ccbb61975932816c8b43574b648d0ab73a") {
-            throw "fixture digest $($manifest.sha256) does not match the approved baseline digest"
+            throw "fixture digest $($manifest.sha256) does not match the expected fixture digest"
           }
           Write-Output "fixture: $($manifest.packFiles) packs, sha256 $($manifest.sha256)"
 
@@ -58,7 +56,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          # Same stub contract as the legacy workflow: write the marker named in
+          # Write the marker named in
           # WH3MM_STUB_MARKER, then exit. It stands in for Warhammer3.exe.
           $csc = Join-Path $env:WINDIR "Microsoft.NET\Framework64\v4.0.30319\csc.exe"
           if (-not (Test-Path $csc)) { throw "csc.exe not found at $csc" }
@@ -112,7 +110,7 @@ jobs:
           if (Test-Path docs/perf/new-app.json) {
             $report = Get-Content docs/perf/new-app.json -Raw | ConvertFrom-Json
             $lines = @(
-              "### New app vs legacy (M2 gate)",
+              "### Core session measurements",
               "Machine: $($report.environment.osRelease) / $($report.environment.cpu) / $($report.environment.cpuCores) cores / $($report.environment.totalMemoryGiB) GiB",
               "Fixture: $($report.environment.fixturePacks) packs, sha256 $($report.environment.fixtureSha256)",
               "Cold start: $($report.metrics.coldStartMs.medianMs) ms (IQR $($report.metrics.coldStartMs.iqrMs), n $($report.metrics.coldStartMs.n))",
@@ -122,11 +120,6 @@ jobs:
               "Preset switch: $($report.metrics.presetSwitchMs.medianMs) ms (IQR $($report.metrics.presetSwitchMs.iqrMs), n $($report.metrics.presetSwitchMs.n))",
               "Launch handoff (proxy): $($report.metrics.gameLaunchHandoffMs.medianMs) ms (IQR $($report.metrics.gameLaunchHandoffMs.iqrMs), n $($report.metrics.gameLaunchHandoffMs.n))"
             )
-            if ($report.comparison) {
-              foreach ($row in $report.comparison.rows) {
-                $lines += "$($row.label): legacy $($row.legacyAdjustedMs) ms, new $($row.newMedianMs) ms, ratio $($row.ratio)x, $($row.bar), $($row.verdict)"
-              }
-            }
             $lines | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
           }
 
@@ -134,7 +127,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: new-app-vs-legacy-${{ github.run_id }}
+          name: core-performance-${{ github.run_id }}
           path: |
             docs/perf/new-app.json
             docs/perf/.new-app-${{ github.run_id }}/run-*/*.log
@@ -156,7 +149,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "24"
 
       - uses: dtolnay/rust-toolchain@stable
 
