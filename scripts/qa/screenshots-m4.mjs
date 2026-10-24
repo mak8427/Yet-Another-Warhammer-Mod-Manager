@@ -583,6 +583,15 @@ async function capture(cdp, { scenario, viewport, density, view, action, name, s
     })
     await waitFor("!!document.querySelector('[role=\"dialog\"] h2') && document.querySelector('[role=\"dialog\"] h2').textContent.includes('Launch Warhammer III')")
     await delay(200)
+  } else if (action === 'open-menu') {
+    await clickText('.toolbar-menu-button', 'Tags')
+    await waitFor("!!document.querySelector('.toolbar-popover')")
+    await delay(200)
+  } else if (action === 'focus-primary') {
+    await cdp.send('Runtime.evaluate', {
+      expression: `document.querySelector('.toolbar-actions .btn-primary')?.focus()`,
+    })
+    await delay(120)
   } else if (action === 'select-row') {
     await cdp.send('Runtime.evaluate', {
       expression: `(() => {
@@ -608,6 +617,12 @@ async function capture(cdp, { scenario, viewport, density, view, action, name, s
       loadingRow: document.querySelector('.loading-row') ? getComputedStyle(document.querySelector('.loading-row')).height : null,
       rowVar: getComputedStyle(document.documentElement).getPropertyValue('--row-h'),
       density: document.documentElement.dataset.density || null,
+      shell: {
+        title: document.querySelector('.title-bar')?.getBoundingClientRect().height ?? null,
+        toolbar: document.querySelector('.toolbar, .screen-bar')?.getBoundingClientRect().height ?? null,
+        listHeader: document.querySelector('.mod-list-header, .data-table thead th')?.getBoundingClientRect().height ?? null,
+        status: document.querySelector('.status-bar')?.getBoundingClientRect().height ?? null,
+      },
     })`,
     returnByValue: true,
   })
@@ -632,7 +647,8 @@ async function capture(cdp, { scenario, viewport, density, view, action, name, s
     })()`,
     returnByValue: true,
   })
-  console.log(`${name} rows=${layout.result.value.rows} visible=${visible.result.value} scroll=${layout.result.value.pageScrollWidth}x${layout.result.value.pageScrollHeight} loadingRow=${layout.result.value.loadingRow} rowVar=${layout.result.value.rowVar}`)
+  const { shell } = layout.result.value
+  console.log(`${name} rows=${layout.result.value.rows} visible=${visible.result.value} scroll=${layout.result.value.pageScrollWidth}x${layout.result.value.pageScrollHeight} loadingRow=${layout.result.value.loadingRow} rowVar=${layout.result.value.rowVar} shell=${JSON.stringify(shell)}`)
 }
 
 if (!CHROME) {
@@ -673,6 +689,10 @@ try {
     { scenario: 'ready', viewport: narrow, density: 'comfortable', action: 'select-row', name: 'mods__selected-inspector__1366x768__comfortable' },
     { scenario: 'ready', viewport: wide, density: 'comfortable', action: 'tag-filter', name: 'mods__filtered-tag__1920x1080__comfortable' },
     { scenario: 'ready', viewport: narrow, density: 'comfortable', action: 'tag-filter', name: 'mods__filtered-tag__1366x768__comfortable' },
+    { scenario: 'ready', viewport: wide, density: 'comfortable', action: 'open-menu', name: 'mods__menu__1920x1080__comfortable' },
+    { scenario: 'ready', viewport: narrow, density: 'comfortable', action: 'open-menu', name: 'mods__menu__1366x768__comfortable' },
+    { scenario: 'ready', viewport: wide, density: 'comfortable', action: 'focus-primary', name: 'mods__focus__1920x1080__comfortable' },
+    { scenario: 'ready', viewport: narrow, density: 'comfortable', action: 'focus-primary', name: 'mods__focus__1366x768__comfortable' },
     { scenario: 'ready', viewport: wide, density: 'comfortable', view: 'Profiles', name: 'profiles__active__1920x1080__comfortable' },
     { scenario: 'ready', viewport: narrow, density: 'comfortable', view: 'Profiles', name: 'profiles__active__1366x768__comfortable' },
     { scenario: 'ready', viewport: wide, density: 'comfortable', view: 'Conflicts', name: 'conflicts__report__1920x1080__comfortable' },

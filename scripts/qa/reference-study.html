@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>TW:WH3 chrome reference study — own rendering</title>
+    <style>
+      :root {
+        --obsidian-1000: #070405;
+        --obsidian-950: #0c0809;
+        --obsidian-900: #120d0e;
+        --obsidian-850: #1a1214;
+        --obsidian-800: #221719;
+        --obsidian-750: #2c1e20;
+        --wine-950: #1b0b0e;
+        --wine-900: #1f0d10;
+        --wine-850: #2b1013;
+        --wine-600: #4a1215;
+        --wine-500: #6e1b1e;
+        --wine-400: #8a2426;
+        --brass-300: #e3c374;
+        --brass-400: #d7b45f;
+        --brass-500: #c9a24d;
+        --brass-600: #9a7a32;
+        --brass-700: #6f5724;
+        --parchment-50: #f6efe0;
+        --parchment-100: #e8dcc4;
+        --parchment-200: #d6c8ac;
+        --parchment-300: #a59a83;
+        --signal-green: #a3c178;
+        --signal-amber: #e0b45c;
+        --signal-red: #e07a63;
+        --frame: #8f6c32;
+        --frame-inner: #120b0c;
+        --stud: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='14'%20height='14'%20viewBox='0%200%2014%2014'%3E%3Cpath%20d='M7%201%2013%207%207%2013%201%207Z'%20fill='none'%20stroke='%23c9a24d'/%3E%3Cpath%20d='M7%204%2010%207%207%2010%204%207Z'%20fill='%239a7a32'/%3E%3C/svg%3E");
+        --display: 'Palatino Linotype', 'Book Antiqua', Palatino, 'URW Palladio L', Georgia, serif;
+        --body: 'Segoe UI Variable Text', 'Segoe UI', 'Noto Sans', system-ui, sans-serif;
+        --mono: 'Cascadia Mono', 'Cascadia Code', Consolas, 'DejaVu Sans Mono', monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+      }
+
+      body {
+        background: var(--obsidian-950);
+        color: var(--parchment-100);
+        font-family: var(--body);
+        padding: 34px 42px 28px;
+      }
+
+      h1 {
+        margin: 0;
+        color: var(--parchment-100);
+        font-family: var(--display);
+        font-size: 30px;
+        font-variant: small-caps;
+        font-weight: 400;
+        letter-spacing: 0.05em;
+      }
+
+      .subtitle {
+        margin: 4px 0 0;
+        color: var(--parchment-300);
+        font-size: 13px;
+      }
+
+      .rule {
+        height: 1px;
+        margin: 18px 0 22px;
+        background: var(--frame);
+        box-shadow: 0 1px 0 var(--frame-inner);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+        gap: 30px;
+      }
+
+      .col {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+
+      .label {
+        color: var(--brass-400);
+        font-family: var(--display);
+        font-size: 11px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+      }
+
+      .banner {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        height: 36px;
+        padding: 0 20px 0 14px;
+        border: 1px solid var(--frame);
+        border-left: 3px solid var(--brass-400);
+        background: var(--wine-900);
+        box-shadow: inset 0 0 0 1px var(--frame-inner), inset 0 1px 0 rgb(255 255 255 / 0.05);
+      }
+
+      .banner .diamond {
+        width: 7px;
+        height: 7px;
+        transform: rotate(45deg);
+        background: var(--brass-400);
+        box-shadow: 0 0 0 1px var(--frame-inner);
+      }
+
+      .banner h2 {
+        margin: 0;
+        font-family: var(--display);
+        font-size: 23px;
+        font-weight: 400;
+        letter-spacing: 0.02em;
+      }
+
+      .banner .count {
+        color: var(--parchment-300);
+        font-family: var(--mono);
+        font-size: 11px;
+        margin-left: auto;
+      }
+
+      .panel {
+        position: relative;
+        border: 1px solid var(--frame);
+        background: var(--obsidian-850);
+        box-shadow: inset 0 0 0 1px var(--frame-inner), 0 10px 26px rgb(0 0 0 / 0.45);
+        padding: 14px;
+      }
+
+      .panel::after {
+        content: '';
+        position: absolute;
+        inset: 3px;
+        pointer-events: none;
+        background-image: var(--stud), var(--stud), var(--stud), var(--stud);
+        background-position: left top, right top, left bottom, right bottom;
+        background-repeat: no-repeat;
+        background-size: 12px 12px;
+      }
+
+      .panel-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: -14px -14px 10px;
+        padding: 7px 12px;
+        border-bottom: 1px solid var(--frame);
+        background: var(--wine-900);
+        color: var(--parchment-100);
+        font-family: var(--display);
+        font-size: 14px;
+        font-variant: small-caps;
+        letter-spacing: 0.05em;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 34px 26px minmax(0, 1fr) 96px 90px;
+        align-items: center;
+        gap: 10px;
+        height: 40px;
+        padding: 0 9px;
+        border-bottom: 1px solid var(--obsidian-750);
+        background: var(--obsidian-950);
+        font-size: 13px;
+      }
+
+      .row.selected {
+        background: #331114;
+        box-shadow: inset 3px 0 0 var(--brass-500), inset 0 0 0 1px rgb(201 162 77 / 0.16);
+      }
+
+      .row .order {
+        color: var(--parchment-300);
+        font-family: var(--mono);
+        font-size: 11px;
+        text-align: right;
+      }
+
+      .row .thumb {
+        display: grid;
+        place-items: center;
+        width: 26px;
+        height: 26px;
+        border: 1px solid var(--frame);
+        background: var(--wine-900);
+        color: var(--brass-400);
+        font-family: var(--mono);
+        font-size: 9px;
+      }
+
+      .row .name {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .row .meta {
+        color: var(--parchment-300);
+        font-size: 11px;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
+        height: 20px;
+        padding: 0 8px;
+        border: 1px solid #5c4430;
+        border-left: 2px solid var(--signal-green);
+        background: var(--obsidian-800);
+        color: var(--parchment-200);
+        font-size: 11px;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 2px;
+        height: 34px;
+        align-items: stretch;
+        border-bottom: 1px solid var(--frame);
+      }
+
+      .tab {
+        display: flex;
+        align-items: center;
+        padding: 0 22px;
+        border: 1px solid transparent;
+        border-bottom: 2px solid transparent;
+        color: var(--parchment-300);
+        font-size: 13px;
+      }
+
+      .tab.active {
+        border-color: var(--frame);
+        border-bottom-color: var(--brass-500);
+        background: var(--wine-600);
+        color: var(--parchment-100);
+      }
+
+      .buttons {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 30px;
+        padding: 0 16px;
+        border: 1px solid #7a5c2c;
+        background: #1d1315;
+        color: var(--parchment-100);
+        font-family: var(--display);
+        font-size: 11px;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05), inset 0 -1px 0 rgb(0 0 0 / 0.6);
+      }
+
+      .btn.primary {
+        border-color: var(--brass-500);
+        background: var(--wine-500);
+        color: var(--parchment-50);
+      }
+
+      .btn:hover {
+        background: var(--wine-400);
+      }
+
+      .swatches {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .swatch {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 7px 9px;
+        border: 1px solid var(--obsidian-750);
+        background: var(--obsidian-900);
+      }
+
+      .swatch i {
+        width: 26px;
+        height: 26px;
+        flex: 0 0 26px;
+        border: 1px solid var(--obsidian-700);
+      }
+
+      .swatch b {
+        display: block;
+        font-size: 11px;
+        font-weight: 500;
+      }
+
+      .swatch span {
+        display: block;
+        color: var(--parchment-300);
+        font-family: var(--mono);
+        font-size: 10px;
+      }
+
+      .type-sample p {
+        margin: 0 0 8px;
+        line-height: 1.35;
+      }
+
+      .type-sample .display {
+        font-family: var(--display);
+        font-size: 19px;
+        font-variant: small-caps;
+        letter-spacing: 0.04em;
+      }
+
+      .type-sample .body {
+        font-size: 13px;
+      }
+
+      .type-sample .mono {
+        color: var(--parchment-300);
+        font-family: var(--mono);
+        font-size: 11px;
+      }
+
+      .note {
+        margin: 20px 0 0;
+        padding-top: 12px;
+        border-top: 1px solid var(--obsidian-750);
+        color: var(--parchment-300);
+        font-size: 11px;
+        line-height: 1.5;
+      }
+
+      .note code {
+        color: var(--brass-300);
+        font-family: var(--mono);
+        font-size: 11px;
+      }
+
+      @media (max-width: 1500px) {
+        body {
+          padding: 24px 28px 20px;
+        }
+
+        h1 {
+          font-size: 25px;
+        }
+
+        .grid {
+          grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+          gap: 22px;
+        }
+
+        .banner h2 {
+          font-size: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>TW:WH3 chrome reference study</h1>
+    <p class="subtitle">
+      Our own reconstruction of the observed material language. No game art, crest, texture, or
+      font is reproduced. Reference capture links: <code>docs/UI_DIRECTION.md</code> §2.8.
+    </p>
+    <div class="rule" aria-hidden="true"></div>
+
+    <div class="grid">
+      <div class="col">
+        <span class="label">Chrome anatomy</span>
+
+        <div class="banner">
+          <span class="diamond" aria-hidden="true"></span>
+          <h2>Screen Banner</h2>
+          <span class="count">63 mods</span>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">Framed panel / inspector</div>
+          <div class="row selected">
+            <span class="order">05</span>
+            <span class="thumb">UC</span>
+            <span class="name">Unit Cards — Reforged in Blood and Gold</span>
+            <span class="chip">Campaign</span>
+            <span class="meta">Wins 0 · loses 1</span>
+          </div>
+          <div class="row">
+            <span class="order">06</span>
+            <span class="thumb">KA</span>
+            <span class="name">Karaz Ankor Runesmiths</span>
+            <span class="chip">Overhaul</span>
+            <span class="meta">No conflicts</span>
+          </div>
+          <div class="row">
+            <span class="order">07</span>
+            <span class="thumb">BB</span>
+            <span class="name">Brutal Battles — Combat and Morale</span>
+            <span class="chip">Visual</span>
+            <span class="meta">No conflicts</span>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <span class="tab active">Active tab</span>
+          <span class="tab">Idle tab</span>
+          <span class="tab">Idle tab</span>
+        </div>
+
+        <div class="buttons">
+          <span class="btn primary">Primary action</span>
+          <span class="btn">Secondary</span>
+          <span class="btn">Menu</span>
+        </div>
+      </div>
+
+      <div class="col">
+        <span class="label">Observed palette → tokens</span>
+        <div class="swatches">
+          <div class="swatch">
+            <i style="background: #0c0809"></i>
+            <span><b>Obsidian field</b><span>--color-bg-app<br />#0c0809</span></span>
+          </div>
+          <div class="swatch">
+            <i style="background: #1a1214"></i>
+            <span><b>Raised stone</b><span>--color-bg-surface<br />#1a1214</span></span>
+          </div>
+          <div class="swatch">
+            <i style="background: #1f0d10"></i>
+            <span><b>Banner wine</b><span>--color-bg-banner<br />#1f0d10</span></span>
+          </div>
+          <div class="swatch">
+            <i style="background: #331114"></i>
+            <span><b>Selection wash</b><span>--color-bg-row-selected<br />#331114</span></span>
+          </div>
+          <div class="swatch">
+            <i style="background: #8f6c32"></i>
+            <span><b>Brass frame</b><span>--color-border-frame<br />#8f6c32</span></span>
+          </div>
+          <div class="swatch">
+            <i style="background: #d7b45f"></i>
+            <span><b>Brass text</b><span>--color-text-accent<br />#d7b45f</span></span>
+          </div>
+          <div class="swatch">
+            <i style="background: #e8dcc4"></i>
+            <span><b>Parchment</b><span>--color-text-primary<br />#e8dcc4</span></span>
+          </div>
+          <div class="swatch">
+            <i style="background: #6e1b1e"></i>
+            <span><b>Primary plate</b><span>--color-action-primary-bg<br />#6e1b1e</span></span>
+          </div>
+        </div>
+
+        <span class="label">Typography roles</span>
+        <div class="type-sample">
+          <p class="display">Display serif / small caps</p>
+          <p class="body">Body face for dense rows and metadata.</p>
+          <p class="mono">MONO 0123456789 · ORDER · COUNTS</p>
+        </div>
+
+        <span class="label">Material rules</span>
+        <div class="type-sample">
+          <p class="body">Flat fills only. Brass frame with a dark inner line. One drawn corner stud.</p>
+          <p class="body">No gradients, glow, blur, backdrop-filter, imported texture, or game art.</p>
+          <p class="body">Faction identity is always a visible label plus a 3px rule and a 6px diamond.</p>
+        </div>
+      </div>
+    </div>
+
+    <p class="note">
+      Sources: official Steam screenshot gallery for Total War: WARHAMMER III; Total War Update
+      2.0.0 front-end notes; a third-party faction-select capture; Total War Academy campaign UI
+      overview. These are linked in <code>docs/UI_DIRECTION.md</code> §2.8 and are not committed.
+      Palette values above are sampled approximations from JPEG captures, then normalised into the
+      semantic tokens in <code>frontend/src/styles/tokens.css</code>. This plate is our own drawing.
+    </p>
+  </body>
+</html>

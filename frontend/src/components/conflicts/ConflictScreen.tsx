@@ -116,7 +116,7 @@ export function ConflictScreen({
   }
 
   return (
-    <section className="conflict-screen" aria-labelledby="conflict-heading">
+    <section className="conflict-screen" data-faction="ember" aria-labelledby="conflict-heading">
       <div className="screen-bar">
         <div className="screen-title">
           <h2 id="conflict-heading" tabIndex={-1}>
