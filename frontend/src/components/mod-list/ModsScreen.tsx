@@ -1,5 +1,5 @@
 import { useMemo, type ComponentProps } from 'react'
-import { store, useAppStore, visibleMods } from '../../store'
+import { store, visibleMods, type AppState } from '../../store'
 import { LoadOrderBanner } from '../load-order/LoadOrderBanner'
 import { ModInspector } from './ModInspector'
 import { ModList } from './ModList'
@@ -20,8 +20,11 @@ const modListActions = {
   onScrollTop: (top) => store.noteScroll(top),
 } satisfies Partial<ComponentProps<typeof ModList>>
 
-export function ModsScreen() {
-  const state = useAppStore()
+interface ModsScreenProps {
+  state: AppState
+}
+
+export function ModsScreen({ state }: ModsScreenProps) {
   const snapshot = state.snapshot
 
   const { query, activeTagIds, sort } = state

@@ -76,13 +76,6 @@ impl AppError {
         self.details = Some(details.into());
         self
     }
-}
-
-impl AppError {
-    /// Wraps a filesystem failure with a user-facing context line.
-    pub fn io(context: impl AsRef<str>, error: &std::io::Error) -> Self {
-        Self::new(ErrorCode::Io, context.as_ref()).with_details(error.to_string())
-    }
 
     /// Wraps a filesystem failure with the path that failed.
     pub fn io_path(
@@ -108,6 +101,14 @@ impl AppError {
 
     pub fn internal(message: impl Into<String>) -> Self {
         Self::new(ErrorCode::Internal, message)
+    }
+
+    /// The standard failure for a command that needs a detected game folder.
+    pub fn game_not_found() -> Self {
+        Self::new(
+            ErrorCode::GameNotFound,
+            "Could not find a Total War: Warhammer III installation",
+        )
     }
 
     /// Reports that the running-game probe failed, so launch must not proceed.

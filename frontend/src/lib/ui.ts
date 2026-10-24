@@ -8,24 +8,10 @@ export const ROW_HEIGHT: Record<Density, number> = {
   roomy: 48,
 }
 
-export const THUMB_SIZE: Record<Density, number> = {
-  compact: 24,
-  comfortable: 32,
-  roomy: 40,
-}
-
 export const DENSITY_LABEL: Record<Density, string> = {
   compact: 'Compact',
   comfortable: 'Comfortable',
   roomy: 'Roomy',
-}
-
-export function densityLabel(density: Density): string {
-  return DENSITY_LABEL[density] ?? DENSITY_LABEL.comfortable
-}
-
-export function isDensity(value: string): value is Density {
-  return (DENSITIES as string[]).includes(value)
 }
 
 const FACTION_SLOTS = [

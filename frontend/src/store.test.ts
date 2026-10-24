@@ -399,7 +399,7 @@ describe('AppStore', () => {
     seeded.setQuery('')
     seeded.toggleTagFilter('tag-visual')
     expect(visibleMods(seeded.getState()).map((mod) => mod.id)).toEqual(['mod-b'])
-    seeded.clearTagFilters()
+    seeded.clearFilters()
     expect(visibleMods(seeded.getState())).toHaveLength(3)
   })
 })
