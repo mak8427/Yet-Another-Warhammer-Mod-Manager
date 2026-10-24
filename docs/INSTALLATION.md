@@ -160,8 +160,9 @@ The binary requires glibc, not musl. Source-based Gentoo builds are not included
 
 Update by replacing the local overlay with the archive from a newer release,
 then run `emerge --ask --update games-util/wh3mm-bin`. Remove with
-`emerge --ask --depclean games-util/wh3mm-bin`. Recipe generation/hash tests run
-in CI; a full Portage installation and desktop/game launch need Gentoo manual QA.
+`emerge --ask --depclean games-util/wh3mm-bin`. CI verifies the generated hashes and installs the ebuild through Portage with
+`--nodeps` to exercise its fetch/install phases without compiling WebKit. Full
+dependency resolution and desktop/game launch still need Gentoo manual QA.
 
 ## AppImage and tarball
 

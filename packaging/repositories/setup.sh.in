@@ -14,6 +14,8 @@ expected='@FINGERPRINT@'
 [[ $(uname -m) == x86_64 ]] || { echo 'Only x86_64 is supported.' >&2; exit 1; }
 command -v curl >/dev/null
 command -v gpg >/dev/null
+# Provided by the host distribution, not a repository input.
+# shellcheck disable=SC1091
 source /etc/os-release
 case " ${ID:-} ${ID_LIKE:-} " in
   *' debian '*|*' ubuntu '*) manager=apt ;;

@@ -49,7 +49,8 @@ The packaging matrix builds/starts Flatpak and Nix, installs/starts RPM on
 Fedora/openSUSE, and retains the Debian/AppImage/Arch checks. A disposable test
 key exercises signed repository generation and apt/dnf/pacman installs without
 production secrets. Python tests exercise recipe archive contents and hashes.
-Gentoo Portage installation and real Steam/Proton launches need manual QA;
+Gentoo Portage install phases run with `--nodeps`; full Gentoo runtime
+dependency resolution and real Steam/Proton launches need manual QA;
 a window-opening smoke test is not evidence of either.
 
 Maintainer activation of Pages, a signing secret, and a public release is still

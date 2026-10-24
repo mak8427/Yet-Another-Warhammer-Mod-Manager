@@ -91,7 +91,7 @@ jobs:
           mkdir -p dist
           cp target/release/bundle/nsis/*.exe dist/
           cd dist
-          sha256sum *.exe > SHA256SUMS.txt
+          sha256sum -- *.exe > SHA256SUMS.txt
           cat SHA256SUMS.txt
           sha256sum -c SHA256SUMS.txt
 
@@ -145,7 +145,7 @@ jobs:
           test -f PKGBUILD
           test -f .SRCINFO
 
-          sha256sum \
+          sha256sum -- \
             *.exe *.deb *.AppImage *.tar.gz *.pkg.tar.zst *.rpm *.flatpak PKGBUILD .SRCINFO >SHA256SUMS.txt
           sha256sum -c SHA256SUMS.txt
 

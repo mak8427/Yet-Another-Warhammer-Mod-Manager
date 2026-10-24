@@ -16,6 +16,8 @@ on:
     paths:
       - .github/workflows/linux-packages.yml
       - .github/workflows/release.yml
+      - .github/workflows/package-repositories.yml
+      - scripts/qa/install-recipes.test.py
       - packaging/**
       - crates/**
       - frontend/**
@@ -30,6 +32,8 @@ on:
     paths:
       - .github/workflows/linux-packages.yml
       - .github/workflows/release.yml
+      - .github/workflows/package-repositories.yml
+      - scripts/qa/install-recipes.test.py
       - packaging/**
       - crates/**
       - frontend/**
@@ -60,7 +64,7 @@ env:
 
 jobs:
   bundles:
-    name: AppImage, .deb, and tarball
+    name: Native packages and release recipes
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     outputs:
@@ -412,7 +416,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          zypper --non-interactive install -y xvfb-run xdotool dbus-1-x11
+          zypper --non-interactive install -y xvfb-run xdotool dbus-1-daemon
           zypper --non-interactive --no-gpg-checks install -y ./dist/*.rpm
           bash dist/smoke-test.sh /usr/bin/wh3mm
 
@@ -441,7 +445,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          dbus-run-session -- flatpak run --command=flatpak-spawn com.warhammerlabs.wh3mm --host /usr/bin/true
+          host_value=$(dbus-run-session -- flatpak run --command=flatpak-spawn com.warhammerlabs.wh3mm \
+            --host --watch-bus '--env=WH3MM_HOST_TEST=value with spaces;literal' --directory="$HOME" \
+            -- /usr/bin/printenv WH3MM_HOST_TEST)
+          test "$host_value" = 'value with spaces;literal'
           cat > /tmp/wh3mm-flatpak-smoke <<'SH'
           #!/bin/sh
           exec flatpak run --env=GDK_BACKEND=x11 --env=WEBKIT_DISABLE_COMPOSITING_MODE=1 com.warhammerlabs.wh3mm
@@ -501,7 +508,8 @@ jobs:
           install -d -m700 "$GNUPGHOME"
           trap 'gpgconf --kill gpg-agent; rm -rf "$GNUPGHOME"' EXIT
           gpg --batch --passphrase '' --quick-generate-key 'WH3MM disposable CI key' rsa3072 sign 1d
-          export SIGNING_KEY=$(gpg --batch --with-colons --list-secret-keys | awk -F: '$1=="fpr" {print $10; exit}')
+          SIGNING_KEY=$(gpg --batch --with-colons --list-secret-keys | awk -F: '$1=="fpr" {print $10; exit}')
+          export SIGNING_KEY
           export BASE_URL=https://example.invalid/wh3mm
           bash packaging/repositories/build.sh assets repository-out
           gpg --verify repository-out/apt/dists/stable/InRelease
@@ -537,3 +545,41 @@ jobs:
             pacman -Syu --noconfirm wh3mm-bin
             test -x /usr/bin/wh3mm
           '
+      - name: Verify zypper repository installation
+        run: |
+          docker run --rm -v "$PWD/repository-out:/repo:ro" opensuse/tumbleweed:latest bash -euc '
+            rpm --import /repo/repository-key.asc
+            zypper --non-interactive addrepo --gpgcheck file:///repo/rpm wh3mm
+            zypper --non-interactive refresh
+            zypper --non-interactive install -y wh3-mod-manager
+            test -x /usr/bin/wh3mm
+          '
+
+  gentoo:
+    name: Gentoo Portage package installation
+    needs: bundles
+    runs-on: ubuntu-24.04
+    container: gentoo/stage3:latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: wh3mm-linux-${{ needs.bundles.outputs.version }}
+          path: dist
+      - name: Install the generated overlay with Portage
+        shell: bash
+        run: |
+          set -euo pipefail
+          emerge-webrsync
+          mkdir -p /var/db/repos/wh3mm /var/cache/distfiles /etc/portage/repos.conf /etc/portage/package.accept_keywords
+          tar -xzf dist/wh3mm-gentoo-${{ needs.bundles.outputs.version }}.tar.gz -C /var/db/repos/wh3mm --strip-components=1
+          cp dist/wh3mm-${{ needs.bundles.outputs.version }}-linux-x86_64.tar.gz /var/cache/distfiles/
+          printf '[wh3mm]\nlocation = /var/db/repos/wh3mm\nauto-sync = no\n' > /etc/portage/repos.conf/wh3mm.conf
+          echo 'games-util/wh3mm-bin ~amd64' > /etc/portage/package.accept_keywords/wh3mm
+          # Test Manifest verification and Portage install phases without a
+          # multi-hour WebKit source build. Desktop dependencies/game launching
+          # are a separate Gentoo manual QA requirement.
+          emerge --oneshot --nodeps games-util/wh3mm-bin
+          test -x /usr/bin/wh3mm
+          test -f /usr/share/applications/wh3mm.desktop
+          test -f /usr/share/icons/hicolor/128x128/apps/wh3mm.png

@@ -7,7 +7,7 @@ pkgs.stdenv.mkDerivation {
     sha256 = "@SHA256@";
   };
   nativeBuildInputs = [ pkgs.autoPatchelfHook pkgs.wrapGAppsHook3 ];
-  buildInputs = [ pkgs.webkitgtk_4_1 pkgs.gtk3 pkgs.libayatana-appindicator pkgs.librsvg pkgs.openssl pkgs.stdenv.cc.cc.lib ];
+  buildInputs = [ pkgs.webkitgtk_4_1 pkgs.gtk3 pkgs.libayatana-appindicator pkgs.librsvg pkgs.dbus pkgs.libsoup_3 pkgs.openssl pkgs.stdenv.cc.cc.lib ];
   dontBuild = true;
   installPhase = ''
     runHook preInstall
