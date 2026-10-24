@@ -57,7 +57,9 @@ struct Candidate {
 /// mod list plus diagnostics. A malformed pack is included with `pack_error`.
 pub fn scan(location: &GameLocation) -> (Vec<DiscoveredMod>, IndexReport) {
     let mut report = IndexReport::default();
-    let vanilla = vanilla_pack_names(&location.data_path);
+    let vanilla: HashSet<String> = vanilla_pack_names(&location.data_path)
+        .into_iter()
+        .collect();
     let mut candidates = Vec::new();
 
     let data_dir = &location.data_path;
@@ -282,17 +284,19 @@ fn discover_mod(candidate: Candidate, report: &mut IndexReport) -> DiscoveredMod
     }
 }
 
-fn vanilla_pack_names(data_dir: &Path) -> HashSet<String> {
-    let mut names = HashSet::new();
-    if let Ok(manifest) = fs::read_to_string(data_dir.join("manifest.txt")) {
-        for line in manifest.lines() {
-            if let Some(first) = line.split_whitespace().next() {
-                if first.to_ascii_lowercase().ends_with(".pack") {
-                    names.insert(first.to_ascii_lowercase());
-                }
-            }
-        }
-    }
+/// Lowercased, sorted, deduplicated vanilla pack names from `data/manifest.txt`.
+/// Falls back to the three packs WH3 always ships when the manifest is missing
+/// or lists no packs.
+pub(crate) fn vanilla_pack_names(data_dir: &Path) -> Vec<String> {
+    let mut names: Vec<String> = fs::read_to_string(data_dir.join("manifest.txt"))
+        .unwrap_or_default()
+        .lines()
+        .filter_map(|line| line.split_whitespace().next())
+        .filter(|name| name.to_ascii_lowercase().ends_with(".pack"))
+        .map(|name| name.to_ascii_lowercase())
+        .collect();
+    names.sort();
+    names.dedup();
     if names.is_empty() {
         names.extend(FALLBACK_VANILLA_PACKS.iter().map(|name| name.to_string()));
     }
@@ -370,14 +374,6 @@ pub fn stable_mod_id(path: &Path) -> String {
     {
         text
     }
-}
-
-/// Returns a timestamp string for a file, used by tests and future scanners.
-pub fn file_timestamp(path: &Path) -> Option<String> {
-    fs::metadata(path)
-        .ok()
-        .and_then(|metadata| metadata.modified().ok())
-        .and_then(system_time_to_iso8601)
 }
 
 /// Convenient for tests that construct a location without Steam.

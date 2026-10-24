@@ -51,7 +51,7 @@ export function LoadOrderDialog({ preview, busy, onClose, onWrite }: LoadOrderDi
         </>
       }
     >
-      <dl className="stat-grid stat-grid-compact">
+      <dl className="stat-grid">
         <div>
           <dt>Target</dt>
           <dd className="mono break-all">{preview.path}</dd>

@@ -1,13 +1,16 @@
 import { useState } from 'react'
-import { store, useAppStore } from '../../store'
+import { store, type AppState } from '../../store'
 import { DENSITIES, DENSITY_LABEL } from '../../lib/ui'
 import { ZOOM_DEFAULT, ZOOM_MAX, ZOOM_MIN } from '../../lib/zoom'
 import type { Density, ResetDefaultsReport } from '../../lib/ipc'
 import { Modal } from '../common/Modal'
 import { ErrorBanner } from '../shell/ErrorBanner'
 
-export function SettingsScreen() {
-  const state = useAppStore()
+interface SettingsScreenProps {
+  state: AppState
+}
+
+export function SettingsScreen({ state }: SettingsScreenProps) {
   const savedPath = state.game?.gamePath ?? ''
   const [draft, setDraft] = useState({ value: savedPath, base: savedPath })
   const [resetOpen, setResetOpen] = useState(false)
