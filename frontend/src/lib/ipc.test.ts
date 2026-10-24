@@ -103,9 +103,10 @@ describe('ipc', () => {
       density: 'compact',
       showThumbnails: true,
       lastScrollTop: 42,
+      zoom: 110,
     })
     expect(invokeMock).toHaveBeenLastCalledWith('update_ui_preferences', {
-      preferences: { density: 'compact', showThumbnails: true, lastScrollTop: 42 },
+      preferences: { density: 'compact', showThumbnails: true, lastScrollTop: 42, zoom: 110 },
     })
   })
 

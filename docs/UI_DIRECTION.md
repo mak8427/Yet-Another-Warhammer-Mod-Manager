@@ -643,9 +643,13 @@ Rules:
 | `F6` / `Shift+F6` | Cycle focus between rail, toolbar, list, inspector |
 | `Escape` | Close menu/dialog/tooltip, cancel drag, clear search when search is focused |
 | `Ctrl+,` | Settings (optional alias for `Ctrl+5`) |
+| `Ctrl+=` / `Ctrl++` | Zoom in 10% (80–200%) |
+| `Ctrl+-` | Zoom out 10% (80–200%) |
+| `Ctrl+0` | Reset zoom to 100% |
+| `Ctrl+wheel` | Zoom in/out one step |
 
-Shortcuts do not fire while typing in an input, except `Escape`, `Ctrl+F`, and
-the section shortcuts.
+Shortcuts do not fire while typing in an input, except `Escape`, `Ctrl+F`, the
+section shortcuts, and the zoom shortcuts.
 
 ### 7.2 Mod list
 

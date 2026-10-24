@@ -152,7 +152,64 @@ These apply to every screen and every milestone.
   Evidence: `shots/` has 1920×1080 and 1366×768 pairs for S01–S11, plus compact/roomy mod-list shots; manifest in `shots/README.md`.
 - `[x]` G-18 `pnpm typecheck`, `pnpm lint`, `pnpm test`, and `pnpm build` pass
   on the implementation branch.
-  Evidence: At this head: `pnpm typecheck`, `pnpm lint`, `pnpm test` (9 files / 72 tests), `pnpm build`, `cargo fmt --all --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, `cargo test --workspace --locked` all pass.
+  Evidence: At this head: `pnpm typecheck`, `pnpm lint`, `pnpm test` (10 files / 84 tests), `pnpm build`, `cargo fmt --all --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, `cargo test --workspace --locked` all pass.
+
+## Zoom and window geometry (WAR-141)
+
+Zoom is independent of density. Density changes row heights; zoom scales the
+whole webview. The persisted range is clamped to 80–200%; the controls move
+in 10% steps; `Ctrl+0` resets to 100%.
+
+- `[x]` Z-01 `ui.zoom` round-trips, an older config without it loads as 100%,
+  and **Reset to defaults** restores 100%.
+  Evidence: `config.rs` — `round_trips_profiles_tags_and_ui_preferences`,
+  `missing_zoom_defaults_to_100_for_older_configs`; `session_flow.rs` —
+  `ui_preferences_round_trip`, `reset_to_defaults_keeps_profiles_and_tags_and_writes_an_empty_order`.
+- `[x]` Z-02 Zoom is clamped to 80–200% in the backend and in the UI, and the
+  shortcuts work with a text field focused.
+  Evidence: `session_flow.rs` — `update_ui_preferences_clamps_zoom_to_the_supported_bounds`;
+  `zoom.test.ts`; `App.test.tsx` — `changes zoom from the keyboard even while typing and persists it`.
+- `[x]` Z-03 Saved geometry is restored only when it intersects a monitor;
+  off-screen, oversized, partially visible, and left-monitor cases resolve to a
+  visible position inside the work area.
+  Evidence: `wh3mm-core/src/window.rs` tests — `position_from_a_disconnected_monitor_centers_on_the_primary`,
+  `oversized_window_is_reduced_to_the_work_area`, `partially_offscreen_window_is_pulled_inside`,
+  `negative_coordinates_on_a_left_monitor_are_preserved`,
+  `geometry_in_a_gap_between_monitors_falls_back_to_the_primary`.
+- `[x]` Z-04 The first-run window fits 1366×768, and the Settings zoom control
+  is visible without clipping at 1366×768 and 1920×1080.
+  Evidence: `window.rs` — `default_window_fits_a_1366_by_768_display`;
+  `docs/screenshots/WAR-141/settings__general__1366x768__comfortable.png`,
+  `settings__general__1920x1080__comfortable.png`;
+  `shell__mods__1366x768__comfortable.png`, `shell__mods__1920x1080__comfortable.png`.
+- `[ ]` Z-05 Manual restart check with the packaged shell: change zoom, resize,
+  move, maximise, close, reopen; repeat on Windows and Linux. Geometry saved on
+  a monitor that is then disconnected must open on the primary display.
+  - Linux (X11): PASS. QA ran the packaged CI binary (artifact of run
+    `39769312236`, sha256 `42b3485f…`) on Ubuntu 24.04 with Xvfb 1920×1080 and
+    openbox, closing via `WM_DELETE_WINDOW`. Zoom 150%, normal bounds 1400×800
+    at (100,80), and the maximised state survived restart; unmaximising
+    restored 1400×800 at (100,80); configs saved at (9000,9000) and
+    (-1800,100) (left monitor gone) opened centred and fully visible on the
+    primary; the app log had no restore or save errors. Evidence bundle:
+    WAR-141 Z-05 Linux evidence (6 screenshots, harness, verbatim output). The
+    multi-monitor hot-unplug case could not be created under Xvfb; the
+    disconnected-monitor coordinates case and the `window.rs` tests cover the
+    same restore branch.
+  - Windows (WebView2): OPEN — no Windows host is available and the CI job
+    builds only. Check that `Ctrl+=`/`Ctrl+-`/`Ctrl+0` and `Ctrl+wheel`
+    persist `ui.zoom` and do not double-apply with the WebView2 accelerator
+    keys. Owner: Baltasar Gelt (QA), or a release-gate decision from
+    Katerina Zarina/Torgrim. Steps:
+  1. Start at 1920×1080, set zoom to 150%, resize to 1400×800, move the window,
+     maximise, close, reopen. Confirm zoom 150% and the maximised window.
+  2. Restore the window, close, move `config.json` to a machine with a
+     1366×768 display, reopen. Confirm the window is fully visible with the
+     documented title strip and status bar.
+  3. Edit `config.json` to `"window": {"x": 9000, "y": 9000, ...}`, reopen.
+     Confirm the window appears on the primary display, not off-screen.
+  4. Repeat steps 1–3 on Windows: X11 is covered above; Wayland position is
+     compositor-owned but size, zoom, and maximised state must persist.
 
 ## Truncation and tooltips
 
@@ -531,10 +588,10 @@ These apply to every screen and every milestone.
 ## Open items
 
 These are the only unchecked items. Each has an explicit owner and milestone;
-all other 115 items have evidence above. None of them blocks M4: M4 owns the
-visual system and the automated keyboard map, while these are Windows-QA,
-native-dialog, and config-recovery work scheduled for the M5 hardening/release
-gate.
+every other item has evidence above. None of them blocks M4: M4 owns the visual
+system and the automated keyboard map, while these are Windows-QA,
+native-dialog, config-recovery, and platform-restart work scheduled for the M5
+hardening/release gate.
 
 | Item | Owner | Milestone | Why it is open and why it is not an M4 blocker |
 |---|---|---|---|
@@ -543,6 +600,7 @@ gate.
 | S08-02 | Katerina Zarina (tech lead) | M5 — Hardening + release | Same missing native folder picker on the not-found state. Tracked with S07-03 in M5. |
 | S08-04 | Katerina Zarina (tech lead) | M5 — Hardening + release | The corrupt-config Restore/Reset dialog needs a new IPC command and an ADR; core currently auto-restores `.bak` and blocks writes when both copies are unreadable. Config recovery is a release-safety item, not an M4 screen-polish item. |
 | X-03 | Baltasar Gelt (QA) | M5 — Hardening + release | Full pointer-free 1024×720 trace. The individual actions are automated and green; the end-to-end pointer-free run is part of the M5 e2e/release checklist. |
+| Z-05 (Windows) | Baltasar Gelt (QA) | WAR-141 v1.1 — release gate | The Linux half passed on X11/Xvfb; no Windows host is available to run the WebView2 restart and accelerator-key check. |
 
 ## Sign-off
 
