@@ -1,6 +1,5 @@
 target/
 node_modules/
-reference/
 dist/
 crates/wh3mm-app/gen/
 coverage/
@@ -15,13 +14,4 @@ frontend/test-results/
 
 # Perf fixtures are generated, never committed (500 binary packs)
 perf-fixture/
-docs/perf/.legacy-baseline-*/
-docs/perf/.new-app-*/
-# ...but the legacy baseline raw stdout logs are committed evidence, despite the global *.log rule.
-!docs/perf/legacy-baseline-run-*/
-!docs/perf/legacy-baseline-run-*/*.log
-# ...and so are the new-app measurement logs.
-!docs/perf/new-app-run-*/
-!docs/perf/new-app-run-*/**/*.log
-!docs/perf/new-app-smoke-linux/
-!docs/perf/new-app-smoke-linux/**/*.log
+docs/perf/

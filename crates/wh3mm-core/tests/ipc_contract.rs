@@ -245,7 +245,7 @@ fn launch_method_wire_values_include_proton() {
 
 #[test]
 fn every_error_code_is_documented() {
-    const TROUBLESHOOTING: &str = include_str!("../../../docs/TROUBLESHOOTING.md");
+    const TROUBLESHOOTING: &str = include_str!("../../../docs/INSTALLATION.md");
     let codes = [
         "io",
         "config_corrupt",
@@ -268,7 +268,7 @@ fn every_error_code_is_documented() {
     for code in codes {
         assert!(
             TROUBLESHOOTING.contains(&format!("`{code}`")),
-            "{code} is missing from docs/TROUBLESHOOTING.md"
+            "{code} is missing from docs/INSTALLATION.md"
         );
     }
 }

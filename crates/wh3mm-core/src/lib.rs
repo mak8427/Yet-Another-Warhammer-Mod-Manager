@@ -8,6 +8,7 @@ pub mod clock;
 pub mod config;
 pub mod conflicts;
 pub mod error;
+pub(crate) mod host_process;
 pub mod ipc;
 pub mod launch;
 pub(crate) mod launch_guard;

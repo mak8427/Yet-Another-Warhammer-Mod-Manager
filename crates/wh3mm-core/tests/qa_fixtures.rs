@@ -1,7 +1,7 @@
 //! Fixture-contract tests for the QA harness.
 //!
 //! These tests do not exercise product code. They prove that the committed
-//! fixtures are exactly what `docs/QA_PLAN.md` claims they are: the valid packs
+//! fixtures are exactly what `docs/TESTING.md` claims they are: the valid packs
 //! parse, every malformed pack is rejected for its documented reason, the text
 //! fixtures keep their encodings, and the manifest lists every data fixture.
 //!

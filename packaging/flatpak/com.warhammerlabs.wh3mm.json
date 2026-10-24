@@ -1,0 +1,26 @@
+{
+  "app-id": "com.warhammerlabs.wh3mm",
+  "runtime": "org.gnome.Platform",
+  "runtime-version": "50",
+  "sdk": "org.gnome.Sdk",
+  "command": "wh3mm",
+  "finish-args": [
+    "--share=ipc", "--share=network", "--socket=wayland", "--socket=fallback-x11",
+    "--device=dri", "--filesystem=host", "--talk-name=org.freedesktop.Flatpak"
+  ],
+  "modules": [{
+    "name": "wh3mm",
+    "buildsystem": "simple",
+    "build-commands": [
+      "install -Dm755 wh3mm /app/bin/wh3mm",
+      "install -Dm644 wh3mm.desktop /app/share/applications/com.warhammerlabs.wh3mm.desktop",
+      "sed -i 's/^Icon=wh3mm$/Icon=com.warhammerlabs.wh3mm/' /app/share/applications/com.warhammerlabs.wh3mm.desktop",
+      "install -Dm644 wh3mm.png /app/share/icons/hicolor/128x128/apps/com.warhammerlabs.wh3mm.png",
+      "install -Dm644 com.warhammerlabs.wh3mm.metainfo.xml /app/share/metainfo/com.warhammerlabs.wh3mm.metainfo.xml"
+    ],
+    "sources": [
+      {"type": "archive", "path": "release.tar.gz"},
+      {"type": "file", "path": "com.warhammerlabs.wh3mm.metainfo.xml"}
+    ]
+  }]
+}

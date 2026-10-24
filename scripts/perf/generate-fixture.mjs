@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * Generates the reproducible 500-mod fixture used by the legacy WH3 Mod Manager baseline.
+ * Generates reproducible synthetic pack workloads for core measurements.
  *
  * The fixture is deliberately *not* committed: it contains hundreds of binary packs.
  * It is rebuilt from this script, byte for byte, from a fixed seed.
  *
  * Layout (a synthetic WH3 game root):
  *   <root>/data/*.pack                 data-folder mods (and the vanilla pack named in manifest.txt)
- *   <root>/data/manifest.txt           vanilla pack list read by the legacy app
+ *   <root>/data/manifest.txt           vanilla pack list for mod indexing
  *   <root>/content/1142710/<id>/*.pack workshop-shaped mods
  *   <root>/userdata/config.json        app config pointing at the fixture
  *   <root>/fixture-manifest.json       what was generated (variant -> file list)
@@ -151,7 +151,7 @@ async function generate(out, count, seed) {
   await mkdir(contentRoot, { recursive: true });
   await mkdir(userData, { recursive: true });
 
-  // One synthetic vanilla pack, listed in manifest.txt so the legacy app excludes it from mods.
+  // One synthetic vanilla pack, listed in manifest.txt so the index excludes it from mods.
   await writeFile(
     nodePath.join(dataDir, "data.pack"),
     buildPFH5({

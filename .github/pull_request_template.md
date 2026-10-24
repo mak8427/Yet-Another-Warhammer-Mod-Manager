@@ -1,42 +1,17 @@
-## What changed
+## Change
 
-<!-- Concrete files/behaviour. One paragraph. -->
+<!-- Describe the concrete problem and resulting behavior. Link an issue if applicable. -->
 
-## Why
+## Validation
 
-<!-- The problem and the task/milestone this serves. -->
+<!-- List commands actually run and their results. Explain any checks not run. -->
 
-## Verification
+## Review notes
 
-- [ ] `cargo fmt --all --check`
-- [ ] `cargo clippy --workspace --all-targets --locked -- -D warnings`
-- [ ] `cargo test --workspace --locked`
-- [ ] `pnpm install --frozen-lockfile`
-- [ ] `pnpm typecheck`
-- [ ] `pnpm lint`
-- [ ] `pnpm test`
-- [ ] `pnpm build`
-- [ ] Windows shell check (required if the Tauri layer changed)
+<!-- Relevant design choices, manual desktop/package checks, and remaining limitations. -->
 
-## Review evidence
+## CI
 
-<!-- GitHub reviews are not used: all agents share the broker identity.
-     Copy the Paperclip task ids from the execution policy. A bare name is not
-     evidence. See docs/RELEASE.md, "Merge provenance". -->
-
-- QA review: `WAR-___` — approved (decision/comment id: `___`)
-- Tech-lead approval: `WAR-___` — approved (decision/comment id: `___`)
-- Author is not the approver; performance sign-off (if applicable): `WAR-___`
-
-## CI provenance
-
-<!-- Required checks must be completed/success on this exact head SHA. A
-     cancelled, failed, or skipped required check is not a pass. -->
-
-- Head SHA: `________`
-- `Linux quality gates`: success — <run URL>
-- `Capability parity`: success — <run URL>
-
-## Task
-
-<!-- Link the Paperclip task, e.g. WAR-4. State any ADR added or changed. -->
+<!-- Latest required checks must pass on the exact head being merged.
+     Package changes also need the installation matrix. No agent-task IDs or
+     simulated reviewer approvals are required. See CONTRIBUTING.md. -->

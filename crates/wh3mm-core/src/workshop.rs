@@ -7,7 +7,6 @@
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::time::{Duration, SystemTime};
 
 use serde::{Deserialize, Serialize};
@@ -291,8 +290,7 @@ fn find_on_path(command: &str) -> Option<PathBuf> {
 }
 
 fn spawn_steam_url(steam: &Path, url: &str) -> Result<(), AppError> {
-    Command::new(steam)
-        .arg(url)
+    crate::host_process::command(steam, &[url.to_string()], &BTreeMap::new(), None)
         .spawn()
         .map(|_| ())
         .map_err(|error| {

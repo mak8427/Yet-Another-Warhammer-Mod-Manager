@@ -1,0 +1,23 @@
+# Distributed under the terms of the GNU General Public License v2
+EAPI=8
+inherit desktop xdg
+DESCRIPTION="Mod manager for Total War: Warhammer III (prebuilt)"
+HOMEPAGE="https://github.com/mak8427/Warhammer_mod_manager"
+SRC_URI="@URL@"
+S="${WORKDIR}/wh3mm-${PV}-linux-x86_64"
+LICENSE="MIT"
+SLOT="0"
+KEYWORDS="~amd64"
+RESTRICT="strip"
+RDEPEND=">=sys-libs/glibc-2.39
+    net-libs/webkit-gtk:4.1
+    x11-libs/gtk+:3
+    dev-libs/libayatana-appindicator
+    gnome-base/librsvg:2
+    dev-libs/openssl:0/3"
+QA_PREBUILT="usr/bin/wh3mm"
+src_install() {
+    dobin wh3mm
+    domenu wh3mm.desktop
+    newicon -s 128 wh3mm.png wh3mm.png
+}

@@ -11,7 +11,15 @@
     "build": "pnpm --filter @wh3mm/desktop build",
     "typecheck": "pnpm --filter @wh3mm/desktop typecheck",
     "lint": "pnpm --filter @wh3mm/desktop lint",
-    "test": "pnpm --filter @wh3mm/desktop test"
+    "test": "pnpm --filter @wh3mm/desktop test",
+    "fixtures:verify": "bash scripts/dev/verify-fixtures.sh",
+    "fixtures:write": "node scripts/qa/generate-fixtures.mjs --write",
+    "fixtures:perf": "node scripts/perf/generate-suite.mjs",
+    "bench": "bash scripts/perf/bench.sh",
+    "bench:budget": "node scripts/perf/scan-budget.mjs",
+    "qa:scripts": "node --test scripts/qa/*.test.mjs && python3 scripts/qa/install-recipes.test.py",
+    "docs:check": "node scripts/qa/check-docs.mjs",
+    "perf:measure": "node scripts/perf/measure-new-app.mjs"
   },
   "devDependencies": {
     "yaml": "2.8.1"

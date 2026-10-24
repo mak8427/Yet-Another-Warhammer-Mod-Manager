@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.warhammerlabs.wh3mm</id>
+  <name>WH3 Mod Manager</name>
+  <summary>Manage Total War: Warhammer III mods and load orders</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <description><p>Browse installed mods, manage load order profiles, inspect conflicts, and launch Warhammer III through native Steam and Proton.</p></description>
+  <launchable type="desktop-id">com.warhammerlabs.wh3mm.desktop</launchable>
+  <url type="homepage">https://github.com/mak8427/Warhammer_mod_manager</url>
+  <url type="bugtracker">https://github.com/mak8427/Warhammer_mod_manager/issues</url>
+  <content_rating type="oars-1.1"/>
+</component>

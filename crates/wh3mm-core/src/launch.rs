@@ -9,7 +9,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;
-#[cfg(test)]
+#[cfg(any(test, target_os = "linux"))]
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::{Child, Command};
@@ -41,8 +41,8 @@ const INTRO_MOVIES: [&str; 6] = [
     "movies\\startup_movie_04.ca_vp8",
 ];
 
-/// A valid one-frame CA video used as the skip-intro placeholder. The bytes are
-/// the MIT-licensed blank movie from the legacy WH3 Mod Manager; see ADR-006.
+/// A valid one-frame CA video used as the skip-intro placeholder.
+/// Asset attribution and license are recorded in the README.
 const EMPTY_CA_VIDEO: &[u8] = &[
     0x43, 0x41, 0x4d, 0x56, 0x01, 0x00, 0x29, 0x00, 0x56, 0x50, 0x38, 0x30, 0x80, 0x02, 0xe0, 0x01,
     0x55, 0x55, 0x85, 0x42, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x4a, 0x02, 0x00, 0x00,
@@ -347,6 +347,25 @@ pub fn is_steam_running() -> Result<bool, AppError> {
 
 #[cfg(target_os = "linux")]
 pub fn is_game_running() -> Result<bool, AppError> {
+    if crate::host_process::is_flatpak() {
+        // Flatpak has a private PID namespace. Query the host and propagate
+        // probe failures rather than incorrectly allowing a second launch.
+        let output = crate::host_process::command(
+            Path::new("pgrep"),
+            &["-i".into(), "-f".into(), "[w]arhammer3\\.exe".into()],
+            &Default::default(),
+            None,
+        )
+        .output()
+        .map_err(|error| AppError::process_detection_failed(error.to_string()))?;
+        return match output.status.code() {
+            Some(0) => Ok(true),
+            Some(1) => Ok(false),
+            _ => Err(AppError::process_detection_failed(
+                String::from_utf8_lossy(&output.stderr).into_owned(),
+            )),
+        };
+    }
     let entries = fs::read_dir("/proc")
         .map_err(|error| AppError::process_detection_failed(format!("/proc: {error}")))?;
     for entry in entries.flatten() {
@@ -384,15 +403,12 @@ pub fn is_game_running() -> Result<bool, AppError> {
 }
 
 pub(crate) fn configure_launch_process(command: &LaunchCommand) -> Command {
-    let mut process = Command::new(&command.executable);
-    process.args(&command.args);
-    if !command.env.is_empty() {
-        process.envs(&command.env);
-    }
-    if let Some(working_dir) = &command.working_dir {
-        process.current_dir(working_dir);
-    }
-    process
+    crate::host_process::command(
+        &command.executable,
+        &command.args,
+        &command.env,
+        command.working_dir.as_deref(),
+    )
 }
 
 fn launch_failure_message(method: LaunchMethod) -> &'static str {

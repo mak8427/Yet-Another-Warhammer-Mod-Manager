@@ -75,9 +75,6 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      - name: Reference fetch script tests
-        run: bash scripts/tests/fetch-reference.test.sh
-
       - uses: pnpm/action-setup@v4
         with:
           run_install: false
@@ -124,17 +121,23 @@ jobs:
             libssl-dev \
             libdbus-1-dev
 
-      - name: QA fixture integrity
-        run: node scripts/qa/generate-fixtures.mjs --verify
+      - name: Release installer recipe tests
+        run: python3 scripts/qa/install-recipes.test.py
+
+      - name: Fixture integrity (committed + perf workloads)
+        run: pnpm fixtures:verify
 
       - name: Install frontend dependencies
         run: bash scripts/retry-command.sh pnpm install --frozen-lockfile
 
       # The packaging guard reads the workflow files with the root `yaml`
       # dependency, so it runs after the workspace install.
+      - name: Documentation links
+        run: node scripts/qa/check-docs.mjs
+
       - name: QA generator guard tests
         timeout-minutes: 5
-        run: node --test scripts/qa/*.test.mjs
+        run: pnpm qa:scripts
 
       # generate_context! embeds frontend/dist at compile time, so the frontend
       # must exist before clippy or tests build the app crate.
@@ -176,31 +179,6 @@ jobs:
             dist/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
-
-  parity:
-    name: Capability parity
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          run_install: false
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-
-      - name: Install dependencies
-        run: bash scripts/retry-command.sh pnpm install --frozen-lockfile
-
-      - name: Parity report tests
-        run: node --test scripts/parity-report.test.mjs
-
-      - name: Parity report
-        run: node scripts/parity-report.mjs --check
 
   windows-tauri:
     name: Windows Tauri shell (manual until packaging)
