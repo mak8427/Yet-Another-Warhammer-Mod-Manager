@@ -50,7 +50,15 @@ reference study plates are unchanged.
 
 ## Final owner-reference palette
 
-The application screenshots now use the supplied jade/stone/teal palette and
-bevelled capsule button style. capture.log records 33 screenshots plus 11
+The application screenshots now use the supplied Fiery Forge palette with darker charcoal panels and
+the approved blue bevelled capsule buttons. capture.log records 33 screenshots plus 11
 geometry checks from this final build. The reference plates and side-by-side
 composites are explicitly retained as the earlier wine/gold concept.
+
+## Dark Fiery Forge refinement
+
+The final application screenshots use `#2c2f33` panels/header plates and
+deeper charcoal behind the list. Ivory/light-grey text, gold details and
+restrained orange/indigo accents follow the owner-supplied palette. The
+approved blue button gradients are unchanged. The log records 33 screenshots
+and 11 geometry checks for this final build.

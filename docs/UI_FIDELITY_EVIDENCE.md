@@ -9,7 +9,7 @@
 ## What changed
 
 The shell now uses the TW:WH3 material language observed in the reference
-session: jade-black stone, grey-green metal frames, parchment text, bevelled teal
+session: neutral charcoal/slate stone, aged metal frames, parchment text, bevelled blue
 capsule buttons, serif titles, and one drawn corner stud. The change is CSS plus
 `data-faction` attributes; no layout, state, IPC, virtualization, or keyboard
 code changed.
@@ -61,7 +61,7 @@ Run from `frontend/` on the implementation branch:
 | Type check | `pnpm typecheck` | pass |
 | Lint | `pnpm lint` | pass |
 | Unit / integration tests | `pnpm test` | pass — 11 files / 88 tests |
-| Production build | `pnpm build` | pass — 46 modules, CSS 59.93 kB (10.81 kB gzip) |
+| Production build | `pnpm build` | pass — 46 modules, CSS 59.88 kB (10.78 kB gzip) |
 | Token/contrast gate | included in `pnpm test` (`tokens.test.ts`) | pass |
 | Screenshot capture | `SHOT_OUT=docs/screenshots/WAR-147 node scripts/qa/screenshots-m4.mjs` | pass — 33 screenshots + 11 geometry checks, no horizontal page scroll |
 | Reference plate | `./scripts/qa/render-reference-study.sh` | pass — 1920×1080 and 1366×768 |
@@ -178,3 +178,20 @@ forced-colors rules remove it and preserve native focus/selection boundaries.
 The existing style-policy test was updated to allow token-defined material
 gradients following this request. Contrast, geometry, density, keyboard and
 virtualization assertions remain intact and all 88 frontend tests pass.
+
+## Fiery Forge palette refinement
+
+The owner rejected the green cast after reviewing the first preview and
+requested keeping the blue buttons. The follow-up changes only palette and
+material-ramp tokens: charcoal and slate replace green fields, borders and
+secondary controls; the blue primary button gradients remain identical. The
+selected-row fill was darkened to preserve the existing 4.5:1 faction-accent
+contrast threshold. All 88 frontend tests pass without lowering any threshold.
+The owner then supplied the Fiery Forge palette. The final surfaces use its
+charcoal and greys, with ivory/light-grey text and restrained gold, ember and
+indigo accents. Blue primary button gradients are unchanged. The application
+PNGs and capture.log reflect this final supplied-palette version.
+
+The final owner refinement uses the darker `#2c2f33` palette grey for panels
+and headers and deeper charcoal behind the list; the lighter grey is limited
+to metal details. Approved blue action gradients remain unchanged.
