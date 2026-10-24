@@ -4,6 +4,32 @@ All notable changes to the WH3 Mod Manager rebuild are recorded here. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - unreleased
+
+### Added
+
+- **Linux desktop shell** (`#48`, ADR-007): the Tauri shell now builds and runs
+  on Linux against native Steam and Proton. The Linux CI job installs WebKitGTK
+  4.1/GTK3, builds the shell, and uploads the `wh3mm-linux-x64` tarball with a
+  checksum. Contribution by @Genny4Real1. Flatpak/Snap launch, Linux installer
+  packaging, and macOS remain out of scope.
+- **Linux direct Proton launch and load-order guard** (ADR-009): WH3 is started
+  through the configured Proton and Steam Linux Runtime without the Creative
+  Assembly launcher, using the existing `compatdata` prefix and the literal
+  `used_mods.txt;` argument. Launch aborts with `load_order_overridden` if the
+  file is rewritten during the three-second guard window. New launch errors are
+  documented in `docs/TROUBLESHOOTING.md`.
+- **Windows direct launch and mod-list protection** (ADR-010): Windows now
+  starts `Warhammer3.exe` directly with `used_mods.txt;`, so Steam no longer
+  opens the Creative Assembly launcher. Launch refuses a stale file, requires
+  Steam to be running, and restores the snapshot if the file is rewritten
+  during the launch guard.
+- **Workshop working directories**: `used_mods.txt` now includes managed
+  `add_working_directory "…";` lines for enabled Workshop/custom-folder packs,
+  before the `mod` lines, so a directly launched game can find their packs. The
+  parser, preview, pre-launch check, and fixtures treat this directive as
+  managed rather than unmanaged.
+
 ## [1.0.0] - unreleased
 
 This entry describes the scope merged on `main` as of 2026-10-21. The `v1.0.0`
@@ -39,7 +65,6 @@ See `docs/RELEASE.md`.
   configuration at version 1.0.0, a `v*` tag workflow that builds the
   installer, uploads the artifact, and opens a draft release, and this release
   guide plus changelog.
-
 ### Removed
 
 - **Pack-author surface** (`WAR-104`, `WAR-107`): the author column, author

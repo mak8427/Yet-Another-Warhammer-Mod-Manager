@@ -85,6 +85,7 @@ export function App() {
   const state = useAppStore()
   const [searchFocusRequest, setSearchFocusRequest] = useState(0)
   const handledSearchFocus = useRef(0)
+  const lastZoomWheel = useRef(0)
 
   useEffect(() => {
     void store.init()
@@ -118,6 +119,23 @@ export function App() {
         store.setView('settings')
         return
       }
+      if ((event.ctrlKey || event.metaKey) && !event.altKey) {
+        if (event.key === '+' || event.key === '=') {
+          event.preventDefault()
+          store.zoomIn()
+          return
+        }
+        if (event.key === '-' || event.key === '_') {
+          event.preventDefault()
+          store.zoomOut()
+          return
+        }
+        if (event.key === '0') {
+          event.preventDefault()
+          store.resetZoom()
+          return
+        }
+      }
       if (event.key === 'F6') {
         event.preventDefault()
         focusRegion(event.shiftKey ? -1 : 1)
@@ -136,6 +154,20 @@ export function App() {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [state.inspectorOpen])
+
+  useEffect(() => {
+    const onWheel = (event: WheelEvent) => {
+      if ((!event.ctrlKey && !event.metaKey) || event.deltaY === 0) return
+      event.preventDefault()
+      const now = Date.now()
+      if (now - lastZoomWheel.current < 120) return
+      lastZoomWheel.current = now
+      if (event.deltaY < 0) store.zoomIn()
+      else store.zoomOut()
+    }
+    window.addEventListener('wheel', onWheel, { passive: false })
+    return () => window.removeEventListener('wheel', onWheel)
+  }, [])
 
   useEffect(() => {
     if (state.status !== 'ready') return
@@ -202,6 +234,7 @@ export function App() {
         <GameSetup
           error={state.error}
           busy={state.busy}
+          platform={state.appInfo?.platform}
           onSubmit={(path) => void store.setGamePath(path)}
           onDetect={() => void store.setGamePath(null)}
         />

@@ -158,6 +158,7 @@ fn bench_used_mods(c: &mut Criterion) {
         .map(|index| PlannedName {
             id: format!("mod-{index}"),
             name: format!("perf_mod_{index:04}.pack"),
+            directory: None,
         })
         .collect();
     let initial = names

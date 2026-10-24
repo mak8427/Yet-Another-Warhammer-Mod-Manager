@@ -15,6 +15,7 @@ use crate::clock::now_iso8601;
 use crate::error::AppError;
 use crate::ipc::{Profile, Tag, UiPreferences};
 use crate::launch::LaunchOptions;
+use crate::window::WindowGeometry;
 
 pub const SCHEMA_VERSION: u32 = 1;
 pub const CONFIG_FILE: &str = "config.json";
@@ -34,6 +35,9 @@ pub struct AppConfig {
     pub paths: PathsConfig,
     #[serde(default)]
     pub ui: UiPreferences,
+    /// Last normal window bounds and maximised state. `None` means first run.
+    #[serde(default)]
+    pub window: Option<WindowGeometry>,
     pub active_profile_id: String,
     pub profiles: Vec<Profile>,
     #[serde(default)]
@@ -53,6 +57,7 @@ impl AppConfig {
             schema_version: SCHEMA_VERSION,
             paths: PathsConfig::default(),
             ui: UiPreferences::default(),
+            window: None,
             active_profile_id: profile.id.clone(),
             profiles: vec![profile],
             tags: Vec::new(),
@@ -260,6 +265,9 @@ impl AppConfig {
                 ));
             }
         }
+
+        self.ui = self.ui.clone().normalized();
+        self.window = self.window.map(WindowGeometry::sane);
 
         if self.profiles.is_empty() {
             let profile = Profile::new("Default");
@@ -613,6 +621,14 @@ mod tests {
             density: crate::ipc::Density::Compact,
             show_thumbnails: false,
             last_scroll_top: 420,
+            zoom: 150,
+        });
+        loaded.config.window = Some(WindowGeometry {
+            x: -1800,
+            y: 220,
+            width: 1300,
+            height: 760,
+            maximized: true,
         });
         save(&loaded.config, &path).unwrap();
 
@@ -628,7 +644,62 @@ mod tests {
         assert_eq!(reloaded.config.mod_tags["mod-a"], vec![tag.id]);
         assert_eq!(reloaded.config.ui.density, crate::ipc::Density::Compact);
         assert_eq!(reloaded.config.ui.last_scroll_top, 420);
+        assert_eq!(reloaded.config.ui.zoom, 150);
+        assert_eq!(
+            reloaded.config.window,
+            Some(WindowGeometry {
+                x: -1800,
+                y: 220,
+                width: 1300,
+                height: 760,
+                maximized: true,
+            })
+        );
         assert!(backup_path(&path).is_file());
+    }
+
+    #[test]
+    fn out_of_range_zoom_and_geometry_are_normalized_on_load() {
+        let dir = TempDir::new("config-window-normalize");
+        let path = config_path(&dir);
+        let loaded = load_or_create(&path).unwrap();
+        let mut value = serde_json::to_value(&loaded.config).unwrap();
+        value["ui"]["zoom"] = serde_json::Value::from(500);
+        value["window"] = serde_json::json!({
+            "x": 999_999,
+            "y": -999_999,
+            "width": 0,
+            "height": 0,
+            "maximized": false,
+        });
+        fs::write(&path, serde_json::to_vec(&value).unwrap()).unwrap();
+
+        let reloaded = load_or_create(&path).unwrap();
+
+        assert_eq!(reloaded.config.ui.zoom, crate::ipc::ZOOM_MAX);
+        let window = reloaded
+            .config
+            .window
+            .expect("geometry is kept, not dropped");
+        assert_eq!(window.x, 65_536);
+        assert_eq!(window.y, -65_536);
+        assert_eq!(window.width, 320);
+        assert_eq!(window.height, 240);
+    }
+
+    #[test]
+    fn missing_zoom_defaults_to_100_for_older_configs() {
+        let dir = TempDir::new("config-window-legacy");
+        let path = config_path(&dir);
+        let loaded = load_or_create(&path).unwrap();
+        let mut value = serde_json::to_value(&loaded.config).unwrap();
+        value["ui"].as_object_mut().unwrap().remove("zoom");
+        fs::write(&path, serde_json::to_vec(&value).unwrap()).unwrap();
+
+        let reloaded = load_or_create(&path).unwrap();
+
+        assert_eq!(reloaded.config.ui.zoom, crate::ipc::ZOOM_DEFAULT);
+        assert_eq!(reloaded.config.window, None);
     }
 
     #[test]

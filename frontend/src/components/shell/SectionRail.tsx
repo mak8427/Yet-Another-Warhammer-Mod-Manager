@@ -1,6 +1,14 @@
 import type { ReactNode } from 'react'
 import type { View } from '../../store'
 
+const SECTION_FACTION: Record<View, string> = {
+  mods: 'brass',
+  profiles: 'azure',
+  conflicts: 'ember',
+  workshop: 'copper',
+  settings: 'jade',
+}
+
 interface SectionRailProps {
   view: View
   modCount: number
@@ -97,6 +105,7 @@ export function SectionRail({
                 key={item.view}
                 type="button"
                 className={`rail-item${active ? ' rail-item-active' : ''}`}
+                data-faction={SECTION_FACTION[item.view]}
                 aria-current={active ? 'page' : undefined}
                 aria-keyshortcuts={item.shortcut}
                 title={`${item.label} (${item.shortcut})`}

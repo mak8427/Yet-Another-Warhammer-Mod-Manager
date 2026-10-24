@@ -12,6 +12,7 @@ use crate::error::{AppError, ErrorCode};
 use crate::ipc::{GameLocation as IpcGameLocation, LocationSource};
 
 pub const WH3_APP_ID: &str = "1142710";
+pub const WH3_EXE_NAME: &str = "Warhammer3.exe";
 pub const WH3_GAME_DIR_NAME: &str = "Total War WARHAMMER III";
 
 /// Value tree produced by the small VDF parser used for `libraryfolders.vdf`

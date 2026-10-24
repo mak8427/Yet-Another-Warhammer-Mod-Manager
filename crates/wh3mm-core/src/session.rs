@@ -19,6 +19,7 @@ use crate::load_order::{self, LoadOrderFile, PlannedName, WritePlan};
 use crate::mod_index::{self, DiscoveredMod, IndexReport};
 use crate::paths::{self, DetectionReport, GameLocation};
 use crate::timing::{log_timing, Timings};
+use crate::window::WindowGeometry;
 
 pub struct SessionOptions {
     pub config_path: PathBuf,
@@ -190,6 +191,24 @@ impl Session {
             .as_ref()
             .map(GameLocation::to_ipc)
             .ok_or_else(|| self.game_not_found_error())
+    }
+
+    /// Steam roots considered by the Linux direct-Proton resolver.
+    ///
+    /// The detected location carries the Steam root for automatic detection, but
+    /// a manual path only exposes the library root. Prefer the location's root
+    /// and fall back to the injected/default candidates.
+    pub(crate) fn launch_steam_roots(&self) -> Vec<PathBuf> {
+        let mut candidates = self
+            .steam_root_candidates
+            .clone()
+            .unwrap_or_else(paths::default_steam_root_candidates);
+        if let Some(location) = &self.location {
+            if !location.steam_root.as_os_str().is_empty() {
+                candidates.insert(0, location.steam_root.clone());
+            }
+        }
+        paths::discover_steam_roots(&candidates)
     }
 
     pub fn set_game_path(
@@ -554,14 +573,26 @@ impl Session {
 
     pub fn update_ui_preferences(
         &mut self,
-        mut preferences: UiPreferences,
+        preferences: UiPreferences,
     ) -> Result<UiPreferences, AppError> {
-        preferences.last_scroll_top = preferences.last_scroll_top.min(10_000_000);
+        let preferences = preferences.normalized();
         self.commit_config(|config| {
             config.update_ui(preferences.clone());
             Ok(())
         })?;
         Ok(self.ui_preferences())
+    }
+
+    pub fn window_geometry(&self) -> Option<WindowGeometry> {
+        self.config.window
+    }
+
+    pub fn set_window_geometry(&mut self, geometry: WindowGeometry) -> Result<(), AppError> {
+        let geometry = geometry.sane();
+        self.commit_config(|config| {
+            config.window = Some(geometry);
+            Ok(())
+        })
     }
 
     /// Resets UI preferences and the active profile's enabled set, clears the
@@ -793,10 +824,20 @@ impl Session {
         let mut unresolved = Vec::new();
         for id in &self.enabled_ids {
             match by_id.get(id.as_str()) {
-                Some(module) => resolved.push(PlannedName {
-                    id: id.clone(),
-                    name: module.name.clone(),
-                }),
+                Some(module) => {
+                    let directory = module.path.parent().and_then(|parent| {
+                        if parent == location.data_path.as_path() {
+                            None
+                        } else {
+                            Some(parent.to_path_buf())
+                        }
+                    });
+                    resolved.push(PlannedName {
+                        id: id.clone(),
+                        name: module.name.clone(),
+                        directory,
+                    });
+                }
                 None => unresolved.push(id.rsplit('/').next().unwrap_or(id.as_str()).to_string()),
             }
         }

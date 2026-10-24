@@ -1,0 +1,23 @@
+# Maintainer: Warhammer Labs <maintainers@warhammerlabs.invalid>
+# Prebuilt package: installs the release tarball. Rendered per release by
+# packaging/arch/render.sh so pkgver and sha256sums always match the asset.
+pkgname=wh3mm-bin
+pkgver=@PKGVER@
+pkgrel=1
+pkgdesc="Mod manager for Total War: Warhammer III"
+arch=('x86_64')
+url="https://github.com/mak8427/Warhammer_mod_manager"
+license=('MIT')
+depends=('webkit2gtk-4.1' 'gtk3' 'libayatana-appindicator' 'librsvg')
+provides=('wh3mm')
+conflicts=('wh3mm')
+options=('!strip' '!debug')
+source=("wh3mm-${pkgver}-linux-x86_64.tar.gz::@SOURCE_URL@")
+sha256sums=('@SHA256@')
+
+package() {
+  local src="$srcdir/wh3mm-${pkgver}-linux-x86_64"
+  install -Dm755 "$src/wh3mm" "$pkgdir/usr/bin/wh3mm"
+  install -Dm644 "$src/wh3mm.desktop" "$pkgdir/usr/share/applications/wh3mm.desktop"
+  install -Dm644 "$src/wh3mm.png" "$pkgdir/usr/share/icons/hicolor/128x128/apps/wh3mm.png"
+}

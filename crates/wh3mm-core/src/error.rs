@@ -15,7 +15,9 @@ pub enum ErrorCode {
     GameNotFound,
     /// Steam could not be located or read.
     SteamNotFound,
-    /// Whether the game process is running could not be determined.
+    /// Steam is installed but the client process is not running.
+    SteamNotRunning,
+    /// Whether the game or Steam process is running could not be determined.
     ProcessDetectionFailed,
     /// A `.pack` file is malformed or unreadable.
     PackParseFailed,
@@ -23,6 +25,18 @@ pub enum ErrorCode {
     NotFound,
     /// Caller-supplied data failed validation.
     Validation,
+    /// The game is not configured to run through Proton and no Windows executable exists.
+    ProtonNotConfigured,
+    /// The Proton compatibility data directory for the game is absent.
+    CompatDataMissing,
+    /// No usable Proton installation was found in the Steam libraries.
+    ProtonNotInstalled,
+    /// No Steam Linux Runtime entry point was found.
+    ProtonRuntimeMissing,
+    /// The Steam, Proton, or direct game process could not be spawned.
+    LaunchFailed,
+    /// `used_mods.txt` does not match the applied order or changed during launch.
+    LoadOrderOverridden,
     /// Unexpected internal failure; details are for logs, not UI copy.
     Internal,
 }
@@ -102,6 +116,16 @@ impl AppError {
         Self::new(
             ErrorCode::ProcessDetectionFailed,
             "Could not check whether Total War: Warhammer III is running; confirm the game is closed, then try again",
+        )
+        .with_details(details)
+        .retryable()
+    }
+
+    /// Reports that the Steam-client probe failed, so the Windows launch must not proceed.
+    pub fn steam_probe_failed(details: impl Into<String>) -> Self {
+        Self::new(
+            ErrorCode::ProcessDetectionFailed,
+            "Could not check whether Steam is running; start Steam and try again",
         )
         .with_details(details)
         .retryable()

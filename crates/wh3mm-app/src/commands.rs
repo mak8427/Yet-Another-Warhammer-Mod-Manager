@@ -10,6 +10,7 @@ use wh3mm_core::ipc::{
 };
 use wh3mm_core::launch::{LaunchOptions, LaunchResult};
 use wh3mm_core::session::{Session, SessionOptions};
+use wh3mm_core::window::WindowGeometry;
 use wh3mm_core::workshop::{SteamActionResult, WorkshopAction, WorkshopItem};
 
 /// Owns the single mutable session. Every filesystem mutation is serialized by
@@ -154,6 +155,16 @@ impl Manager {
         self.with_mut(|session| session.update_ui_preferences(preferences))
     }
 
+    pub fn window_geometry(&self) -> Option<WindowGeometry> {
+        self.with(|session| session.window_geometry())
+            .ok()
+            .flatten()
+    }
+
+    pub fn set_window_geometry(&self, geometry: WindowGeometry) -> Result<(), AppError> {
+        self.with_mut(|session| session.set_window_geometry(geometry))
+    }
+
     pub fn reset_to_defaults(
         &self,
         confirm: bool,
@@ -223,9 +234,9 @@ impl Manager {
 /// Returns identity and build information for the running application.
 ///
 /// This is the M0 round-trip proof: the React shell invokes `app_info` and
-/// renders the result. On Windows the `tauri::command` attribute turns this
-/// into an IPC handler; elsewhere it stays a plain function for tests.
-#[cfg_attr(windows, tauri::command)]
+/// renders the result. On desktop targets the `tauri::command` attribute turns
+/// this into an IPC handler; elsewhere it stays a plain function for tests.
+#[cfg_attr(any(windows, target_os = "linux"), tauri::command)]
 pub fn app_info() -> AppInfo {
     AppInfo {
         name: "WH3 Mod Manager".to_string(),
@@ -241,17 +252,18 @@ pub fn app_info() -> AppInfo {
 /// session command can reach the filesystem or wait on the session mutex that a
 /// scan or write holds.
 ///
-/// The Tauri shell is Windows-only; Linux tests compile the same seam against
-/// Tokio so CI can test the off-main-thread contract.
-#[cfg(any(windows, test))]
+/// The desktop shell uses Tauri's runtime; tests compile the same seam against
+/// Tokio so the off-main-thread contract runs without a Tauri runtime or a
+/// display.
+#[cfg(any(windows, target_os = "linux", test))]
 async fn run_blocking<T, F>(work: F) -> Result<T, AppError>
 where
     F: FnOnce() -> Result<T, AppError> + Send + 'static,
     T: Send + 'static,
 {
-    #[cfg(windows)]
+    #[cfg(not(test))]
     let joined = tauri::async_runtime::spawn_blocking(work).await;
-    #[cfg(not(windows))]
+    #[cfg(test)]
     let joined = tokio::task::spawn_blocking(work).await;
 
     joined.map_err(|error| {
@@ -259,9 +271,9 @@ where
     })?
 }
 
-/// Tauri command wrappers. They stay Windows-only so Linux CI can exercise the
-/// full core and the Manager methods without linking a WebView.
-#[cfg(windows)]
+/// Tauri command wrappers for the desktop shell. Tests exercise the core and
+/// the Manager methods directly, without a Tauri runtime or a WebView.
+#[cfg(any(windows, target_os = "linux"))]
 mod tauri_commands {
     use super::*;
     use tauri::Manager as _;
@@ -390,22 +402,29 @@ mod tauri_commands {
     #[tauri::command]
     pub async fn update_ui_preferences(
         app: tauri::AppHandle,
+        window: tauri::WebviewWindow,
         preferences: UiPreferences,
     ) -> Result<UiPreferences, AppError> {
-        run_blocking(move || app.state::<Manager>().update_ui_preferences(preferences)).await
+        let saved =
+            run_blocking(move || app.state::<Manager>().update_ui_preferences(preferences)).await?;
+        crate::window_state::apply_zoom(&window, saved.zoom)?;
+        Ok(saved)
     }
 
     #[tauri::command]
     pub async fn reset_to_defaults(
         app: tauri::AppHandle,
+        window: tauri::WebviewWindow,
         confirm: bool,
         confirm_unmanaged_loss: bool,
     ) -> Result<ResetDefaultsReport, AppError> {
-        run_blocking(move || {
+        let report = run_blocking(move || {
             app.state::<Manager>()
                 .reset_to_defaults(confirm, confirm_unmanaged_loss)
         })
-        .await
+        .await?;
+        crate::window_state::apply_zoom(&window, wh3mm_core::ipc::ZOOM_DEFAULT)?;
+        Ok(report)
     }
 
     #[tauri::command]
@@ -486,7 +505,7 @@ mod tauri_commands {
     }
 }
 
-#[cfg(windows)]
+#[cfg(any(windows, target_os = "linux"))]
 pub use tauri_commands::*;
 
 #[cfg(test)]

@@ -15,9 +15,10 @@
         "label": "main",
         "title": "WH3 Mod Manager",
         "width": 1280,
-        "height": 840,
+        "height": 680,
         "minWidth": 1024,
-        "minHeight": 720,
+        "minHeight": 600,
+        "center": true,
         "resizable": true
       }
     ],
@@ -52,6 +53,16 @@
       },
       "nsis": {
         "installMode": "currentUser"
+      }
+    },
+    "linux": {
+      "deb": {
+        "depends": [
+          "libwebkit2gtk-4.1-0",
+          "libgtk-3-0t64 | libgtk-3-0",
+          "libayatana-appindicator3-1",
+          "librsvg2-2"
+        ]
       }
     }
   }
