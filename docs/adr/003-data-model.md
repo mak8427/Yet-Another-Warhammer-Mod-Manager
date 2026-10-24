@@ -69,19 +69,24 @@ Read:
 - Deduplicate names case-insensitively (Windows semantics), keeping the first
   occurrence and reporting duplicates as a warning. This matches legacy
   `parseUsedMods`.
-- Preserve the order of first occurrence. Unknown lines (for example
-  `add_working_directory "…";`) are parsed as unmanaged directives: they are
-  not interpreted, but they are counted and included in the pre-write report and
-  in the `.bak`.
+- Preserve the order of first occurrence. `add_working_directory "…";` is a
+  managed directive used by Workshop and custom-folder mods; it is parsed,
+  deduplicated case-insensitively, and rewritten. Other unknown lines are parsed
+  as unmanaged directives: they are not interpreted, but they are counted and
+  included in the pre-write report and in the `.bak`.
 - Resolve names against the discovered mod index using case-insensitive pack
   file names. Names that do not resolve are reported, not guessed.
 
 Write:
 
-- The file contains only managed `mod "<name>";` lines, matching legacy
-  behaviour. Unmanaged directives are **not** re-emitted; if any were present,
-  the command must have returned them in the pre-write report so the UI warned
-  the user before the destructive change.
+- The file contains managed `add_working_directory "<directory>";` lines for
+  each enabled mod whose pack lives outside the game's `data` directory, then the
+  managed `mod "<name>";` lines. Directories are deduplicated and emitted before
+  the mod list, matching the CA launcher and the upstream manager. This is what
+  lets a directly launched game find Workshop packs. Other unmanaged directives
+  are **not** re-emitted; if any were present, the command must have returned
+  them in the pre-write report so the UI warned the user before the destructive
+  change.
 - Only enabled, resolvable packs are written. `written` and `skipped` are
   returned in `LoadOrderWriteReport` (ADR-002).
 - Refuse to write when the enabled set is non-empty but zero packs resolve, and

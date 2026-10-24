@@ -15,11 +15,14 @@ pub const BACKUP_SUFFIX: &str = ".bak";
 pub struct ParsedUsedMods {
     /// Deduplicated managed names, first occurrence wins.
     pub mod_names: Vec<String>,
-    /// Lines that are not `mod "name";`, kept verbatim for the warning report.
+    /// Deduplicated `add_working_directory` paths, first occurrence wins.
+    pub working_directories: Vec<String>,
+    /// Lines that are not managed `mod`/`add_working_directory` statements,
+    /// kept verbatim for the warning report.
     pub unmanaged: Vec<String>,
     /// Names repeated in the file (case-insensitive).
     pub duplicates: Vec<String>,
-    /// Lines that start with `mod` but do not match the grammar.
+    /// Lines that start with a managed keyword but do not match the grammar.
     pub corrupt_lines: Vec<String>,
     pub had_bom: bool,
     pub had_crlf: bool,
@@ -35,7 +38,7 @@ impl ParsedUsedMods {
             None
         } else {
             Some(format!(
-                "used_mods.txt contains {} malformed mod line(s): {}",
+                "used_mods.txt contains {} malformed managed line(s): {}",
                 self.corrupt_lines.len(),
                 self.corrupt_lines.join(" | ")
             ))
@@ -45,6 +48,18 @@ impl ParsedUsedMods {
 
 pub fn used_mods_path(game_dir: &Path) -> PathBuf {
     game_dir.join(USED_MODS_FILE)
+}
+
+/// Formats a search directory for the Windows game, including under Proton.
+/// A bare Unix absolute path is rooted on the current Windows drive; Proton exposes the
+/// Unix filesystem through its default Z: drive instead.
+pub(crate) fn game_working_directory(directory: &Path) -> String {
+    let directory = directory.to_string_lossy().into_owned();
+    if cfg!(target_os = "linux") && directory.starts_with('/') {
+        format!("Z:{directory}")
+    } else {
+        directory
+    }
 }
 
 pub fn backup_path(path: &Path) -> PathBuf {
@@ -73,6 +88,7 @@ pub fn parse_used_mods(bytes: &[u8]) -> Result<ParsedUsedMods, AppError> {
         ..ParsedUsedMods::default()
     };
     let mut seen = std::collections::HashSet::new();
+    let mut seen_directories = std::collections::HashSet::new();
 
     for line in text.split('\n') {
         let line = line.strip_suffix('\r').unwrap_or(line);
@@ -88,6 +104,16 @@ pub fn parse_used_mods(bytes: &[u8]) -> Result<ParsedUsedMods, AppError> {
                         parsed.mod_names.push(name);
                     } else {
                         parsed.duplicates.push(name);
+                    }
+                }
+                None => parsed.corrupt_lines.push(trimmed.to_string()),
+            }
+        } else if let Some(rest) = strip_working_directory_keyword(trimmed) {
+            match parse_working_directory_statement(rest) {
+                Some(directory) => {
+                    let key = directory.to_lowercase();
+                    if seen_directories.insert(key) {
+                        parsed.working_directories.push(directory);
                     }
                 }
                 None => parsed.corrupt_lines.push(trimmed.to_string()),
@@ -116,18 +142,48 @@ fn strip_mod_keyword(line: &str) -> Option<&str> {
 }
 
 fn parse_mod_statement(rest: &str) -> Option<String> {
+    parse_quoted_statement(rest)
+}
+
+const WORKING_DIRECTORY_KEYWORD: &str = "add_working_directory";
+
+fn strip_working_directory_keyword(line: &str) -> Option<&str> {
+    let bytes = line.as_bytes();
+    if bytes.len() < WORKING_DIRECTORY_KEYWORD.len()
+        || !bytes[..WORKING_DIRECTORY_KEYWORD.len()]
+            .eq_ignore_ascii_case(WORKING_DIRECTORY_KEYWORD.as_bytes())
+    {
+        return None;
+    }
+    let rest = &line[WORKING_DIRECTORY_KEYWORD.len()..];
+    if rest.is_empty() {
+        return Some("");
+    }
+    let next = rest.as_bytes()[0];
+    if next.is_ascii_whitespace() || next == b'"' {
+        Some(rest)
+    } else {
+        None
+    }
+}
+
+fn parse_working_directory_statement(rest: &str) -> Option<String> {
+    parse_quoted_statement(rest)
+}
+
+fn parse_quoted_statement(rest: &str) -> Option<String> {
     let rest = rest.trim_start();
     let rest = rest.strip_prefix('"')?;
     let end = rest.find('"')?;
-    let name = &rest[..end];
-    if name.is_empty() {
+    let value = &rest[..end];
+    if value.is_empty() {
         return None;
     }
     let tail = rest[end + 1..].trim();
     if tail != ";" {
         return None;
     }
-    Some(name.to_string())
+    Some(value.to_string())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -204,6 +260,9 @@ pub fn read_file(path: &Path) -> LoadOrderFile {
 pub struct PlannedName {
     pub id: String,
     pub name: String,
+    /// Directory the game must search for this pack. `None` means the game's
+    /// normal `data` directory, which needs no `add_working_directory` line.
+    pub directory: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -211,6 +270,7 @@ pub struct WritePlan {
     pub path: PathBuf,
     pub backup_path: Option<PathBuf>,
     pub content: Vec<u8>,
+    pub working_directories: Vec<String>,
     pub written: usize,
     pub skipped: Vec<String>,
     pub unmanaged_directives: Vec<String>,
@@ -241,7 +301,9 @@ pub fn plan_write(
     let would_drop_unmanaged = !unmanaged_directives.is_empty();
 
     let mut names = Vec::with_capacity(resolved.len());
+    let mut working_directories = Vec::new();
     let mut seen = std::collections::HashSet::new();
+    let mut seen_directories = std::collections::HashSet::new();
     for planned in resolved {
         validate_pack_name(&planned.name)?;
         let key = planned.name.to_lowercase();
@@ -252,9 +314,16 @@ pub fn plan_write(
             )));
         }
         names.push(planned.name.clone());
+        if let Some(directory) = &planned.directory {
+            let directory = game_working_directory(directory);
+            validate_working_directory(&directory)?;
+            if seen_directories.insert(directory.to_lowercase()) {
+                working_directories.push(directory);
+            }
+        }
     }
 
-    let content = render(&names);
+    let content = render(&working_directories, &names);
     let resulting_mod_count = names.len();
     let mut blocked_reason = None;
     if existing.unreadable.is_some() {
@@ -291,6 +360,7 @@ pub fn plan_write(
         path: path.to_path_buf(),
         backup_path: existing.present.then(|| backup_path(path)),
         content,
+        working_directories,
         written: resulting_mod_count,
         skipped: unresolved.to_vec(),
         unmanaged_directives,
@@ -319,17 +389,29 @@ fn validate_pack_name(name: &str) -> Result<(), AppError> {
     Ok(())
 }
 
-fn render(names: &[String]) -> Vec<u8> {
-    let mut text = String::new();
-    for (index, name) in names.iter().enumerate() {
-        if index > 0 {
-            text.push('\n');
-        }
-        text.push_str("mod \"");
-        text.push_str(name);
-        text.push_str("\";");
+fn validate_working_directory(directory: &str) -> Result<(), AppError> {
+    if directory.trim().is_empty() {
+        return Err(AppError::validation(
+            "A mod working directory cannot be empty",
+        ));
     }
-    text.into_bytes()
+    if directory.contains('"') || directory.contains('\n') || directory.contains('\r') {
+        return Err(AppError::validation(format!(
+            "The working directory {directory:?} cannot be written to used_mods.txt"
+        )));
+    }
+    Ok(())
+}
+
+fn render(working_directories: &[String], names: &[String]) -> Vec<u8> {
+    let mut lines = Vec::with_capacity(working_directories.len() + names.len());
+    for directory in working_directories {
+        lines.push(format!("add_working_directory \"{directory}\";"));
+    }
+    for name in names {
+        lines.push(format!("mod \"{name}\";"));
+    }
+    lines.join("\n").into_bytes()
 }
 
 /// Executes a plan. Refuses when the plan says the write is unsafe.
@@ -384,21 +466,46 @@ mod tests {
             .map(|(id, name)| PlannedName {
                 id: (*id).to_string(),
                 name: (*name).to_string(),
+                directory: None,
             })
             .collect()
     }
 
     #[test]
     fn parses_bom_crlf_duplicates_unicode_and_unmanaged_lines() {
-        let bytes = "\u{feff}mod \"a.pack\";\r\n\r\n add_working_directory \"x\";\r\nmod \"b ünï.pack\" ;\r\nMOD \"A.PACK\";\r\nmod \"missing;".as_bytes();
+        let bytes = "\u{feff}mod \"a.pack\";\r\n\r\n add_working_directory \"x\";\r\nsome_directive \"y\";\r\nmod \"b ünï.pack\" ;\r\nMOD \"A.PACK\";\r\nmod \"missing;".as_bytes();
         let parsed = parse_used_mods(bytes).unwrap();
         assert!(parsed.had_bom);
         assert!(parsed.had_crlf);
         assert_eq!(parsed.mod_names, vec!["a.pack", "b ünï.pack"]);
+        assert_eq!(parsed.working_directories, vec!["x"]);
         assert_eq!(parsed.duplicates, vec!["A.PACK"]);
-        assert_eq!(parsed.unmanaged, vec!["add_working_directory \"x\";"]);
+        assert_eq!(parsed.unmanaged, vec!["some_directive \"y\";"]);
         assert_eq!(parsed.corrupt_lines, vec!["mod \"missing;"]);
         assert!(parsed.is_corrupt());
+    }
+
+    #[test]
+    fn parses_and_deduplicates_working_directories() {
+        let parsed = parse_used_mods(
+            b"add_working_directory \"C:/mods/a\";\nADD_WORKING_DIRECTORY \"C:/MODS/A\";\nmod \"a.pack\";",
+        )
+        .unwrap();
+
+        assert_eq!(parsed.working_directories, vec!["C:/mods/a"]);
+        assert!(parsed.unmanaged.is_empty());
+        assert!(!parsed.is_corrupt());
+    }
+
+    #[test]
+    fn malformed_working_directory_is_a_managed_corrupt_line() {
+        let parsed = parse_used_mods(b"add_working_directory \"unterminated").unwrap();
+
+        assert!(parsed.is_corrupt());
+        assert_eq!(
+            parsed.corrupt_lines,
+            vec!["add_working_directory \"unterminated"]
+        );
     }
 
     #[test]
@@ -408,21 +515,59 @@ mod tests {
     }
 
     #[test]
+    fn windows_and_relative_working_directories_are_preserved() {
+        for directory in [
+            "C:/Steam/workshop/123",
+            r"D:\Steam\workshop\123",
+            "Z:/mnt/mods",
+            "../mods",
+        ] {
+            assert_eq!(game_working_directory(Path::new(directory)), directory);
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn unix_workshop_paths_are_written_for_proton_with_order_and_backup_preserved() {
+        let dir = TempDir::new("used-mods-proton");
+        let path = dir.path().join(USED_MODS_FILE);
+        let original =
+            "add_working_directory \"/mnt/Steam Library/mods ü/123\";\nmod \"old.pack\";"
+                .as_bytes();
+        fs::write(&path, original).unwrap();
+        let mut resolved = names(&[("1", "b.pack"), ("2", "a.pack")]);
+        for planned in &mut resolved {
+            planned.directory = Some(PathBuf::from("/mnt/Steam Library/mods ü/123"));
+        }
+
+        let plan = plan_write(&path, &resolved, &[], false, false).unwrap();
+        let expected = "add_working_directory \"Z:/mnt/Steam Library/mods ü/123\";\nmod \"b.pack\";\nmod \"a.pack\";";
+        assert!(plan.can_write);
+        assert_eq!(plan.content, expected.as_bytes());
+        assert_eq!(
+            plan.working_directories,
+            vec!["Z:/mnt/Steam Library/mods ü/123"]
+        );
+        write_plan(&plan).unwrap();
+        assert_eq!(fs::read(backup_path(&path)).unwrap(), original);
+        assert_eq!(fs::read(&path).unwrap(), expected.as_bytes());
+    }
+
+    #[test]
     fn write_round_trip_is_byte_stable_and_creates_backup() {
         let dir = TempDir::new("used-mods-roundtrip");
         let path = dir.path().join(USED_MODS_FILE);
         fs::write(&path, "mod \"old.pack\";\n").unwrap();
 
-        let plan = plan_write(
-            &path,
-            &names(&[("1", "b.pack"), ("2", "a.pack")]),
-            &[],
-            false,
-            false,
-        )
-        .unwrap();
+        let mut resolved = names(&[("1", "b.pack"), ("2", "a.pack")]);
+        resolved[0].directory = Some(PathBuf::from("C:/mods"));
+        let plan = plan_write(&path, &resolved, &[], false, false).unwrap();
         assert!(plan.can_write);
-        assert_eq!(plan.content, b"mod \"b.pack\";\nmod \"a.pack\";");
+        assert_eq!(
+            plan.content,
+            b"add_working_directory \"C:/mods\";\nmod \"b.pack\";\nmod \"a.pack\";"
+        );
+        assert_eq!(plan.working_directories, vec!["C:/mods"]);
         let backup = write_plan(&plan).unwrap();
         assert_eq!(backup, Some(backup_path(&path)));
         assert_eq!(fs::read(&path).unwrap(), plan.content);
@@ -433,6 +578,7 @@ mod tests {
 
         let reread = read_file(&path);
         assert_eq!(reread.parsed.mod_names, vec!["b.pack", "a.pack"]);
+        assert_eq!(reread.parsed.working_directories, vec!["C:/mods"]);
         assert!(!reread.is_corrupt());
     }
 
@@ -463,7 +609,7 @@ mod tests {
     fn refuses_to_drop_unmanaged_directives_without_confirmation() {
         let dir = TempDir::new("used-mods-unmanaged");
         let path = dir.path().join(USED_MODS_FILE);
-        fs::write(&path, "add_working_directory \"C:/x\";\nmod \"a.pack\";\n").unwrap();
+        fs::write(&path, "some_directive \"C:/x\";\nmod \"a.pack\";\n").unwrap();
         let plan = plan_write(&path, &names(&[("1", "a.pack")]), &[], false, false).unwrap();
         assert!(!plan.can_write);
         assert!(plan.would_drop_unmanaged);

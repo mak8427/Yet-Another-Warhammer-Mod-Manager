@@ -195,9 +195,9 @@ The result must match the SHA-256 printed in the release notes.
 
 ## Build locally on Linux
 
-Linux builds the same Tauri shell for native Steam and Proton. This path
-produces a binary, not an installer; Linux packaging is not part of the release
-workflow yet.
+Linux builds the same Tauri shell for native Steam and Proton. The release
+workflow turns this build into the `.deb`, AppImage, tarball, and Arch package;
+the manual path below produces the same binary but not the packages.
 
 Prerequisites:
 
@@ -229,9 +229,137 @@ Output:
 - CI publishes the same binary as the `wh3mm-linux-x64` workflow artifact,
   with a `SHA256SUMS.txt`.
 
+To reproduce the release packages locally, after the frontend build:
+
+```bash
+cd crates/wh3mm-app
+npx --yes @tauri-apps/cli@2.12.4 build --ci --bundles deb,appimage
+```
+
+The AppImage is `target/release/bundle/appimage/*.AppImage`; the Debian package
+is `target/release/bundle/deb/*.deb`. The portable tarball and the Arch package
+are staged by the release workflow (`.github/workflows/linux-packages.yml`) from
+the same release binary.
+
 The Linux acceptance script is [`docs/MANUAL_QA_LINUX.md`](MANUAL_QA_LINUX.md);
 it must be executed on a real Linux desktop before Linux packaging ships.
-Flatpak/Snap Steam launch, Linux installers, and macOS remain out of scope.
+Flatpak/Snap Steam launch, signed repositories, and macOS remain out of scope.
+
+## Install from a Linux release
+
+A Linux release carries four user paths and one checksum index:
+
+| Format | Asset | Install or run |
+|---|---|---|
+| Debian/Ubuntu | `wh3mm_<version>_amd64.deb` | `sudo apt install ./wh3mm_<version>_amd64.deb`, then `wh3mm` |
+| AppImage | `wh3mm_<version>_amd64.AppImage` | `chmod +x`, then run the file |
+| Portable tarball | `wh3mm-<version>-linux-x86_64.tar.gz` | extract, then run `wh3mm` |
+| Arch Linux | `wh3mm-bin-<version>-1-x86_64.pkg.tar.zst`, `PKGBUILD` | `pacman -U`, or `makepkg -si` from the PKGBUILD |
+
+None of these paths needs Rust, Node.js, pnpm, or the Tauri CLI. The AppImage,
+tarball, and Arch package need the WebKitGTK 4.1 runtime; the `.deb` declares it
+and apt installs it. Examples use version `1.0.0`; substitute the release you
+downloaded.
+
+### Verify the download
+
+Download the assets and `SHA256SUMS.txt` into one directory, then:
+
+```bash
+sha256sum -c SHA256SUMS.txt
+```
+
+Every line must end in `OK`. The file covers the `.exe`, `.deb`, `.AppImage`,
+tarball, Arch package, and the Arch `PKGBUILD` and `.SRCINFO`.
+
+### Debian and Ubuntu (`.deb`)
+
+```bash
+sudo apt install ./wh3mm_1.0.0_amd64.deb
+wh3mm
+```
+
+`apt install ./file.deb` resolves the declared dependencies: WebKitGTK 4.1,
+GTK3, libayatana-appindicator, and librsvg. The package installs
+`/usr/bin/wh3mm`, the desktop entry, and the icon; the app appears in the
+application menu as **WH3 Mod Manager**. Remove it with
+`sudo apt remove wh3-mod-manager`.
+
+### AppImage
+
+Install the runtime libraries once, then run the file:
+
+```bash
+# Debian/Ubuntu 24.04
+sudo apt install libwebkit2gtk-4.1-0 libgtk-3-0t64 libayatana-appindicator3-1 librsvg2-2
+
+# Fedora
+sudo dnf install webkit2gtk4.1 libayatana-appindicator-gtk3
+
+chmod +x wh3mm_1.0.0_amd64.AppImage
+./wh3mm_1.0.0_amd64.AppImage
+```
+
+The AppImage uses the standard type-2 runtime. Running it directly needs FUSE 2
+(`libfuse2`; on Ubuntu 24.04 the package is `libfuse2t64`, on Fedora
+`fuse-libs`). Where FUSE is unavailable (containers, locked-down systems), run
+it with `APPIMAGE_EXTRACT_AND_RUN=1`; the runtime then executes the same
+embedded payload without mounting. The application itself is self-contained;
+WebKitGTK is a system library and is not bundled.
+
+### Portable tarball
+
+```bash
+tar -xzf wh3mm-1.0.0-linux-x86_64.tar.gz
+./wh3mm-1.0.0-linux-x86_64/wh3mm
+```
+
+The archive contains the binary, `wh3mm.desktop`, and a 128×128 icon. It needs
+the same WebKitGTK 4.1 runtime packages as the AppImage. Install the desktop
+entry and icon manually if you want a menu entry:
+
+```bash
+install -Dm644 wh3mm-1.0.0-linux-x86_64/wh3mm.desktop ~/.local/share/applications/wh3mm.desktop
+install -Dm644 wh3mm-1.0.0-linux-x86_64/wh3mm.png ~/.local/share/icons/hicolor/128x128/apps/wh3mm.png
+```
+
+### Arch Linux
+
+The release attaches the AUR-ready `PKGBUILD` (package `wh3mm-bin`) and its
+`.SRCINFO`. The AUR submission is a copy of the files CI built, so it is not a
+second hand-maintained recipe. If `wh3mm-bin` is available in the AUR, install
+it with an AUR helper (for example `yay -S wh3mm-bin`). Until it is published
+there, build the attached PKGBUILD directly; it downloads the same release
+tarball:
+
+```bash
+mkdir wh3mm-bin && cd wh3mm-bin
+curl -LO https://github.com/mak8427/Warhammer_mod_manager/releases/download/v1.0.0/PKGBUILD
+makepkg -si
+wh3mm
+```
+
+The package pulls `webkit2gtk-4.1`, `gtk3`, `libayatana-appindicator`, and
+`librsvg`, installs `/usr/bin/wh3mm`, and registers the desktop entry. The
+`.pkg.tar.zst` attached to the release is the exact package CI built and
+started on `archlinux:latest`.
+
+### What CI proves
+
+`.github/workflows/linux-packages.yml` runs on changes to the workspace, the
+frontend, or the packaging files, and is also the reusable workflow that
+`release.yml` calls on a `v*` tag or dispatch. It:
+
+- builds and checksums the AppImage, `.deb`, and tarball;
+- installs the `.deb` on a clean `ubuntu:24.04` container and starts the app;
+- runs the AppImage on Ubuntu 24.04 and, with the tarball, on Fedora; the
+  containers have no `/dev/fuse`, so the AppImage test uses the runtime's
+  `APPIMAGE_EXTRACT_AND_RUN=1` mode;
+- builds the Arch package from the shipping tarball in `archlinux:latest`,
+  installs it with `pacman -U`, and starts the app under Xvfb.
+
+A release therefore cannot ship a Linux format that CI has not installed and
+started.
 
 ## Known limitations (v1.0)
 
@@ -258,22 +386,27 @@ name, type, timestamp, and dependencies.
 `.github/workflows/release.yml` runs on a `v*` tag:
 
 1. Checks the tag against `tauri.conf.json` and fails on a mismatch.
-2. Runs `cargo test --workspace --locked` and installs the frontend.
-3. Builds the NSIS installer on `windows-latest`.
-4. Stages the installer and `SHA256SUMS.txt` flat, writes checksum entries with
-   the uploaded asset name, and verifies them with `sha256sum -c` before
-   uploading the pair as the `wh3mm-windows-<version>` run artifact.
-5. Creates a **draft** GitHub release with the installer and checksums attached.
+2. `windows-installer` builds and checksums the NSIS installer on
+   `windows-latest`.
+3. `linux-packages` calls `.github/workflows/linux-packages.yml` and builds the
+   AppImage, `.deb`, tarball, and Arch package, installing and starting each one
+   in its target container.
+4. `publish` downloads every job's artifacts, rebuilds one `SHA256SUMS.txt` over
+   all release files, verifies it, and creates a **draft** GitHub release with
+   the Windows installer, the three Linux formats, the Arch package, `PKGBUILD`,
+   `.SRCINFO`, and the checksum index.
 
 It never publishes a release automatically. A human reviews the draft, edits the
-notes, and publishes it. Linux PR gates in `.github/workflows/ci.yml` now build
-the Linux desktop shell and upload the `wh3mm-linux-x64` artifact; they stay
+notes, and publishes it. Linux PR gates in `.github/workflows/ci.yml` build the
+Linux desktop shell and upload the `wh3mm-linux-x64` artifact; they stay
 required by process (see **Merge provenance** above), and GitHub enforces them
 only after the owner enables the required checks.
 
 To exercise the build without creating a tag or a release, run the workflow
 manually (`workflow_dispatch`) with the version input; that path uploads the
-artifact only.
+Windows, Linux, and Arch artifacts to the run only. The `Linux packages`
+workflow also runs directly on packaging changes, so a broken `.deb`, AppImage,
+tarball, or Arch package fails the pull request before the tag.
 
 **Ordering.** GitHub only exposes `workflow_dispatch` for a workflow that is on
 the default branch. The artifact-producing Windows run therefore comes **after**
@@ -365,7 +498,7 @@ release task.
       `Capability parity` runs on its exact head, and its body records the QA
       and tech-lead Paperclip approval ids (`docs/RELEASE.md`, Merge provenance).
 - [ ] `node scripts/qa/verify-perf-gate.mjs` passes at the tag head and Genny4Real's v1.0 perf sign-off is recorded (WAR-98).
-- [ ] Tag workflow produced the NSIS installer, `SHA256SUMS.txt`, and a draft release.
+- [ ] Tag workflow produced the NSIS installer, the four Linux artifacts, `SHA256SUMS.txt`, and a draft release.
 - [ ] WAR-12 audit signed off on that draft.
 - [ ] Manual QA script passed on clean Windows 10 and 11 machines.
 - [ ] Installer SHA-256 published in the release notes.

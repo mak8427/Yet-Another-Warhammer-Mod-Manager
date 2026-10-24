@@ -431,12 +431,12 @@ required because the legacy baseline was captured there.
 
 ### Measurement-scope decision
 
-Driving the real Tauri window through CDP/WebDriver was rejected for this gate: the shell is
-Windows-only, this run cannot push a branch or dispatch Windows CI, and an untested WebView driver
-would add a failure mode to the only measurement that matters. The headless core harness measures
-the same startup pipeline, is reproducible on any host, and states exactly what it excludes. When
-M3 adds the launch path, the launch metric must be re-measured through the app rather than the
-harness stub.
+Driving the real Tauri window through CDP/WebDriver was rejected for this gate: at the time of this
+decision the shell was Windows-only, this run could not push a branch or dispatch Windows CI, and an
+untested WebView driver would add a failure mode to the only measurement that matters. The headless
+core harness measures the same startup pipeline, is reproducible on any host, and states exactly what
+it excludes. When M3 adds the launch path, the launch metric must be re-measured through the app
+rather than the harness stub.
 
 ## Scan regression bench and budget (WAR-66 / WAR-115)
 

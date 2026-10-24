@@ -450,14 +450,16 @@ capabilities:
     weight: 8
     checks:
       - id: LA-1
-        title: Launch WH3 through Steam with the correct app id
+        title: Launch WH3 directly with the verified mod-list argument, bypassing the CA launcher
         status: partial
         evidence:
           - path: crates/wh3mm-core/src/launch.rs
-            test: launch_command_uses_the_steam_app_id_and_carries_options
+            test: windows_direct_launch_uses_warhammer_exe_and_the_game_directory
+          - path: crates/wh3mm-core/src/launch.rs
+            test: direct_proton_is_selected_before_steam_without_a_steam_executable
         need: >-
-          A recorded manual Windows launch of TW:WH3 through Steam. CI proves the
-          command, not the real launch.
+          A recorded manual Windows launch of TW:WH3 with a real Workshop mod.
+          CI proves the command and prerequisites, not that the game loaded the mod.
       - id: LA-2
         title: Skip-intro and script-logging options write and remove their tweaks safely
         status: done
@@ -485,7 +487,7 @@ capabilities:
           - path: crates/wh3mm-core/src/launch.rs
             test: launch_options_round_trip_per_profile
           - path: frontend/src/App.test.tsx
-            test: opens the launch dialog and requests a launch through Steam
+            test: opens the launch dialog and requests a direct launch
 
   - id: settings
     title: Settings
@@ -944,11 +946,12 @@ oracle:
       assertions: 16
       disposition: rewritten
       reason: >-
-        v1 launches through the Steam client URL. The legacy direct/Flatpak/Snap
-        executable fallback chain and protontricks path were cut.
+        v1 launches the executable directly on Windows and through Proton on
+        Linux. The legacy Steam `-applaunch` chain, Flatpak/Snap launchers, and
+        protontricks path were cut to keep the CA launcher out of the flow.
       evidence:
         - path: crates/wh3mm-core/src/launch.rs
-          test: launch_command_uses_the_steam_app_id_and_carries_options
+          test: windows_direct_launch_uses_warhammer_exe_and_the_game_directory
     - path: test/config/applyConfigSavePayload.node.test.ts
       capability: settings
       assertions: 5

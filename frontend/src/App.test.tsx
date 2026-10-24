@@ -8,6 +8,7 @@ import {
   CONFLICT_REPORT,
   PROFILE_CAMPAIGN,
   PROFILES,
+  PROTON_LAUNCH_RESULT,
   TAGS,
   UI,
   WRITE_REPORT,
@@ -178,6 +179,38 @@ describe('App', () => {
     expect(await screen.findByText(/Ready · 2 mods · 2 enabled/)).toBeInTheDocument()
   })
 
+  it('opens the tag menu without pushing the toolbar (WAR-147)', async () => {
+    mockReady()
+    render(<App />)
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    fireEvent.click(screen.getByRole('button', { name: /^Tags/ }))
+    const menu = await screen.findByRole('menu', { name: 'Tags' })
+    expect(within(menu).getByRole('menuitemcheckbox', { name: /Overhaul/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Tags/ })).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('gives every screen a faction-framed header (WAR-147)', async () => {
+    mockReady()
+    render(<App />)
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    const rail = screen.getByRole('navigation', { name: 'Sections' })
+    const screens = [
+      ['Profiles', '.profiles-screen', 'azure'],
+      ['Conflicts', '.conflict-screen', 'ember'],
+      ['Workshop', '.workshop-screen', 'copper'],
+      ['Settings', '.settings-screen', 'jade'],
+    ] as const
+
+    expect(document.querySelector('.mods-screen')).toHaveAttribute('data-faction', 'brass')
+    for (const [label, selector, faction] of screens) {
+      fireEvent.click(within(rail).getByRole('button', { name: label }))
+      await screen.findByRole('heading', { name: label })
+      expect(document.querySelector(selector)).toHaveAttribute('data-faction', faction)
+    }
+  })
+
   it('renames a non-active profile without replacing its enabled set', async () => {
     mockReady()
     vi.mocked(ipc.saveProfile).mockResolvedValue({ ...PROFILE_CAMPAIGN, name: 'Campaign renamed' })
@@ -259,7 +292,7 @@ describe('App', () => {
       loadOrder: {
         status: 'unmanagedDirectives',
         message: 'used_mods.txt contains unmanaged directives that this write would remove',
-        unmanagedDirectives: ['add_working_directory "C:/tools";'],
+        unmanagedDirectives: ['custom_directive "C:/tools";'],
         requiresUnmanagedConfirmation: true,
       },
     })
@@ -274,7 +307,7 @@ describe('App', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Reset settings and load order' }))
 
     const warning = await screen.findByRole('dialog', { name: 'Drop unmanaged directives?' })
-    expect(warning).toHaveTextContent('add_working_directory "C:/tools";')
+    expect(warning).toHaveTextContent('custom_directive "C:/tools";')
     expect(ipc.resetToDefaults).toHaveBeenCalledWith(true, false)
     expect(screen.queryByText('Settings and load order reset to defaults')).not.toBeInTheDocument()
 
@@ -313,7 +346,7 @@ describe('App', () => {
     expect(screen.queryByText('Settings reset; no game path was available for the load order')).not.toBeInTheDocument()
   })
 
-  it('opens the launch dialog and requests a launch through Steam', async () => {
+  it('opens the launch dialog and requests a direct launch', async () => {
     mockReady()
     render(<App />)
     await screen.findByRole('listbox', { name: 'Mods' })
@@ -325,7 +358,24 @@ describe('App', () => {
     await waitFor(() => {
       expect(ipc.launchGame).toHaveBeenCalled()
     })
-    expect(await within(dialog).findByRole('status')).toHaveTextContent('launch requested through Steam')
+    const status = await within(dialog).findByRole('status')
+    expect(status).toHaveTextContent('launch requested directly')
+    expect(status).toHaveTextContent('direct')
+  })
+
+  it('reports a direct Proton launch result', async () => {
+    mockReady()
+    vi.mocked(ipc.launchGame).mockResolvedValueOnce(PROTON_LAUNCH_RESULT)
+    render(<App />)
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Launch game' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Launch Warhammer III' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Launch game' }))
+
+    const status = await within(dialog).findByRole('status')
+    expect(status).toHaveTextContent('launch requested through Proton')
+    expect(status).toHaveTextContent('proton')
   })
 
   it('changes density from settings and persists it', async () => {
@@ -341,6 +391,64 @@ describe('App', () => {
       expect(ipc.updateUiPreferences).toHaveBeenCalledWith(expect.objectContaining({ density: 'roomy' }))
     })
     expect(document.documentElement.dataset.density).toBe('roomy')
+  })
+
+  it('changes zoom from the keyboard even while typing and persists it', async () => {
+    mockReady()
+    render(<App />)
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    const search = screen.getByLabelText('Search mods')
+    search.focus()
+    fireEvent.keyDown(search, { key: '=', ctrlKey: true })
+
+    await waitFor(() => {
+      expect(ipc.updateUiPreferences).toHaveBeenCalledWith(expect.objectContaining({ zoom: 110 }))
+    })
+    expect(await screen.findByText('Zoom 110%')).toBeInTheDocument()
+
+    fireEvent.keyDown(search, { key: '0', ctrlKey: true })
+    await waitFor(() => {
+      expect(ipc.updateUiPreferences).toHaveBeenLastCalledWith(expect.objectContaining({ zoom: 100 }))
+    })
+    expect(await screen.findByText('Zoom 100%')).toBeInTheDocument()
+
+    fireEvent.keyDown(search, { key: '-', ctrlKey: true })
+    await waitFor(() => {
+      expect(ipc.updateUiPreferences).toHaveBeenLastCalledWith(expect.objectContaining({ zoom: 90 }))
+    })
+  })
+
+  it('changes zoom from settings and resets it', async () => {
+    mockReady()
+    render(<App />)
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    const rail = screen.getByRole('navigation', { name: 'Sections' })
+    fireEvent.click(within(rail).getByRole('button', { name: 'Settings' }))
+    await screen.findByRole('heading', { name: 'Settings' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }))
+    expect(screen.getByLabelText('Current zoom')).toHaveTextContent('110%')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reset' }))
+    expect(screen.getByLabelText('Current zoom')).toHaveTextContent('100%')
+
+    await waitFor(() => {
+      expect(ipc.updateUiPreferences).toHaveBeenLastCalledWith(expect.objectContaining({ zoom: 100 }))
+    })
+  })
+
+  it('zooms with Ctrl and the mouse wheel', async () => {
+    mockReady()
+    render(<App />)
+    await screen.findByRole('listbox', { name: 'Mods' })
+
+    fireEvent.wheel(window, { deltaY: -120, ctrlKey: true })
+
+    await waitFor(() => {
+      expect(ipc.updateUiPreferences).toHaveBeenCalledWith(expect.objectContaining({ zoom: 110 }))
+    })
   })
 
   it('offers no author toggle in settings', async () => {

@@ -90,6 +90,11 @@ const REQUIRED_TOKENS = [
   '--color-bg-menu',
   '--color-bg-dialog',
   '--color-bg-tooltip',
+  '--color-bg-banner',
+  '--color-bg-banner-raised',
+  '--color-bg-rail-plate',
+  '--color-bg-tab',
+  '--color-bg-tab-active',
   '--color-text-primary',
   '--color-text-secondary',
   '--color-text-muted',
@@ -110,8 +115,13 @@ const REQUIRED_TOKENS = [
   '--color-border-control',
   '--color-border-focus',
   '--color-border-selected',
+  '--color-border-frame',
+  '--color-border-frame-strong',
+  '--color-border-frame-inner',
   '--color-action-primary-bg',
+  '--color-action-primary-border',
   '--color-action-primary-text',
+  '--color-action-secondary-border',
   '--color-action-danger-bg',
   '--color-action-danger-text',
   '--color-tag-bg',
@@ -151,6 +161,10 @@ const REQUIRED_TOKENS = [
   '--radius-dialog',
   '--shadow-menu',
   '--shadow-dialog',
+  '--bevel-plate',
+  '--bevel-sunken',
+  '--bevel-frame',
+  '--ornament-corner',
   '--motion-fast',
   '--motion-base',
   '--motion-reorder',
@@ -211,6 +225,9 @@ describe('design tokens', () => {
       ['--color-text-info', '--color-state-info-bg'],
       ['--color-text-danger', '--color-bg-surface'],
       ['--color-text-inverse', '--color-bg-tooltip'],
+      ['--color-text-primary', '--color-bg-banner'],
+      ['--color-text-primary', '--color-bg-rail-plate'],
+      ['--color-text-muted', '--color-bg-banner'],
       ['--color-action-primary-text', '--color-action-primary-bg'],
       ['--color-action-danger-text', '--color-action-danger-bg'],
       ['--color-tag-text', '--color-tag-bg'],
@@ -264,10 +281,12 @@ describe('design tokens', () => {
     expect(tokens.get('--row-h')).toBe('var(--row-h-comfortable)')
   })
 
-  it('forbids decorative gradients, glows, and external assets in every stylesheet', () => {
+  it('keeps material gradients in tokens and forbids remote assets and web fonts', () => {
     for (const { file, css } of allStyles) {
       const checked = withoutLegacyShell(css)
-      expect(checked, `${file} uses a gradient`).not.toMatch(/(linear|radial|conic)-gradient\(/i)
+      if (!file.endsWith('tokens.css')) {
+        expect(checked, `${file} bypasses the material tokens`).not.toMatch(/(linear|radial|conic)-gradient\(/i)
+      }
       expect(checked, `${file} uses a decorative shadow`).not.toMatch(/(drop|text)-shadow\(/i)
       expect(checked, `${file} loads a remote asset`).not.toMatch(/url\(\s*['"]?https?:/i)
       expect(checked, `${file} loads a web font`).not.toMatch(/@font-face/i)

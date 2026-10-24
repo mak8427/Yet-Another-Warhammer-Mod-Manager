@@ -58,7 +58,8 @@ mentioned `appworkshop_3247630.acf`; 3247630 is not WH3, so the fixture uses
 ## Load order (`load_order/`)
 
 `used_mods_valid.txt` (LF), `_crlf.txt`, `_bom.txt`, `_empty.txt`,
-`_unknown_directive.txt` (two `add_working_directory` lines),
+`_unknown_directive.txt` (two genuinely unknown directives),
+`_working_directory.txt` (a managed Workshop `add_working_directory`),
 `_duplicates.txt` (case-insensitive duplicates), `_corrupt.txt` (unterminated
 quote, unquoted name, garbage), `_no_final_newline.txt`.
 

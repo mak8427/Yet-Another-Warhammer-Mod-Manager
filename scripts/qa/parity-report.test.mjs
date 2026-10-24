@@ -85,7 +85,7 @@ test('docs/PARITY.md is reproducible from PARITY.yaml', () => {
   const scan = scanCutFeatures(config)
   const expected = renderMarkdown(config, result, { scan })
   const committed = readFileSync(join(repoRoot, 'docs', 'PARITY.md'), 'utf8')
-  assert.equal(committed, expected)
+  assert.equal(comparableReport(committed), comparableReport(expected))
 })
 
 test('the check ignores the live test-count rows', () => {

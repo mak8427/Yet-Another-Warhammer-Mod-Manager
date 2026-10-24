@@ -75,7 +75,7 @@ fixed seeds, `tempfile::TempDir`, and mocked IPC only.
 | App commands | `crates/wh3mm-app/src/commands.rs` tests | `cargo test` | Command wrappers without a Tauri runtime | < 10 s |
 | IPC contract | `tests/ipc_contract.rs`, `frontend/src/lib/ipc.test.ts` | `cargo test`, Vitest | Wire names, error envelope, malformed rejections | < 5 s |
 | Fixture contract | `crates/wh3mm-core/tests/qa_fixtures.rs` | `cargo test` | Fixture bytes, encodings, manifest, scale index | < 1 s |
-| QA scripts | `scripts/qa/*.test.mjs` | `node --test` | Fixture guard and performance-gate validator | < 1 s |
+| QA scripts | `scripts/qa/*.test.mjs` | `node --test` | Fixture guard, Linux packaging guard, and performance-gate validator | < 1 s |
 | Frontend component | `frontend/src/**/*.test.tsx` | Vitest + Testing Library + jsdom | Rendering, interaction contracts, error states | < 10 s |
 | Manual Windows | `docs/MANUAL_QA_WINDOWS.md` | Human | Install detection, first run, recovery, launch | per script |
 | Manual Linux | `docs/MANUAL_QA_LINUX.md` | Human | Native Steam/Proton detection, mod list, load order, launch | per script |
@@ -129,6 +129,8 @@ in the same PR.
 | R15 | Fault injection: ≥ 3 deliberate faults, no panic, no data loss | `fault_injection.rs` FI-01/03/05/06/07/08/10 (7 tests) | PASS |
 | R16 | 500-mod scale: scan, enable all, reverse order, save profile, write 500 lines | `session_flow.rs::loads_500_mods_toggles_reorders_saves_profile_and_writes_500_lines` | PASS |
 | R17 | Fixture bytes match the documented variants | `qa_fixtures.rs` (7 tests) | PASS |
+| R18 | Linux direct Proton resolution and launch guard | `proton_launch` unit tests (15), `launch::tests::direct_proton_is_selected_before_steam_without_a_steam_executable`, `::linux_launch_does_not_fall_back_to_steam`, `::load_order_rewrite_kills_child_and_returns_load_order_overridden`, `launch_guard` unit tests (8), `ipc_contract::every_error_code_is_documented` | PASS — 2026-10-24 |
+| R19 | Windows direct launch bypasses the CA launcher and protects `used_mods.txt` | `launch::tests::windows_direct_launch_uses_warhammer_exe_and_the_game_directory`, `::windows_direct_launch_accepts_a_matching_non_empty_order`, `::steam_not_running_blocks_windows_direct_launch`, `::steam_probe_failure_blocks_windows_direct_launch`, `::stale_used_mods_blocks_launch_before_spawn`, `::duplicate_used_mods_blocks_launch_before_spawn`, `::unmanaged_directives_block_launch_before_spawn`, `::windows_guard_rewrite_restores_the_snapshot`, `::windows_launch_does_not_write_used_mods`, `::windows_launch_writes_and_requires_workshop_working_directory`; manual `WIN-11` | PASS (automation) — 2026-10-24; manual pending |
 
 **R4 scope note.** `read_pack_header` reads the 28-byte header and dependency
 table only. `malformed_count_mismatch.pack` and `malformed_unterminated_name.pack`
