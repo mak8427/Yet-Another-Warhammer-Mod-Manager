@@ -9,13 +9,13 @@
 ## What changed
 
 The shell now uses the TW:WH3 material language observed in the reference
-session: warm wine-dark stone, parchment text, brass frames and banner plates,
-serif small caps, and one drawn corner stud. The change is CSS plus
+session: jade-black stone, grey-green metal frames, parchment text, bevelled teal
+capsule buttons, serif titles, and one drawn corner stud. The change is CSS plus
 `data-faction` attributes; no layout, state, IPC, virtualization, or keyboard
 code changed.
 
 - `frontend/src/styles/tokens.css`: palette primitives retuned to
-  `--obsidian-*` and `--wine-*`; new banner/frame/tab/bevel/ornament tokens;
+  jade-black `--obsidian-*`; new material/banner/frame/tab/bevel/ornament tokens;
   contrast pairs recomputed.
 - `frontend/src/styles/theme.css`: fidelity skin for the title strip, rail,
   screen banners, toolbar, buttons, inputs, list header, rows, inspector,
@@ -61,7 +61,7 @@ Run from `frontend/` on the implementation branch:
 | Type check | `pnpm typecheck` | pass |
 | Lint | `pnpm lint` | pass |
 | Unit / integration tests | `pnpm test` | pass — 11 files / 88 tests |
-| Production build | `pnpm build` | pass — 46 modules, CSS 56.81 kB (10.20 kB gzip) |
+| Production build | `pnpm build` | pass — 46 modules, CSS 59.93 kB (10.81 kB gzip) |
 | Token/contrast gate | included in `pnpm test` (`tokens.test.ts`) | pass |
 | Screenshot capture | `SHOT_OUT=docs/screenshots/WAR-147 node scripts/qa/screenshots-m4.mjs` | pass — 33 screenshots + 11 geometry checks, no horizontal page scroll |
 | Reference plate | `./scripts/qa/render-reference-study.sh` | pass — 1920×1080 and 1366×768 |
@@ -129,7 +129,7 @@ These v1.0 tests still pass unchanged in intent and assertions:
 | F-06 density/virtualization/keyboard unchanged | `pnpm test` 88/88; unchanged v1.0 tests |
 | F-07 contrast/focus/forced-colors | `tokens.test.ts`; `mods__focus__*`; unchanged media blocks |
 | F-08 side-by-side at both viewports | `side-by-side/` 29 composites |
-| F-09 no gradient/glow/remote asset | `tokens.test.ts` forbidden-pattern test |
+| F-09 token-only material shading; no remote asset | `tokens.test.ts` forbidden-pattern test |
 | F-10 PR evidence | PR #59 + `docs/UI_FIDELITY_EVIDENCE.md` |
 
 ## Known limitations
@@ -138,6 +138,9 @@ These v1.0 tests still pass unchanged in intent and assertions:
   task's copyright constraint. The palette values are sampled approximations.
 - The reference study reconstructs chrome, not game layout or content; the app
   remains a dense desktop mod manager, not a game menu.
+- The two reference study plates and original side-by-side composites show
+  the earlier wine/gold concept; the application screenshots show the owner’s
+  final jade/teal direction.
 - `dev`/`build` were run on Linux; Windows 200% text scaling remains T-02 in
   the v1.0 acceptance record.
 
@@ -162,3 +165,16 @@ comparison, and the two reference study plates are unchanged.
 No independent Paperclip QA or tech-lead sign-off is asserted here. The
 repository owner requested completion and merging in Codex. Existing manual
 Windows release checks remain listed in UI_ACCEPTANCE.md.
+
+## Owner-supplied palette and button update
+
+The owner explicitly requested the palette and button style from three supplied
+game UI captures. The final application uses jade fields, grey-green stone
+headers, muted aged-metal rims, parchment labels and bevelled capsule buttons.
+Teal highlights distinguish selected tabs and primary actions; destructive
+actions retain crimson. All material shading lives in tokens.css. The
+forced-colors rules remove it and preserve native focus/selection boundaries.
+
+The existing style-policy test was updated to allow token-defined material
+gradients following this request. Contrast, geometry, density, keyboard and
+virtualization assertions remain intact and all 88 frontend tests pass.

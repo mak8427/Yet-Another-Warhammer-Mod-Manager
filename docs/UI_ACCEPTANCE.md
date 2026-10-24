@@ -138,9 +138,10 @@ These apply to every screen and every milestone.
 - `[x]` G-13 Forced-colors/high-contrast mode keeps focus, selection, and
   state shapes visible; the token file maps to system colours.
   Evidence: `theme.css` and `tokens.css` `forced-colors: active` blocks map tokens to Canvas/CanvasText/Highlight and keep focus/selection shapes; `tokens.test.ts` resolves both stylesheets.
-- `[x]` G-14 No gradients, glow, blur, backdrop-filter, hero panels, card rows,
-  dashboard tiles, or oversized empty states anywhere in the product.
-  Evidence: `tokens.test.ts` — `forbids decorative gradients, glows, and external assets in every stylesheet`; no backdrop-filter/blur or card rows in `theme.css`; screenshot set.
+- `[x]` G-14 Material gradients follow the user references and are defined only
+  in tokens; no background blur, backdrop-filter, hero panels, card rows,
+  dashboard tiles, or oversized empty states.
+  Evidence: `tokens.test.ts` — `keeps material gradients in tokens and forbids remote assets and web fonts`; no backdrop-filter/blur or card rows in `theme.css`; screenshot set.
 - `[x]` G-15 No navigation, menu, command, or screen exists for a feature cut
   from `docs/PRODUCT_SCOPE.md`.
   Evidence: `SectionRail.tsx` exposes exactly Mods, Profiles, Conflicts, Workshop, Settings; `App.tsx` has no other screen branch; `shell__mods__1920x1080__comfortable.png`.

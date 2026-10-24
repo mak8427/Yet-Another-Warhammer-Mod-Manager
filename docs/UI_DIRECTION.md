@@ -359,7 +359,7 @@ focus outlines and existing density/keyboard contracts remain in force.
 - Right: game status (`◆ Game found` / `◇ Set game path`), settings icon button,
   window controls provided by the OS. Do not draw fake window buttons.
 - Background `--color-bg-rail`, 1px brass bottom rule with a small brass clasp
-  at the centre. No gradient.
+  at the centre. The user-reference update adds jade stone material shading.
 
 ### 3.2 Left rail (208px)
 
@@ -806,7 +806,7 @@ The following are review failures:
   document, `docs/UI_ACCEPTANCE.md`, ADR-006 when the contract changes, and a
   passing `tokens.test.ts`.
 - `frontend/src/styles/tokens.test.ts` enforces token presence, contrast,
-  density order, and the no-gradient/no-external-asset rules. It is part of the
+  density order, token-only material shading, and no-external-asset rules. It is part of the
   PR gate.
 - Screenshots for M4 live in `docs/screenshots/` and are evidence, not design
   sources; do not ship them in the app bundle unless a task explicitly asks.

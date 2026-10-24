@@ -47,3 +47,10 @@ The 33 application screenshots and capture.log were refreshed with the
 WAR-141 zoom controls integrated. The log includes 11 additional geometry
 checks. The 29 side-by-side composites retain the original comparison; the
 reference study plates are unchanged.
+
+## Final owner-reference palette
+
+The application screenshots now use the supplied jade/stone/teal palette and
+bevelled capsule button style. capture.log records 33 screenshots plus 11
+geometry checks from this final build. The reference plates and side-by-side
+composites are explicitly retained as the earlier wine/gold concept.
