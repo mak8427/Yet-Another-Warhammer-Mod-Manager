@@ -40,3 +40,10 @@ WAR-10 evidence set.
 
 No game screenshot, crest, texture, font, or other game asset is committed in
 this directory. `reference-study__*` is drawn from our own tokens and markup.
+
+## Integration refresh (2026-10-24)
+
+The 33 application screenshots and capture.log were refreshed with the
+WAR-141 zoom controls integrated. The log includes 11 additional geometry
+checks. The 29 side-by-side composites retain the original comparison; the
+reference study plates are unchanged.

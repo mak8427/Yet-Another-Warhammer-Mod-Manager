@@ -2,7 +2,7 @@
 
 - Issue: WAR-147 (`60d73306-80b3-4d45-a4af-6ebee00ba475`)
 - Branch: `feat/war-147-ui-fidelity`
-- Base: `main` @ `1747c64`
+- Integration base: `main` @ `67c074f`, with WAR-141 zoom/window controls
 - PR: #59 (https://github.com/mak8427/Warhammer_mod_manager/pull/59)
 - Merged SHA: pending
 
@@ -60,10 +60,10 @@ Run from `frontend/` on the implementation branch:
 |---|---|---|
 | Type check | `pnpm typecheck` | pass |
 | Lint | `pnpm lint` | pass |
-| Unit / integration tests | `pnpm test` | pass — 10 files / 80 tests |
-| Production build | `pnpm build` | pass — 45 modules, CSS 56.64 kB (10.16 kB gzip) |
+| Unit / integration tests | `pnpm test` | pass — 11 files / 88 tests |
+| Production build | `pnpm build` | pass — 46 modules, CSS 56.81 kB (10.20 kB gzip) |
 | Token/contrast gate | included in `pnpm test` (`tokens.test.ts`) | pass |
-| Screenshot capture | `SHOT_OUT=docs/screenshots/WAR-147 node scripts/qa/screenshots-m4.mjs` | pass — 44 captures, no horizontal page scroll |
+| Screenshot capture | `SHOT_OUT=docs/screenshots/WAR-147 node scripts/qa/screenshots-m4.mjs` | pass — 33 screenshots + 11 geometry checks, no horizontal page scroll |
 | Reference plate | `./scripts/qa/render-reference-study.sh` | pass — 1920×1080 and 1366×768 |
 
 Rust was not changed, so no Rust command is part of this pass.
@@ -112,7 +112,7 @@ These v1.0 tests still pass unchanged in intent and assertions:
 
 `docs/screenshots/WAR-147/`:
 
-- 44 captures at 1920×1080 and 1366×768, including all five screens, dialogs,
+- 33 screenshots + 11 geometry checks at 1920×1080 and 1366×768, including all five screens, dialogs,
   empty/loading/first-run/error states, the framed menu, and a focus state.
 - 29 before/after composites in `side-by-side/`.
 - Two reference study plates.
@@ -123,10 +123,10 @@ These v1.0 tests still pass unchanged in intent and assertions:
 |---|---|
 | F-01 reference captures + token mapping, no copyrighted art | `docs/UI_DIRECTION.md` §2.8; `docs/screenshots/WAR-147/reference-study__*` |
 | F-02 our own rendering only | reference study HTML + local SVG stud; token test rejects remote assets |
-| F-03 shell chrome redesign | 44 captures; `theme.css` fidelity section |
+| F-03 shell chrome redesign | 33 screenshots + 11 geometry checks; `theme.css` fidelity section |
 | F-04 faction-framed headers | `SectionRail.test.tsx`; `App.test.tsx`; captures |
 | F-05 no mod-list space consumed | geometry table above; capture output |
-| F-06 density/virtualization/keyboard unchanged | `pnpm test` 80/80; unchanged v1.0 tests |
+| F-06 density/virtualization/keyboard unchanged | `pnpm test` 88/88; unchanged v1.0 tests |
 | F-07 contrast/focus/forced-colors | `tokens.test.ts`; `mods__focus__*`; unchanged media blocks |
 | F-08 side-by-side at both viewports | `side-by-side/` 29 composites |
 | F-09 no gradient/glow/remote asset | `tokens.test.ts` forbidden-pattern test |
@@ -140,3 +140,25 @@ These v1.0 tests still pass unchanged in intent and assertions:
   remains a dense desktop mod manager, not a game menu.
 - `dev`/`build` were run on Linux; Windows 200% text scaling remains T-02 in
   the v1.0 acceptance record.
+
+## Final integration verification (2026-10-24)
+
+The WAR-141 zoom controls and skin were tested together. The screenshot harness
+conflict was resolved by preserving both the skin scenarios and selective
+capture support. ADR-012 identifies the skin; ADR-011 identifies zoom/window
+persistence, avoiding the existing Linux packaging ADR-008.
+
+TypeScript, ESLint, all 88 frontend tests in 11 files, the production build,
+44 QA/parity tests, and the regenerated parity report pass. The capture run
+completed 33 screenshots and 11 geometry checks, including all five screens at
+1024×720. Settings zoom controls, the Tags menu, focus, and the launch dialog
+were visually inspected at 1366×768. No horizontal page overflow was reported;
+the shell and visible-row measurements match the table above.
+
+The PNGs and capture.log in docs/screenshots/WAR-147 contain this integration
+run. Existing side-by-side composites retain the original pre-integration
+comparison, and the two reference study plates are unchanged.
+
+No independent Paperclip QA or tech-lead sign-off is asserted here. The
+repository owner requested completion and merging in Codex. Existing manual
+Windows release checks remain listed in UI_ACCEPTANCE.md.
