@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   fileUrl,
   type ConflictReport,
@@ -46,6 +46,13 @@ export function ModInspector({
 }: ModInspectorProps) {
   const [tagName, setTagName] = useState('')
   const [tagColor, setTagColor] = useState(DEFAULT_TAG_COLOR)
+  const selectedId = selectedMods.length === 1 ? selectedMods[0].id : null
+  const { wins, loses, disabledDeps } = useMemo(() => ({
+    wins: selectedId ? report?.conflicts.filter((conflict) => conflict.winnerModId === selectedId) ?? [] : [],
+    loses: selectedId ? report?.conflicts.filter((conflict) => conflict.loserModIds.includes(selectedId)) ?? [] : [],
+    disabledDeps: selectedId ? report?.disabledDependencies.filter((entry) => entry.modId === selectedId) ?? [] : [],
+  }), [report, selectedId])
+  const tagsById = useMemo(() => new Map(tags.map((tag) => [tag.id, tag])), [tags])
 
   if (selectedMods.length === 0) {
     return (
@@ -111,12 +118,7 @@ export function ModInspector({
   }
 
   const mod = selectedMods[0]
-  const wins = report?.conflicts.filter((conflict) => conflict.winnerModId === mod.id) ?? []
-  const loses =
-    report?.conflicts.filter((conflict) => conflict.loserModIds.includes(mod.id)) ?? []
   const missing = missingByMod.get(mod.id) ?? []
-  const disabledDeps = report?.disabledDependencies.filter((entry) => entry.modId === mod.id) ?? []
-  const tagsById = new Map(tags.map((tag) => [tag.id, tag]))
   const modTags = mod.tags.map((id) => tagsById.get(id)).filter((tag): tag is Tag => Boolean(tag))
 
   return (

@@ -3,6 +3,7 @@ import { IpcError } from './lib/ipc'
 import { AppStore, moveEnabled, visibleMods } from './store'
 import {
   GAME,
+  EMPTY_CONFLICTS,
   PROFILE_CAMPAIGN,
   PROFILES,
   RESET_REPORT,
@@ -15,6 +16,16 @@ import {
 const MOD_A = makeMod({ id: 'mod-a', name: 'alpha.pack', isEnabled: true, loadOrder: 0 })
 const MOD_B = makeMod({ id: 'mod-b', name: 'beta.pack', isEnabled: true, loadOrder: 1 })
 const MOD_C = makeMod({ id: 'mod-c', name: 'gamma.pack', isEnabled: false, loadOrder: 2 })
+
+function deferred<Value>() {
+  let resolve!: (value: Value) => void
+  let reject!: (cause: unknown) => void
+  const promise = new Promise<Value>((onResolve, onReject) => {
+    resolve = onResolve
+    reject = onReject
+  })
+  return { promise, resolve, reject }
+}
 
 describe('AppStore', () => {
   it('boots into the ready state with the workspace data', async () => {
@@ -82,6 +93,122 @@ describe('AppStore', () => {
       .snapshot?.mods.filter((mod) => mod.isEnabled)
       .map((mod) => mod.name)
     expect(enabled).toEqual(['beta.pack', 'alpha.pack'])
+  })
+
+  it('updates checkboxes immediately and serializes rapid toggles without stale responses', async () => {
+    const first = deferred<ReturnType<typeof makeSnapshot>>()
+    const second = deferred<ReturnType<typeof makeSnapshot>>()
+    const client = makeClient({
+      listMods: vi.fn(async () => makeSnapshot([MOD_A, MOD_B, MOD_C])),
+      setModEnabled: vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise),
+    })
+    const store = new AppStore(client)
+    await store.init()
+    const disable = store.toggleMod('mod-a')
+    expect(store.getState().snapshot?.enabledCount).toBe(1)
+    expect(store.getState().snapshot?.mods.find((mod) => mod.id === 'mod-a')?.isEnabled).toBe(false)
+    const enable = store.toggleMod('mod-a')
+    expect(store.getState().snapshot?.enabledCount).toBe(2)
+    expect(client.setModEnabled).toHaveBeenCalledTimes(1)
+    first.resolve(makeSnapshot([MOD_B, { ...MOD_A, isEnabled: false }, MOD_C]))
+    await vi.waitFor(() => expect(client.setModEnabled).toHaveBeenCalledTimes(2))
+    expect(client.setModEnabled).toHaveBeenLastCalledWith('mod-a', true)
+    expect(store.getState().snapshot?.mods.find((mod) => mod.id === 'mod-a')?.isEnabled).toBe(true)
+    second.resolve(makeSnapshot([MOD_B, MOD_A, MOD_C]))
+    await Promise.all([disable, enable])
+    expect(store.getState().busy).toBeNull()
+  })
+
+  it('rolls back failed saves while preserving later queued edits', async () => {
+    const first = deferred<ReturnType<typeof makeSnapshot>>()
+    const second = deferred<ReturnType<typeof makeSnapshot>>()
+    const client = makeClient({
+      listMods: vi.fn(async () => makeSnapshot([MOD_A, MOD_B, MOD_C])),
+      setModEnabled: vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise),
+    })
+    const store = new AppStore(client)
+    await store.init()
+    const disable = store.toggleMod('mod-a')
+    const enable = store.toggleMod('mod-c')
+    first.reject(new Error('Disk unavailable'))
+    await vi.waitFor(() => expect(client.setModEnabled).toHaveBeenCalledTimes(2))
+    expect(store.getState().snapshot?.enabledCount).toBe(3)
+    expect(store.getState().error?.message).toContain('Disk unavailable')
+    second.resolve(makeSnapshot([MOD_A, MOD_B, { ...MOD_C, isEnabled: true }]))
+    await Promise.all([disable, enable])
+    expect(store.getState().snapshot?.enabledCount).toBe(3)
+    expect(store.getState().dirty).toBe(true)
+  })
+
+  it('restores the snapshot and dirty state when a save fails', async () => {
+    const saved = deferred<ReturnType<typeof makeSnapshot>>()
+    const original = makeSnapshot([MOD_A, MOD_B, MOD_C])
+    const store = new AppStore(makeClient({
+      listMods: vi.fn(async () => original),
+      setModEnabled: vi.fn(() => saved.promise),
+    }))
+    await store.init()
+    const saving = store.toggleMod('mod-a')
+    saved.reject(new Error('Disk unavailable'))
+    await saving
+    expect(store.getState().snapshot).toBe(original)
+    expect(store.getState().dirty).toBe(false)
+    expect(store.getState().busy).toBeNull()
+  })
+
+  it('reorders immediately and bases repeated moves on the visible order', async () => {
+    const first = deferred<ReturnType<typeof makeSnapshot>>()
+    const second = deferred<ReturnType<typeof makeSnapshot>>()
+    const client = makeClient({
+      listMods: vi.fn(async () => makeSnapshot([MOD_A, MOD_B, MOD_C])),
+      setLoadOrder: vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise),
+    })
+    const store = new AppStore(client)
+    await store.init()
+    store.select('mod-a', 'single')
+    const down = store.moveSelection('down')
+    expect(store.getState().snapshot?.mods.map((mod) => mod.id)).toEqual(['mod-b', 'mod-a', 'mod-c'])
+    const up = store.moveSelection('up')
+    expect(store.getState().snapshot?.mods.map((mod) => mod.id)).toEqual(['mod-a', 'mod-b', 'mod-c'])
+    first.resolve(makeSnapshot([{ ...MOD_B, loadOrder: 0 }, { ...MOD_A, loadOrder: 1 }, MOD_C]))
+    await vi.waitFor(() => expect(client.setLoadOrder).toHaveBeenCalledTimes(2))
+    expect(client.setLoadOrder).toHaveBeenLastCalledWith(['mod-a', 'mod-b'])
+    expect(store.getState().snapshot?.mods[0].id).toBe('mod-a')
+    second.resolve(makeSnapshot([MOD_A, MOD_B, MOD_C]))
+    await Promise.all([down, up])
+    expect(client.listProfiles).toHaveBeenCalledTimes(2)
+    expect(client.getConflicts).toHaveBeenCalledTimes(2)
+  })
+
+  it('ignores a save response after the store is reset', async () => {
+    const saved = deferred<ReturnType<typeof makeSnapshot>>()
+    const store = new AppStore(makeClient({
+      listMods: vi.fn(async () => makeSnapshot([MOD_A, MOD_B, MOD_C])),
+      setModEnabled: vi.fn(() => saved.promise),
+    }))
+    await store.init()
+    const saving = store.toggleMod('mod-a')
+    store.reset()
+    saved.resolve(makeSnapshot([MOD_B, { ...MOD_A, isEnabled: false }, MOD_C]))
+    await saving
+    expect(store.getState().snapshot).toBeNull()
+    expect(store.getState().dirty).toBe(false)
+  })
+
+  it('refreshes conflicts after an older scan finishes during rapid edits', async () => {
+    const scan = deferred<typeof EMPTY_CONFLICTS>()
+    const client = makeClient({
+      listMods: vi.fn(async () => makeSnapshot([MOD_A, MOD_B, MOD_C])),
+      setModEnabled: vi.fn(async () => makeSnapshot([MOD_B, { ...MOD_A, isEnabled: false }, MOD_C])),
+      getConflicts: vi.fn().mockReturnValueOnce(scan.promise).mockResolvedValue(EMPTY_CONFLICTS),
+    })
+    const store = new AppStore(client)
+    await store.init()
+    await store.toggleMod('mod-a')
+    expect(client.getConflicts).toHaveBeenCalledTimes(1)
+    scan.resolve(EMPTY_CONFLICTS)
+    await vi.waitFor(() => expect(client.getConflicts).toHaveBeenCalledTimes(2))
+    expect(store.getState().conflictLoading).toBe(false)
   })
 
   it('drops dragged enabled rows before the target row', async () => {

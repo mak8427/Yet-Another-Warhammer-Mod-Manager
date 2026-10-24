@@ -57,6 +57,19 @@ function renderListView(overrides: Partial<Parameters<typeof ModList>[0]> = {}) 
 }
 
 describe('ModList', () => {
+  it('does not rerender unchanged rows when the drag marker moves', () => {
+    const readName = vi.fn(() => 'Tracked mod')
+    const mods = MODS.map((mod) => ({ ...mod }))
+    Object.defineProperty(mods[0], 'humanName', { get: readName })
+    renderList({ mods })
+    const rows = screen.getAllByRole('option')
+    readName.mockClear()
+    fireEvent.dragOver(rows[1], { dataTransfer: { dropEffect: 'move' } })
+    fireEvent.dragOver(rows[2], { dataTransfer: { dropEffect: 'move' } })
+    expect(readName).not.toHaveBeenCalled()
+    expect(rows[2].parentElement).toHaveClass('is-drop-target')
+  })
+
   it('mounts only the virtualized window, not all 500 rows', () => {
     renderList()
     const rows = screen.getAllByRole('option')
