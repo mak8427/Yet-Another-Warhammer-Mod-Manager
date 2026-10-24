@@ -66,12 +66,14 @@ jobs:
       - name: QA fixture integrity
         run: node scripts/qa/generate-fixtures.mjs --verify
 
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The packaging guard reads the workflow files with the root `yaml`
+      # dependency, so it runs after the workspace install.
       - name: QA generator guard tests
         timeout-minutes: 5
         run: node --test scripts/qa/*.test.mjs
-
-      - name: Install frontend dependencies
-        run: pnpm install --frozen-lockfile
 
       # generate_context! embeds frontend/dist at compile time, so the frontend
       # must exist before clippy or tests build the app crate.
@@ -150,10 +152,11 @@ jobs:
 
   windows-tauri:
     name: Windows Tauri shell (manual until packaging)
-    # The shell builds on Windows and Linux (ADR-007). This job is the manual
-    # Windows compile check in M0; M5 promotes it to push/tag builds with an
-    # installer artifact. Run it from workflow_dispatch with run_windows
-    # enabled. No rust-cache here: its post-step upload has hung the job.
+    # The desktop shell builds on Windows and Linux (ADR-007); only the NSIS
+    # release installer is Windows-only. This job is the manual Windows compile
+    # check in M0; M5 promotes it to push/tag builds with an installer artifact.
+    # Run it from workflow_dispatch with run_windows enabled. No rust-cache
+    # here: its post-step upload has hung the job.
     if: github.event_name == 'workflow_dispatch' && inputs.run_windows
     runs-on: windows-latest
     timeout-minutes: 20

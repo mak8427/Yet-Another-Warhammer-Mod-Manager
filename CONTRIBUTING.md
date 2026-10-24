@@ -47,18 +47,9 @@ capability-parity check on every push and pull request; a docs-only change still
 needs CI green.
 
 ```bash
-# Frontend first: generate_context! embeds frontend/dist, so workspace-wide
-# cargo commands fail on a clean checkout until the frontend is built.
+# Install dependencies and build the embedded frontend first.
 pnpm install --frozen-lockfile
-pnpm typecheck
-pnpm lint
-pnpm test
 pnpm build
-
-# Rust
-cargo fmt --all --check
-cargo clippy --workspace --all-targets --locked -- -D warnings
-cargo test --workspace --locked
 
 # Reference and QA scripts
 bash scripts/tests/fetch-reference.test.sh
@@ -66,6 +57,16 @@ node scripts/qa/generate-fixtures.mjs --verify
 node --test scripts/qa/*.test.mjs
 node --test scripts/parity-report.test.mjs
 node scripts/parity-report.mjs --check
+
+# Rust
+cargo fmt --all --check
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo test --workspace --locked
+
+# Frontend checks
+pnpm typecheck
+pnpm lint
+pnpm test
 ```
 
 `pnpm build` is required before any workspace-wide cargo command on every
