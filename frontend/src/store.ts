@@ -36,7 +36,6 @@ export interface Notice {
 
 export interface AppState {
   status: AppStatus
-  initialized: boolean
   appInfo: AppInfo | null
   game: GameLocation | null
   snapshot: ModListSnapshot | null
@@ -70,17 +69,16 @@ export interface AppState {
   launchResult: LaunchResult | null
 }
 
-export const DEFAULT_UI: UiPreferences = {
+const DEFAULT_UI: UiPreferences = {
   density: 'comfortable',
   showThumbnails: true,
   lastScrollTop: 0,
   zoom: ZOOM_DEFAULT,
 }
 
-export function initialState(): AppState {
+function initialState(): AppState {
   return {
     status: 'loading',
-    initialized: false,
     appInfo: null,
     game: null,
     snapshot: null,
@@ -148,18 +146,18 @@ export function visibleMods(state: AppState): ModSummary[] {
   return sorted
 }
 
-export function activeProfileName(state: AppState): string {
-  if (!state.profiles) return 'Default'
-  const active = state.profiles.profiles.find(
-    (profile) => profile.id === state.profiles?.activeProfileId,
-  )
-  return active?.name ?? 'Default'
+interface WorkspaceData {
+  snapshot: ModListSnapshot
+  profiles: ProfilesState
+  tags: Tag[]
+  ui: UiPreferences
 }
 
 export class AppStore {
   private state: AppState = initialState()
   private readonly listeners = new Set<() => void>()
   private readonly client: IpcClient
+  private initialized = false
   private initPromise: Promise<void> | null = null
   private scrollTimer: ReturnType<typeof setTimeout> | null = null
   private pendingScrollTop = 0
@@ -186,18 +184,29 @@ export class AppStore {
   reset(): void {
     if (this.scrollTimer) clearTimeout(this.scrollTimer)
     this.scrollTimer = null
+    this.initialized = false
     this.initPromise = null
     this.state = initialState()
     for (const listener of this.listeners) listener()
   }
 
   init(): Promise<void> {
-    if (this.state.initialized) return Promise.resolve()
+    if (this.initialized) return Promise.resolve()
     if (this.initPromise) return this.initPromise
     this.initPromise = this.bootstrap().finally(() => {
       this.initPromise = null
     })
     return this.initPromise
+  }
+
+  private async loadWorkspaceData(): Promise<WorkspaceData> {
+    const [snapshot, profiles, tags, ui] = await Promise.all([
+      this.client.listMods(),
+      this.client.listProfiles(),
+      this.client.listTags(),
+      this.client.getUiPreferences(),
+    ])
+    return { snapshot, profiles, tags, ui }
   }
 
   private async bootstrap(): Promise<void> {
@@ -206,21 +215,13 @@ export class AppStore {
       const appInfo = await this.client.appInfo()
       this.set({ appInfo })
       const game = await this.client.detectGame()
-      const [snapshot, profiles, tags, ui] = await Promise.all([
-        this.client.listMods(),
-        this.client.listProfiles(),
-        this.client.listTags(),
-        this.client.getUiPreferences(),
-      ])
+      const workspace = await this.loadWorkspaceData()
+      this.initialized = true
       this.set({
         status: 'ready',
-        initialized: true,
         appInfo,
         game,
-        snapshot,
-        profiles,
-        tags,
-        ui,
+        ...workspace,
         busy: null,
         error: null,
       })
@@ -229,10 +230,10 @@ export class AppStore {
       void this.refreshLaunchOptions()
     } catch (cause) {
       const error = toIpcError(cause)
+      this.initialized = true
       if (error.code === 'game_not_found') {
         this.set({
           status: 'no-game',
-          initialized: true,
           game: null,
           snapshot: null,
           profiles: null,
@@ -243,7 +244,6 @@ export class AppStore {
       }
       this.set({
         status: 'error',
-        initialized: true,
         busy: null,
         error,
       })
@@ -259,19 +259,11 @@ export class AppStore {
     this.set({ busy: 'Detecting the game', error: null })
     try {
       const game = await this.client.setGamePath(path)
-      const [snapshot, profiles, tags, ui] = await Promise.all([
-        this.client.listMods(),
-        this.client.listProfiles(),
-        this.client.listTags(),
-        this.client.getUiPreferences(),
-      ])
+      const workspace = await this.loadWorkspaceData()
       this.set({
         status: 'ready',
         game,
-        snapshot,
-        profiles,
-        tags,
-        ui,
+        ...workspace,
         busy: null,
         error: null,
         selection: [],
@@ -318,6 +310,23 @@ export class AppStore {
         this.state.anchorId && known.has(this.state.anchorId) ? this.state.anchorId : null,
     })
     void this.refreshConflicts()
+  }
+
+  private async updateSnapshot(
+    busy: string,
+    mutate: () => Promise<ModListSnapshot>,
+    after?: () => Promise<void>,
+  ): Promise<void> {
+    this.set({ busy })
+    try {
+      const snapshot = await mutate()
+      this.setSnapshot(snapshot)
+      this.set({ busy: null, dirty: true })
+      await this.refreshProfiles()
+      await after?.()
+    } catch (cause) {
+      this.set({ busy: null, error: toIpcError(cause) })
+    }
   }
 
   async refreshConflicts(): Promise<void> {
@@ -406,38 +415,15 @@ export class AppStore {
   async toggleMod(modId: string): Promise<void> {
     const mod = this.state.snapshot?.mods.find((item) => item.id === modId)
     if (!mod) return
-    this.set({ busy: mod.isEnabled ? 'Disabling' : 'Enabling' })
-    try {
-      const snapshot = await this.client.setModEnabled(modId, !mod.isEnabled)
-      this.setSnapshot(snapshot)
-      this.set({ busy: null, dirty: true })
-      await this.refreshProfiles()
-    } catch (cause) {
-      this.set({ busy: null, error: toIpcError(cause) })
-    }
+    await this.updateSnapshot(mod.isEnabled ? 'Disabling' : 'Enabling', () =>
+      this.client.setModEnabled(modId, !mod.isEnabled),
+    )
   }
 
   async setModsEnabled(modIds: string[], enabled: boolean): Promise<void> {
     if (modIds.length === 0) return
-    this.set({ busy: enabled ? 'Enabling' : 'Disabling' })
-    try {
-      const snapshot = await this.client.setModsEnabled(modIds, enabled)
-      this.setSnapshot(snapshot)
-      this.set({ busy: null, dirty: true })
-      await this.refreshProfiles()
-    } catch (cause) {
-      this.set({ busy: null, error: toIpcError(cause) })
-    }
-  }
-
-  async toggleSelectionEnabled(): Promise<void> {
-    const mods = this.state.snapshot?.mods ?? []
-    const selected = mods.filter((mod) => this.state.selection.includes(mod.id))
-    if (selected.length === 0) return
-    const target = !selected.every((mod) => mod.isEnabled)
-    await this.setModsEnabled(
-      selected.map((mod) => mod.id),
-      target,
+    await this.updateSnapshot(enabled ? 'Enabling' : 'Disabling', () =>
+      this.client.setModsEnabled(modIds, enabled),
     )
   }
 
@@ -453,15 +439,9 @@ export class AppStore {
   }
 
   async setLoadOrder(orderedModIds: string[]): Promise<void> {
-    this.set({ busy: 'Saving load order' })
-    try {
-      const snapshot = await this.client.setLoadOrder(orderedModIds)
-      this.setSnapshot(snapshot)
-      this.set({ busy: null, dirty: true })
-      await this.refreshProfiles()
-    } catch (cause) {
-      this.set({ busy: null, error: toIpcError(cause) })
-    }
+    await this.updateSnapshot('Saving load order', () =>
+      this.client.setLoadOrder(orderedModIds),
+    )
   }
 
   async reorder(draggedIds: string[], targetId: string | null): Promise<void> {
@@ -483,16 +463,11 @@ export class AppStore {
 
   async applyProfile(profileId: string): Promise<void> {
     if (!profileId || profileId === this.state.snapshot?.activeProfileId) return
-    this.set({ busy: 'Applying profile' })
-    try {
-      const snapshot = await this.client.applyProfile(profileId)
-      this.setSnapshot(snapshot)
-      this.set({ busy: null, dirty: true })
-      await this.refreshProfiles()
-      await this.refreshLaunchOptions()
-    } catch (cause) {
-      this.set({ busy: null, error: toIpcError(cause) })
-    }
+    await this.updateSnapshot(
+      'Applying profile',
+      () => this.client.applyProfile(profileId),
+      () => this.refreshLaunchOptions(),
+    )
   }
 
   async saveProfile(name: string): Promise<boolean> {
@@ -623,10 +598,6 @@ export class AppStore {
     this.set({ activeTagIds: active, selection: [], anchorId: null })
   }
 
-  clearTagFilters(): void {
-    this.set({ activeTagIds: [], selection: [], anchorId: null })
-  }
-
   clearFilters(): void {
     this.set({ query: '', activeTagIds: [], selection: [], anchorId: null })
   }
@@ -666,12 +637,7 @@ export class AppStore {
     if (this.state.status !== 'ready') return
     this.set({ busy: 'Rescanning mods' })
     try {
-      const [snapshot, profiles, tags, ui] = await Promise.all([
-        this.client.listMods(),
-        this.client.listProfiles(),
-        this.client.listTags(),
-        this.client.getUiPreferences(),
-      ])
+      const { snapshot, profiles, tags, ui } = await this.loadWorkspaceData()
       this.setSnapshot(snapshot)
       this.set({ profiles, tags, ui, busy: null, error: null })
       await Promise.all([this.refreshConflicts(), this.refreshWorkshop()])
@@ -693,21 +659,13 @@ export class AppStore {
         if (toIpcError(cause).code !== 'game_not_found') throw cause
         game = null
       }
-      const [snapshot, profiles, tags, ui] = await Promise.all([
-        this.client.listMods(),
-        this.client.listProfiles(),
-        this.client.listTags(),
-        this.client.getUiPreferences(),
-      ])
+      const workspace = await this.loadWorkspaceData()
       const outcome = report.loadOrder
       const written = outcome.status === 'written'
       this.set({
         status: game ? 'ready' : 'no-game',
         game,
-        snapshot,
-        profiles,
-        tags,
-        ui,
+        ...workspace,
         busy: null,
         dirty: written || outcome.status === 'noGamePath' ? false : this.state.dirty,
         lastWriteAt: written
@@ -897,10 +855,6 @@ export class AppStore {
 
   dismissWorkshopError(): void {
     this.set({ workshopError: null })
-  }
-
-  dismissLaunchError(): void {
-    this.set({ launchError: null })
   }
 }
 

@@ -1,17 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { ErrorBanner } from './components/shell/ErrorBanner'
+import { GameSetup } from './components/game/GameSetup'
+import { LaunchDialog } from './components/launch/LaunchDialog'
+import { LoadOrderDialog } from './components/load-order/LoadOrderDialog'
+import { FatalScreen } from './components/shell/FatalScreen'
+import { LoadingScreen } from './components/shell/LoadingScreen'
 import { NoticeBanner } from './components/shell/NoticeBanner'
-import { SectionRail } from './components/shell/SectionRail'
 import { StatusBar } from './components/shell/StatusBar'
 import { TitleBar } from './components/shell/TitleBar'
-import { GameSetup } from './components/game/GameSetup'
-import { LoadOrderDialog } from './components/load-order/LoadOrderDialog'
-import { LaunchDialog } from './components/launch/LaunchDialog'
-import { ModsScreen } from './components/mod-list/ModsScreen'
-import { ProfilesScreen } from './components/profiles/ProfilesScreen'
-import { ConflictScreen } from './components/conflicts/ConflictScreen'
-import { WorkshopScreen } from './components/workshop/WorkshopScreen'
-import { SettingsScreen } from './components/settings/SettingsScreen'
+import { Workspace } from './components/shell/Workspace'
 import { store, useAppStore } from './store'
 
 const SECTION_KEYS: Record<string, 'mods' | 'profiles' | 'conflicts' | 'workshop' | 'settings'> = {
@@ -202,32 +198,11 @@ export function App() {
       />
 
       {state.status === 'loading' && (
-        <div className="workspace">
-          <SectionRail
-            view={state.view}
-            modCount={0}
-            enabledCount={0}
-            profileCount={0}
-            conflictCount={0}
-            workshopCount={0}
-            loading
-            onSelect={(view) => store.setView(view)}
-          />
-          <main className="main-pane" aria-busy="true" data-region="main">
-            <div className="screen-bar">
-              <div className="screen-title">
-                <h2 className="skeleton-title">Mods</h2>
-              </div>
-            </div>
-            <div className="mod-list-header loading-header" aria-hidden="true" />
-            <div className="loading-list" aria-hidden="true">
-              {Array.from({ length: 12 }, (_, index) => (
-                <div key={index} className="loading-row" />
-              ))}
-            </div>
-            <p className="sr-only">{state.busy ?? 'Starting'}…</p>
-          </main>
-        </div>
+        <LoadingScreen
+          view={state.view}
+          busy={state.busy}
+          onSelect={(view) => store.setView(view)}
+        />
       )}
 
       {state.status === 'no-game' && (
@@ -240,98 +215,9 @@ export function App() {
         />
       )}
 
-      {fatal && (
-        <main className="main-pane fatal-screen" aria-labelledby="fatal-title">
-          <div className="fatal-column">
-            <h2 id="fatal-title" tabIndex={-1}>
-              The mod list could not be read
-            </h2>
-            <p>
-              {fatal.code === 'config_corrupt'
-                ? 'The manager will not overwrite a corrupt config. A readable backup is restored automatically; retry after closing other game tools.'
-                : 'Retry after closing other game tools. If the problem persists, the error code and details identify the failing step.'}
-            </p>
-            <div className="fatal-error" role="alert">
-              <span className="state-icon state-icon-danger" aria-hidden="true">
-                !
-              </span>
-              <div>
-                <strong>{fatal.message}</strong>
-                <span className="banner-code">{fatal.code}</span>
-                {fatal.details && (
-                  <details className="banner-disclosure">
-                    <summary>Details</summary>
-                    <code>{fatal.details}</code>
-                  </details>
-                )}
-              </div>
-            </div>
-            <div className="fatal-actions">
-              <button type="button" className="btn btn-primary" onClick={() => void store.retry()}>
-                Retry
-              </button>
-            </div>
-          </div>
-        </main>
-      )}
+      {fatal && <FatalScreen error={fatal} onRetry={() => void store.retry()} />}
 
-      {state.status === 'ready' && state.snapshot && state.profiles && (
-        <div className="workspace">
-          <SectionRail
-            view={state.view}
-            modCount={state.snapshot.mods.length}
-            enabledCount={state.snapshot.enabledCount}
-            profileCount={state.profiles.profiles.length}
-            conflictCount={state.conflicts?.conflicts.length ?? 0}
-            workshopCount={state.workshop?.length ?? 0}
-            onSelect={(view) => store.setView(view)}
-          />
-
-          <main className="main-pane" data-region="main">
-            {state.error && (
-              <ErrorBanner error={state.error} onDismiss={() => store.dismissError()} />
-            )}
-
-            {state.view === 'mods' && <ModsScreen />}
-
-            {state.view === 'profiles' && (
-              <ProfilesScreen
-                profiles={state.profiles}
-                busy={Boolean(state.busy)}
-                onApply={(id) => void store.applyProfile(id)}
-                onCreate={(name) => store.saveProfile(name)}
-                onRename={(id, name) => store.renameProfile(id, name)}
-                onDuplicate={(id, name) => store.duplicateProfile(id, name)}
-                onDelete={(id) => store.deleteProfile(id)}
-              />
-            )}
-
-            {state.view === 'conflicts' && (
-              <ConflictScreen
-                report={state.conflicts}
-                loading={state.conflictLoading}
-                error={state.conflictError}
-                onRefresh={() => void store.refreshConflicts()}
-                onDismissError={() => store.dismissConflictError()}
-              />
-            )}
-
-            {state.view === 'workshop' && (
-              <WorkshopScreen
-                items={state.workshop}
-                loading={state.workshopLoading}
-                busy={Boolean(state.busy)}
-                error={state.workshopError}
-                onRefresh={() => void store.refreshWorkshop()}
-                onDismissError={() => store.dismissWorkshopError()}
-                onAction={(action, workshopId) => void store.runWorkshopAction(action, workshopId)}
-              />
-            )}
-
-            {state.view === 'settings' && <SettingsScreen />}
-          </main>
-        </div>
-      )}
+      {state.status === 'ready' && <Workspace state={state} />}
 
       <StatusBar
         status={state.status}
