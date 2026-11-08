@@ -9,7 +9,8 @@ unreleased describe implemented work, not a public download. See
 ### Added
 
 - Official Steam Workshop titles in the mod list and Workshop screen, cached
-  locally. The inspector keeps the technical pack name, and an offline or failed
+  locally. The technical pack handle remains as the row subtitle and in the
+  inspector's Pack name, with the exact filename beside it. An offline or failed
   lookup falls back to the pack stem without blocking startup.
 - Automatic collection refresh while the window is visible. A metadata-only
   fingerprint check runs every 5 seconds and triggers a full scan only when local

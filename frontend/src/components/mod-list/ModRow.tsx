@@ -5,7 +5,7 @@ import {
   type ModSummary,
   type Tag,
 } from '../../lib/ipc'
-import { factionSlotForColor } from '../../lib/ui'
+import { factionSlotForColor, packStem } from '../../lib/ui'
 
 export interface ModRowProps {
   mod: ModSummary
@@ -152,8 +152,8 @@ export const ModRow = memo(function ModRow({
             </span>
           )}
         </span>
-        <span className="row-meta" title={mod.name}>
-          <span className="row-pack">{mod.name}</span>
+        <span className="row-meta" title={packStem(mod.name)}>
+          <span className="row-pack">{packStem(mod.name)}</span>
         </span>
         {!columns.includes('var(--row-tags-w)') && visibleTags.length > 0 && (
           <span className="row-inline-tags">

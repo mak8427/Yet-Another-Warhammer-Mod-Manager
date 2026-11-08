@@ -206,8 +206,9 @@ For uninstall commands and configuration cleanup, see [the installation guide](d
 ## Highlights
 
 - **📚 One view for game and Workshop mods.** Scan installed packs, see official
-  Workshop titles, search and filter the list, add tags, and inspect the selected
-  pack. The inspector keeps the technical pack name for troubleshooting.
+  Workshop titles with the technical pack handle beneath each title, search and
+  filter the list, add tags, and inspect the selected pack. The inspector also
+  keeps the handle and exact filename for troubleshooting.
 - **🔄 Stay current without restarting.** A quiet metadata check picks up mods
   added by Steam while the manager is open; full scans run only when something
   actually changed.
@@ -290,7 +291,7 @@ server; filesystem and game actions require the Tauri app.
 | Capability | Status | Details |
 |---|---|---|
 | Game & Steam discovery | Implemented; platform caveats | Steam libraries and manual game-folder selection; Flatpak/Snap/XDG discovery is best-effort |
-| Mod browsing | Implemented | Local/Workshop packs, official Workshop titles, search, sort, tags, thumbnails, live refresh, and selected-pack inspection |
+| Mod browsing | Implemented | Local/Workshop packs, official Workshop titles with technical-handle subtitles, search, sort, tags, thumbnails, live refresh, and selected-pack inspection |
 | Load order | Implemented | Enable/disable, batch actions, drag/move controls, atomic writes, and backups |
 | Profiles | Implemented | Create, rename, duplicate, delete, switch, apply, and share as a portable JSON file (import requires every listed mod to be installed) |
 | Conflict inspection | Implemented | Overlapping pack entries, duplicate pack names, and missing/disabled dependencies |

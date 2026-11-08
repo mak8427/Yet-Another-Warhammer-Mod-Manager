@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process'
 import { createReadStream, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
+import { tmpdir } from 'node:os'
 import { dirname, extname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { setTimeout as delay } from 'node:timers/promises'
@@ -13,6 +14,12 @@ import { setTimeout as delay } from 'node:timers/promises'
  *
  * Writes PNGs under docs/screenshots/WAR-10 and prints the bounded-row
  * measurements used in the M4 evidence record.
+ *
+ * `SHOT_TITLE_COMPARE=before|after` adds the Workshop-title comparison scenes.
+ * `before` uses the pack handle as the primary name (the main-release rule);
+ * `after` uses the official title and keeps the handle in the subtitle and
+ * inspector. Combine it with `SHOT_ONLY=title-compare` to capture only those
+ * scenes.
  */
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const DIST = join(ROOT, 'frontend/dist')
@@ -23,6 +30,10 @@ const ONLY = (process.env.SHOT_ONLY ?? '')
   .split(',')
   .map((name) => name.trim())
   .filter(Boolean)
+// Test-only fixture for the Workshop-title comparison. `before` uses the
+// pre-change display rule (pack handle as the primary name); `after` uses the
+// official title with the handle retained in the subtitle/inspector.
+const TITLE_COMPARE = process.env.SHOT_TITLE_COMPARE ?? ''
 const CHROME =
   process.env.CHROME_PATH ??
   ['/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome'].find((path) =>
@@ -97,7 +108,7 @@ async function launchChrome() {
   await new Promise((resolveProbe) => probe.listen(0, '127.0.0.1', resolveProbe))
   const port = probe.address().port
   await new Promise((resolveProbe) => probe.close(resolveProbe))
-  const userDataDir = `/tmp/war10-shot/chrome-${port}`
+  const userDataDir = join(tmpdir(), 'war10-shot', `chrome-${port}`)
   mkdirSync(userDataDir, { recursive: true })
   const child = spawn(
     CHROME,
@@ -237,8 +248,8 @@ function fixtureScript() {
     ['tag-campaign'],
   ]
 
-  const mods = names.map((humanName, index) => {
-    const slug = humanName
+  const mods = names.map((officialName, index) => {
+    const slug = officialName
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '_')
       .replace(/^_|_$/g, '')
@@ -247,7 +258,7 @@ function fixtureScript() {
     return {
       id: `mod-${index}`,
       name: `${slug}.pack`,
-      humanName,
+      humanName: TITLE_COMPARE === 'before' ? slug : officialName,
       isWorkshop: index % 3 !== 0,
       workshopId: index % 3 !== 0 ? String(2800000000 + index) : null,
       isEnabled: enabled,
@@ -518,7 +529,7 @@ function fixtureScript() {
   })();`
 }
 
-async function capture(cdp, { scenario, viewport, density, view, action, name, skipShot = false }) {
+async function capture(cdp, { scenario, viewport, density, view, action, name, query, rowId, skipShot = false }) {
   await cdp.send('Emulation.setDeviceMetricsOverride', {
     width: viewport.width,
     height: viewport.height,
@@ -596,11 +607,12 @@ async function capture(cdp, { scenario, viewport, density, view, action, name, s
     await waitFor("document.querySelector('[data-screen-title]').textContent.includes('Overhaul')")
     await delay(200)
   } else if (action === 'search') {
+    const searchQuery = query ?? 'camera'
     await cdp.send('Runtime.evaluate', {
       expression: `(() => {
         const input = document.querySelector('#mod-search');
         const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-        setter.call(input, 'camera');
+        setter.call(input, ${JSON.stringify(searchQuery)});
         input.dispatchEvent(new Event('input', { bubbles: true }));
       })()`,
     })
@@ -625,9 +637,10 @@ async function capture(cdp, { scenario, viewport, density, view, action, name, s
     })
     await delay(120)
   } else if (action === 'select-row') {
+    const targetRowId = rowId ?? 'mod-4'
     await cdp.send('Runtime.evaluate', {
       expression: `(() => {
-        const row = document.querySelector('.mod-row[data-mod-id="mod-4"]');
+        const row = document.querySelector('.mod-row[data-mod-id="${targetRowId}"]');
         if (!row) return false;
         row.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
         return true;
@@ -717,7 +730,7 @@ try {
     { scenario: 'ready', viewport: narrow, density: 'comfortable', name: 'shell__mods__1366x768__comfortable' },
     { scenario: 'ready', viewport: wide, density: 'compact', name: 'shell__mods__1920x1080__compact' },
     { scenario: 'ready', viewport: wide, density: 'roomy', name: 'shell__mods__1920x1080__roomy' },
-    { scenario: 'ready', viewport: wide, density: 'comfortable', action: 'select-row', name: 'mods__selected-inspector__1920x1080__comfortable' },
+    { scenario: 'ready', viewport: wide, density: 'comfortable', action: 'select-row', rowId: 'mod-2', name: 'mods__selected-inspector__1920x1080__comfortable' },
     { scenario: 'ready', viewport: narrow, density: 'comfortable', action: 'select-row', name: 'mods__selected-inspector__1366x768__comfortable' },
     { scenario: 'ready', viewport: wide, density: 'comfortable', action: 'tag-filter', name: 'mods__filtered-tag__1920x1080__comfortable' },
     { scenario: 'ready', viewport: narrow, density: 'comfortable', action: 'tag-filter', name: 'mods__filtered-tag__1366x768__comfortable' },
@@ -747,6 +760,45 @@ try {
     { scenario: 'ready', viewport: wide, density: 'comfortable', action: 'launch-dialog', name: 'launch__dialog__1920x1080__comfortable' },
     { scenario: 'ready', viewport: narrow, density: 'comfortable', action: 'launch-dialog', name: 'launch__dialog__1366x768__comfortable' },
   ]
+
+  if (TITLE_COMPARE) {
+    specs.push(
+      {
+        scenario: 'ready',
+        viewport: wide,
+        density: 'comfortable',
+        name: 'title-compare__mods__1920x1080__comfortable',
+      },
+      {
+        scenario: 'ready',
+        viewport: wide,
+        density: 'comfortable',
+        action: 'select-row',
+        rowId: 'mod-2',
+        name: 'title-compare__inspector__1920x1080__comfortable',
+      },
+    )
+    if (TITLE_COMPARE === 'after') {
+      specs.push(
+        {
+          scenario: 'ready',
+          viewport: wide,
+          density: 'comfortable',
+          action: 'search',
+          query: 'Better Camera',
+          name: 'title-compare__filter-title__1920x1080__comfortable',
+        },
+        {
+          scenario: 'ready',
+          viewport: wide,
+          density: 'comfortable',
+          action: 'search',
+          query: 'better_camera',
+          name: 'title-compare__filter-handle__1920x1080__comfortable',
+        },
+      )
+    }
+  }
 
   for (const spec of specs) {
     if (ONLY.length > 0 && !ONLY.some((name) => spec.name.includes(name))) continue

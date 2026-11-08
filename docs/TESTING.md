@@ -111,6 +111,11 @@ conflict report. Raw artwork is read locally and embedded only in screenshots.
 Without that optional directory, captures remain deterministic and use thumbnail
 placeholders.
 
+For the Workshop-title comparison, set `SHOT_TITLE_COMPARE=before|after` and
+`SHOT_ONLY=title-compare`. Run `before` from a clean `main` build and `after` from
+the feature build; the resulting images live in
+`docs/screenshots/workshop-title-comparison/`.
+
 All showcase captures were checked for page overflow and visually reviewed. The
 mod list has 23 visible rows at the stated viewport. Historical screenshot artifacts remain in their directories. Retired cross-app
 comparison reports are preserved in Git history; new performance reports measure
