@@ -11,6 +11,7 @@ interface WorkshopScreenProps {
   busy: boolean
   error: IpcError | null
   onRefresh: () => void
+  onRefreshNames: () => void
   onDismissError: () => void
   onAction: (action: WorkshopAction, workshopId: string) => void
   viewportHeightOverride?: number
@@ -39,6 +40,7 @@ export function WorkshopScreen({
   busy,
   error,
   onRefresh,
+  onRefreshNames,
   onDismissError,
   onAction,
   viewportHeightOverride,
@@ -88,9 +90,12 @@ export function WorkshopScreen({
           </span>
         </div>
         <div className="screen-actions">
-          <span className="screen-note">State comes from Steam metadata only.</span>
+          <span className="screen-note">State comes from Steam; names are cached.</span>
           <button type="button" className="btn btn-small" onClick={onRefresh} disabled={loading || busy}>
             {loading ? 'Reading…' : 'Refresh'}
+          </button>
+          <button type="button" className="btn btn-small" onClick={onRefreshNames} disabled={busy}>
+            Refresh names
           </button>
         </div>
       </div>

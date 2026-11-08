@@ -147,6 +147,11 @@ fn bench_mod_index(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::new("scan", count), &location, |b, location| {
             b.iter(|| mod_index::scan(black_box(location)))
         });
+        group.bench_with_input(
+            BenchmarkId::new("fingerprint", count),
+            &location,
+            |b, location| b.iter(|| mod_index::fingerprint(black_box(location))),
+        );
     }
     group.finish();
 }

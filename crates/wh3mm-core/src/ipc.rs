@@ -48,7 +48,8 @@ pub struct ModSummary {
     pub id: String,
     /// Pack file name, e.g. `mymod.pack`. This is what `used_mods.txt` stores.
     pub name: String,
-    /// Display name. The Workshop title in M3; the pack stem before that.
+    /// Display name: the cached official Workshop title when available,
+    /// otherwise the pack stem.
     pub human_name: String,
     pub is_workshop: bool,
     pub workshop_id: Option<String>,
@@ -124,6 +125,17 @@ pub struct ModListSnapshot {
     pub timings: Timings,
     /// Non-fatal conditions from config recovery, scanning, or deduplication.
     pub warnings: Vec<String>,
+}
+
+/// Result of looking up official Workshop titles.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkshopTitleRefreshReport {
+    pub updated: u32,
+    pub failed: u32,
+    pub snapshot: ModListSnapshot,
+    /// Present when the lookup was skipped or failed; titles remain optional.
+    pub message: Option<String>,
 }
 
 /// How a confirmed reset handled the game-owned load-order file.

@@ -69,3 +69,8 @@ export function visibleRowCount(viewportHeight: number, rowHeight: number): numb
 export function modPositionLabel(mod: { isEnabled: boolean; loadOrder: number }): string {
   return mod.isEnabled ? `Position ${mod.loadOrder + 1}` : 'Not in load order'
 }
+
+/** Technical pack stem used by the game and `used_mods.txt`. */
+export function packStem(packName: string): string {
+  return packName.replace(/\.pack$/i, '')
+}

@@ -67,6 +67,7 @@ export function Workspace({ state }: WorkspaceProps) {
             busy={Boolean(state.busy)}
             error={state.workshopError}
             onRefresh={() => void store.refreshWorkshop()}
+            onRefreshNames={() => void store.refreshWorkshopTitles(true)}
             onDismissError={() => store.dismissWorkshopError()}
             onAction={(action, workshopId) => void store.runWorkshopAction(action, workshopId)}
           />

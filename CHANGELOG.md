@@ -4,6 +4,24 @@ Notable changes to Yet Another Warhammer Mod Manager. Versioned entries marked
 unreleased describe implemented work, not a public download. See
 [installation and release steps](docs/INSTALLATION.md).
 
+## [Unreleased]
+
+### Added
+
+- Official Steam Workshop titles in the mod list and Workshop screen, cached
+  locally. The technical pack handle remains as the row subtitle and in the
+  inspector's Pack name, with the exact filename beside it. An offline or failed
+  lookup falls back to the pack stem without blocking startup.
+- Automatic collection refresh while the window is visible. A metadata-only
+  fingerprint check runs every 5 seconds and triggers a full scan only when local
+  or Workshop pack files change; Steam's in-progress download folder defers the
+  check so partial packs are not shown.
+
+### Fixed
+
+- Manual Rescan now performs a real backend scan instead of re-reading the cached
+  mod list.
+
 ## [1.1.0] - 2026-10-24
 
 ### Added

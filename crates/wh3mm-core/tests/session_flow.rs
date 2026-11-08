@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -12,6 +13,7 @@ use wh3mm_core::pack::synthetic_pack_bytes;
 use wh3mm_core::session::{Session, SessionOptions};
 use wh3mm_core::test_support::TempDir;
 use wh3mm_core::window::WindowGeometry;
+use wh3mm_core::workshop::{now_unix_seconds, WorkshopTitleCache};
 
 fn write_pack(path: &Path) {
     if let Some(parent) = path.parent() {
@@ -1036,4 +1038,173 @@ fn profile_share_requires_a_detected_game() {
         session.import_profile(&file).unwrap_err().code,
         ErrorCode::GameNotFound
     );
+}
+
+#[test]
+fn rescan_discovers_new_local_and_workshop_packs_without_a_restart() {
+    let dir = TempDir::new("session-rescan");
+    let (steam_root, game) = steam_game_fixture(&dir, &["a.pack"]);
+    let mut session = Session::initialize(steam_options(&dir, &steam_root)).unwrap();
+    assert!(!session.mods_changed());
+
+    write_pack(&game.join("data").join("b.pack"));
+    assert!(session.mods_changed());
+    let snapshot = session.rescan_mods().unwrap();
+    assert_eq!(snapshot.mods.len(), 2);
+    let new_local = snapshot
+        .mods
+        .iter()
+        .find(|module| module.name == "b.pack")
+        .unwrap();
+    assert!(!new_local.is_enabled);
+
+    let workshop = steam_root
+        .join("steamapps")
+        .join("workshop")
+        .join("content")
+        .join("1142710");
+    write_pack(&workshop.join("123456").join("workshop_mod.pack"));
+    assert!(session.mods_changed());
+    let snapshot = session.rescan_mods().unwrap();
+    let new_workshop = snapshot
+        .mods
+        .iter()
+        .find(|module| module.name == "workshop_mod.pack")
+        .unwrap();
+    assert!(new_workshop.is_workshop);
+    assert_eq!(new_workshop.workshop_id.as_deref(), Some("123456"));
+    assert!(!new_workshop.is_enabled);
+    assert!(!session.mods_changed());
+}
+
+#[test]
+fn active_workshop_downloads_defer_automatic_rescan() {
+    let dir = TempDir::new("session-downloads-active");
+    let (steam_root, _game) = steam_game_fixture(&dir, &[]);
+    let mut session = Session::initialize(steam_options(&dir, &steam_root)).unwrap();
+    let workshop = steam_root
+        .join("steamapps")
+        .join("workshop")
+        .join("content")
+        .join("1142710");
+    write_pack(&workshop.join("123456").join("workshop_mod.pack"));
+    let downloads = steam_root
+        .join("steamapps")
+        .join("workshop")
+        .join("downloads")
+        .join("1142710")
+        .join("123456");
+    fs::create_dir_all(&downloads).unwrap();
+    fs::write(downloads.join("partial.pack"), b"partial").unwrap();
+    assert!(!session.mods_changed());
+
+    fs::remove_dir_all(&downloads).unwrap();
+    assert!(session.mods_changed());
+    assert_eq!(session.rescan_mods().unwrap().mods.len(), 1);
+}
+
+#[test]
+fn cached_workshop_titles_are_applied_and_can_be_refreshed() {
+    let dir = TempDir::new("session-workshop-titles");
+    let (steam_root, _game) = steam_game_fixture(&dir, &[]);
+    let workshop = steam_root
+        .join("steamapps")
+        .join("workshop")
+        .join("content")
+        .join("1142710");
+    write_pack(&workshop.join("123456").join("workshop_mod.pack"));
+    let acf_dir = steam_root.join("steamapps").join("workshop");
+    fs::write(
+        acf_dir.join("appworkshop_1142710.acf"),
+        r#""AppWorkshop"
+{
+    "appid" "1142710"
+    "WorkshopItemDetails"
+    {
+        "123456"
+        {
+            "manifest" "1"
+            "timeupdated" "1700000000"
+        }
+        "999"
+        {
+            "manifest" "2"
+            "timeupdated" "1700000001"
+        }
+    }
+}
+"#,
+    )
+    .unwrap();
+
+    let cache_path = dir.path().join("workshop_titles.json");
+    let mut cache = WorkshopTitleCache::default();
+    cache.insert("123456", "Better Camera Mod", now_unix_seconds());
+    cache.save(&cache_path).unwrap();
+
+    let mut session = Session::initialize(steam_options(&dir, &steam_root)).unwrap();
+    let title = session
+        .snapshot()
+        .mods
+        .into_iter()
+        .find(|module| module.name == "workshop_mod.pack")
+        .unwrap()
+        .human_name;
+    assert_eq!(title, "Better Camera Mod");
+    let items = session.workshop_items().unwrap();
+    assert_eq!(
+        items
+            .iter()
+            .find(|item| item.workshop_id == "123456")
+            .unwrap()
+            .title,
+        "Better Camera Mod"
+    );
+    assert_eq!(
+        items
+            .iter()
+            .find(|item| item.workshop_id == "999")
+            .unwrap()
+            .title,
+        "Workshop item 999"
+    );
+    assert_eq!(
+        session.workshop_title_requests(false),
+        vec!["999".to_string()]
+    );
+    assert_eq!(
+        session.workshop_title_requests(true),
+        vec!["123456".to_string(), "999".to_string()]
+    );
+
+    let refreshed = session.apply_workshop_titles(
+        BTreeMap::from([("123456".to_string(), "Renamed Mod".to_string())]),
+        now_unix_seconds() + 1,
+    );
+    let title = refreshed
+        .mods
+        .into_iter()
+        .find(|module| module.name == "workshop_mod.pack")
+        .unwrap()
+        .human_name;
+    assert_eq!(title, "Renamed Mod");
+    let items = session.workshop_items().unwrap();
+    assert_eq!(
+        items
+            .iter()
+            .find(|item| item.workshop_id == "123456")
+            .unwrap()
+            .title,
+        "Renamed Mod"
+    );
+
+    let reloaded = Session::initialize(steam_options(&dir, &steam_root)).unwrap();
+    let title = reloaded
+        .snapshot()
+        .mods
+        .into_iter()
+        .find(|module| module.name == "workshop_mod.pack")
+        .unwrap()
+        .human_name;
+    assert_eq!(title, "Renamed Mod");
 }

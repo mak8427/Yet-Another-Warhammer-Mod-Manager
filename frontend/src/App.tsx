@@ -89,6 +89,11 @@ export function App() {
   }, [])
 
   useEffect(() => {
+    if (state.status !== 'ready') return
+    return store.startWatching()
+  }, [state.status])
+
+  useEffect(() => {
     document.documentElement.dataset.density = state.ui.density
   }, [state.ui.density])
 

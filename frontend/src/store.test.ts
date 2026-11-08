@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { IpcError } from './lib/ipc'
 import type { ProfileFiles } from './lib/files'
-import { AppStore, moveEnabled, visibleMods } from './store'
+import { AppStore, MOD_POLL_INTERVAL_MS, moveEnabled, visibleMods } from './store'
 import {
   GAME,
   EMPTY_CONFLICTS,
@@ -15,6 +15,7 @@ import {
   makeClient,
   makeMod,
   makeSnapshot,
+  makeTitleReport,
 } from './test/mocks'
 
 function makeFiles(overrides: Partial<ProfileFiles> = {}): ProfileFiles {
@@ -528,6 +529,129 @@ describe('AppStore', () => {
 
     expect(result).toEqual({ ok: false, message: 'Steam was not found' })
     expect(store.getState().error).toBeNull()
+  })
+
+  it('checks for new mods quietly and applies the rescan snapshot', async () => {
+    const MOD_D = makeMod({ id: 'mod-d', name: 'delta.pack', loadOrder: 3 })
+    const client = makeClient({
+      listMods: vi.fn(async () => makeSnapshot([MOD_A, MOD_B, MOD_C])),
+      checkModsChanged: vi.fn(async () => true),
+      rescanMods: vi.fn(async () => makeSnapshot([MOD_A, MOD_B, MOD_C, MOD_D])),
+    })
+    const store = new AppStore(client)
+    await store.init()
+    store.select('mod-a', 'single')
+
+    await store.checkForModChanges()
+
+    expect(client.checkModsChanged).toHaveBeenCalledTimes(1)
+    expect(client.rescanMods).toHaveBeenCalledTimes(1)
+    expect(store.getState().snapshot?.mods).toHaveLength(4)
+    expect(store.getState().selection).toEqual(['mod-a'])
+    expect(store.getState().busy).toBeNull()
+  })
+
+  it('does not rescan when the cheap check reports no change', async () => {
+    const client = makeClient({
+      listMods: vi.fn(async () => makeSnapshot([MOD_A, MOD_B, MOD_C])),
+      checkModsChanged: vi.fn(async () => false),
+      rescanMods: vi.fn(async () => makeSnapshot([MOD_A])),
+    })
+    const store = new AppStore(client)
+    await store.init()
+
+    await store.checkForModChanges()
+
+    expect(client.checkModsChanged).toHaveBeenCalledTimes(1)
+    expect(client.rescanMods).not.toHaveBeenCalled()
+  })
+
+  it('skips the quiet check while the window is hidden', async () => {
+    const client = makeClient({
+      listMods: vi.fn(async () => makeSnapshot([MOD_A])),
+      checkModsChanged: vi.fn(async () => true),
+    })
+    const store = new AppStore(client)
+    await store.init()
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'hidden',
+    })
+
+    try {
+      await store.checkForModChanges()
+      expect(client.checkModsChanged).not.toHaveBeenCalled()
+    } finally {
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        get: () => 'visible',
+      })
+    }
+  })
+
+  it('polls at the documented interval only after startWatching', async () => {
+    vi.useFakeTimers()
+    try {
+      const client = makeClient({
+        listMods: vi.fn(async () => makeSnapshot([MOD_A])),
+        checkModsChanged: vi.fn(async () => false),
+      })
+      const store = new AppStore(client)
+      await store.init()
+      const stop = store.startWatching()
+      expect(client.checkModsChanged).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(MOD_POLL_INTERVAL_MS)
+      expect(client.checkModsChanged).toHaveBeenCalledTimes(1)
+      stop()
+      await vi.advanceTimersByTimeAsync(MOD_POLL_INTERVAL_MS * 2)
+      expect(client.checkModsChanged).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('uses the backend rescan for manual refresh', async () => {
+    const MOD_D = makeMod({ id: 'mod-d', name: 'delta.pack', loadOrder: 3 })
+    const client = makeClient({
+      listMods: vi.fn(async () => makeSnapshot([MOD_A, MOD_B, MOD_C])),
+      rescanMods: vi.fn(async () => makeSnapshot([MOD_A, MOD_B, MOD_C, MOD_D])),
+    })
+    const store = new AppStore(client)
+    await store.init()
+
+    await store.rescan()
+
+    expect(client.rescanMods).toHaveBeenCalledTimes(1)
+    expect(store.getState().snapshot?.mods).toHaveLength(4)
+    expect(store.getState().error).toBeNull()
+  })
+
+  it('applies official titles without recomputing conflicts', async () => {
+    const titled = makeSnapshot([{ ...MOD_A, humanName: 'Official Alpha' }, MOD_B, MOD_C])
+    const client = makeClient({
+      listMods: vi.fn(async () => makeSnapshot([MOD_A, MOD_B, MOD_C])),
+      refreshWorkshopTitles: vi.fn(async () => makeTitleReport(titled, { updated: 1 })),
+    })
+    const store = new AppStore(client)
+    await store.init()
+    await store.refreshConflicts()
+    const conflictCalls = vi.mocked(client.getConflicts).mock.calls.length
+
+    await store.refreshWorkshopTitles()
+
+    expect(store.getState().snapshot?.mods[0].humanName).toBe('Official Alpha')
+    expect(client.getConflicts).toHaveBeenCalledTimes(conflictCalls)
+  })
+
+  it('finds a mod by its technical pack name when the title differs', () => {
+    const mod = { ...MOD_A, name: 'alpha_internal.pack', humanName: 'Official Alpha' }
+    const found = visibleMods({
+      snapshot: makeSnapshot([mod]),
+      query: 'alpha_internal',
+      activeTagIds: [],
+      sort: 'load-order',
+    })
+    expect(found.map((item) => item.id)).toEqual(['mod-a'])
   })
 })
 

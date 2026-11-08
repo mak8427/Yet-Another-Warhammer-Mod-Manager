@@ -18,6 +18,7 @@ import type {
   Tag,
   UiPreferences,
   WorkshopItem,
+  WorkshopTitleRefreshReport,
 } from '../lib/ipc'
 
 export const APP_INFO: AppInfo = {
@@ -259,12 +260,24 @@ export const WRITE_REPORT: LoadOrderWriteReport = {
   hardBlocked: false,
 }
 
+export function makeTitleReport(
+  snapshot: ModListSnapshot,
+  overrides: Partial<WorkshopTitleRefreshReport> = {},
+): WorkshopTitleRefreshReport {
+  return { updated: 0, failed: 0, snapshot, message: null, ...overrides }
+}
+
 export function makeClient(overrides: Partial<IpcClient> = {}): IpcClient {
   const base: IpcClient = {
     appInfo: vi.fn(async () => APP_INFO),
     detectGame: vi.fn(async () => GAME),
     setGamePath: vi.fn(async () => GAME),
     listMods: vi.fn(async () => makeSnapshot([])),
+    checkModsChanged: vi.fn(async () => false),
+    rescanMods: vi.fn(async () => makeSnapshot([])),
+    refreshWorkshopTitles: vi.fn(async () =>
+      makeTitleReport(makeSnapshot([])),
+    ),
     setModEnabled: vi.fn(async () => makeSnapshot([])),
     setModsEnabled: vi.fn(async () => makeSnapshot([])),
     setLoadOrder: vi.fn(async () => makeSnapshot([])),

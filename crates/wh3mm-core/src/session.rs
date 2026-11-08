@@ -4,7 +4,7 @@
 //! profile, and `used_mods.txt` flow is exercised headlessly on Linux. The Tauri
 //! layer only locks a session and forwards commands.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -16,11 +16,12 @@ use crate::ipc::{
     ResetDefaultsReport, ResetLoadOrderReport, ResetLoadOrderStatus, Tag, UiPreferences,
 };
 use crate::load_order::{self, LoadOrderFile, PlannedName, WritePlan};
-use crate::mod_index::{self, DiscoveredMod, IndexReport};
+use crate::mod_index::{self, DiscoveredMod, IndexReport, ModIndexFingerprint};
 use crate::paths::{self, DetectionReport, GameLocation};
 use crate::profile_share;
 use crate::timing::{log_timing, Timings};
 use crate::window::WindowGeometry;
+use crate::workshop::{self, WorkshopTitleCache};
 
 pub struct SessionOptions {
     pub config_path: PathBuf,
@@ -60,11 +61,16 @@ pub struct Session {
     pub timings: Timings,
     steam_root_candidates: Option<Vec<PathBuf>>,
     log_timings: bool,
+    pub(crate) workshop_titles: WorkshopTitleCache,
+    workshop_titles_path: PathBuf,
+    last_fingerprint: Option<ModIndexFingerprint>,
 }
 
 impl Session {
     pub fn initialize(options: SessionOptions) -> Result<Self, AppError> {
         let started = Instant::now();
+        let workshop_titles_path = workshop::title_cache_path(&options.config_path);
+        let workshop_titles = WorkshopTitleCache::load(&workshop_titles_path);
         let loaded = config::load_or_create(&options.config_path)?;
         let mut config = loaded.config;
         let mut warnings = loaded.warnings;
@@ -115,6 +121,9 @@ impl Session {
             load_order_duration = read_started.elapsed();
         }
 
+        apply_cached_workshop_titles(&mut mods, &workshop_titles);
+        let last_fingerprint = location.as_ref().map(mod_index::fingerprint);
+
         let mut session = Self {
             config_path: options.config_path,
             config,
@@ -130,6 +139,9 @@ impl Session {
             timings: Timings::default(),
             steam_root_candidates: options.steam_root_candidates,
             log_timings: options.log_timings,
+            workshop_titles,
+            workshop_titles_path,
+            last_fingerprint,
         };
 
         session.enabled_ids = session.config.active_profile().enabled_mod_ids.clone();
@@ -235,13 +247,14 @@ impl Session {
         };
 
         let scan_started = Instant::now();
-        let (new_mods, new_index) = match &new_location {
+        let (mut new_mods, new_index) = match &new_location {
             Some(location) => {
                 let (mods, report) = mod_index::scan(location);
                 (mods, report)
             }
             None => (Vec::new(), IndexReport::default()),
         };
+        apply_cached_workshop_titles(&mut new_mods, &self.workshop_titles);
         let scan_duration = scan_started.elapsed();
 
         let mut next = self.config.clone();
@@ -286,6 +299,7 @@ impl Session {
 
         self.config = next;
         self.location = new_location;
+        self.last_fingerprint = self.location.as_ref().map(mod_index::fingerprint);
         self.detection = detection;
         self.mods = new_mods;
         self.index_report = new_index;
@@ -390,6 +404,84 @@ impl Session {
             timings: self.timings,
             warnings: self.snapshot_warnings(),
         }
+    }
+
+    /// True when the cheap metadata fingerprint differs from the last scan.
+    /// Active Steam downloads are deliberately ignored so a partially written
+    /// pack is not shown as a new mod.
+    pub fn mods_changed(&self) -> bool {
+        let Some(location) = &self.location else {
+            return false;
+        };
+        let Some(last) = &self.last_fingerprint else {
+            return true;
+        };
+        let current = mod_index::fingerprint(location);
+        if current.downloads_active {
+            return false;
+        }
+        current != *last
+    }
+
+    /// Performs a full mod scan while keeping the session's profile, tags, and
+    /// enabled ids. New mods are discovered disabled.
+    pub fn rescan_mods(&mut self) -> Result<ModListSnapshot, AppError> {
+        let location = self.require_game_location()?.clone();
+        let (mut mods, report) = mod_index::scan(&location);
+        apply_cached_workshop_titles(&mut mods, &self.workshop_titles);
+
+        let file = load_order::read_file(&load_order::used_mods_path(&location.game_path));
+        if let Some(reason) = &file.unreadable {
+            let warning = format!(
+                "used_mods.txt could not be read; writes are blocked until it is readable: {reason}"
+            );
+            if !self.warnings.contains(&warning) {
+                self.warnings.push(warning);
+            }
+        }
+
+        self.mods = mods;
+        self.index_report = report;
+        self.load_order = read_report(&file, &self.mods);
+        self.last_fingerprint = Some(mod_index::fingerprint(&location));
+        Ok(self.snapshot())
+    }
+
+    /// Workshop ids that need a title lookup. Includes subscribed items found
+    /// in Steam's ACF so the Workshop screen benefits from the same cache.
+    pub fn workshop_title_requests(&self, force: bool) -> Vec<String> {
+        let mut ids: BTreeSet<String> = self
+            .mods
+            .iter()
+            .filter_map(|module| module.workshop_id.clone())
+            .collect();
+        if let Some(location) = &self.location {
+            if !location.steam_root.as_os_str().is_empty() {
+                if let Ok(acf) = workshop::read_workshop_acf(&location.steam_root) {
+                    ids.extend(acf.installed.keys().cloned());
+                    ids.extend(acf.details.keys().cloned());
+                }
+            }
+        }
+        self.workshop_titles
+            .missing_or_stale(ids, force, workshop::now_unix_seconds())
+    }
+
+    /// Merges fetched titles into the cache, updates the displayed names, and
+    /// returns the current snapshot. Cache write failures do not discard the
+    /// titles already applied in memory.
+    pub fn apply_workshop_titles(
+        &mut self,
+        titles: BTreeMap<String, String>,
+        fetched_at: i64,
+    ) -> ModListSnapshot {
+        for (workshop_id, title) in titles {
+            self.workshop_titles
+                .insert(&workshop_id, &title, fetched_at);
+        }
+        apply_cached_workshop_titles(&mut self.mods, &self.workshop_titles);
+        let _ = self.workshop_titles.save(&self.workshop_titles_path);
+        self.snapshot()
     }
 
     fn snapshot_warnings(&self) -> Vec<String> {
@@ -852,7 +944,8 @@ impl Session {
         }
         match location {
             Some(found) => {
-                let (mods, report) = mod_index::scan(&found);
+                let (mut mods, report) = mod_index::scan(&found);
+                apply_cached_workshop_titles(&mut mods, &self.workshop_titles);
                 self.mods = mods;
                 self.index_report = report;
                 let file = load_order::read_file(&load_order::used_mods_path(&found.game_path));
@@ -862,11 +955,13 @@ impl Session {
                     ));
                 }
                 self.load_order = read_report(&file, &self.mods);
+                self.last_fingerprint = Some(mod_index::fingerprint(&found));
             }
             None => {
                 self.mods.clear();
                 self.index_report = IndexReport::default();
                 self.load_order = empty_load_order_report("");
+                self.last_fingerprint = None;
             }
         }
     }
@@ -958,6 +1053,18 @@ impl Session {
             error.with_details("No Steam or Flatpak/Snap library was found")
         } else {
             error.with_details(details.join(". "))
+        }
+    }
+}
+
+fn apply_cached_workshop_titles(mods: &mut [DiscoveredMod], cache: &WorkshopTitleCache) {
+    for module in mods {
+        if let Some(workshop_id) = &module.workshop_id {
+            if let Some(entry) = cache.titles.get(workshop_id) {
+                if !entry.title.trim().is_empty() {
+                    module.human_name = entry.title.clone();
+                }
+            }
         }
     }
 }

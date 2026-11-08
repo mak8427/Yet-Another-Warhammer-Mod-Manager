@@ -71,7 +71,10 @@ version, OS, artifact checksum, and outcome:
 
 1. Check startup, missing-game recovery, discovery, and manual folder selection.
 2. Scan a real collection; confirm pack thumbnails, filtering, sorting, selection,
-   virtualization, keyboard navigation, and the inspector.
+   virtualization, keyboard navigation, and the inspector. Workshop rows must show
+   official Steam titles while the inspector keeps the technical pack name; with
+   networking blocked, cached titles stay and unknown items fall back to the stem.
+   The Workshop screen's **Refresh names** action forces a fresh lookup.
 3. Toggle/reorder mods, save/apply/switch profiles, restart, and verify persistence.
    Export a profile, then import it on a second install. A file with any mod missing
    must list the missing packs with their Workshop links and create nothing; after
@@ -82,9 +85,13 @@ version, OS, artifact checksum, and outcome:
    loads the selected mods. On Linux use native Steam/Proton and an existing prefix.
    A spawned process or a window-opening smoke test does not establish this.
 6. Confirm Workshop pages open through Steam and subscriptions remain Steam-owned.
-7. Check density, zoom shortcuts, window geometry/maximized state, off-screen
+7. With the manager open and visible, subscribe/download a small Workshop mod. It
+   must appear within about 5 seconds, disabled, with the official title and no
+   partial-pack row. Add/remove a local pack and confirm the same. Measure idle CPU
+   against [performance](PERFORMANCE.md); do not claim the feature if the gate fails.
+8. Check density, zoom shortcuts, window geometry/maximized state, off-screen
    recovery, and small-screen layout. Wayland placement remains compositor-owned.
-8. Uninstall the package and document whether user config remains.
+9. Uninstall the package and document whether user config remains.
 
 The launch guard is bounded; it does not certify mod compatibility or prevent all
 later external edits. NixOS real-game/FHS behavior and full Gentoo runtime dependency
@@ -103,6 +110,11 @@ through `SHOT_WORKSHOP_DIR`; they do not claim to be a real user's load order or
 conflict report. Raw artwork is read locally and embedded only in screenshots.
 Without that optional directory, captures remain deterministic and use thumbnail
 placeholders.
+
+For the Workshop-title comparison, set `SHOT_TITLE_COMPARE=before|after` and
+`SHOT_ONLY=title-compare`. Run `before` from a clean `main` build and `after` from
+the feature build; the resulting images live in
+`docs/screenshots/workshop-title-comparison/`.
 
 All showcase captures were checked for page overflow and visually reviewed. The
 mod list has 23 visible rows at the stated viewport. Historical screenshot artifacts remain in their directories. Retired cross-app

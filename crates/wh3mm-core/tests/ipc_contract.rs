@@ -129,7 +129,7 @@ fn error_codes_use_snake_case_on_the_wire() {
 fn mod_list_snapshot_uses_the_m1_m2_wire_shape() {
     use wh3mm_core::ipc::{
         GameLocation, LoadOrderReadReport, LocationSource, ModListSnapshot, ModSummary,
-        UiPreferences,
+        UiPreferences, WorkshopTitleRefreshReport,
     };
     use wh3mm_core::timing::Timings;
 
@@ -170,7 +170,7 @@ fn mod_list_snapshot_uses_the_m1_m2_wire_shape() {
         warnings: vec![],
     };
 
-    let json = serde_json::to_value(snapshot).unwrap();
+    let json = serde_json::to_value(&snapshot).unwrap();
     assert_eq!(json["enabledCount"], 1);
     assert_eq!(json["activeProfileId"], "profile");
     assert_eq!(json["mods"][0]["humanName"], "mod");
@@ -199,6 +199,18 @@ fn mod_list_snapshot_uses_the_m1_m2_wire_shape() {
     let json = serde_json::to_value(preferences).unwrap();
     assert_eq!(json["density"], "comfortable");
     assert_eq!(json["lastScrollTop"], 0);
+
+    let report = WorkshopTitleRefreshReport {
+        updated: 1,
+        failed: 0,
+        snapshot,
+        message: None,
+    };
+    let json = serde_json::to_value(report).unwrap();
+    assert_eq!(json["updated"], 1);
+    assert_eq!(json["failed"], 0);
+    assert!(json["message"].is_null());
+    assert_eq!(json["snapshot"]["mods"][0]["humanName"], "mod");
 }
 
 #[test]

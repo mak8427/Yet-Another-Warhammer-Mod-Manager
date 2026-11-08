@@ -112,6 +112,21 @@ describe('ipc', () => {
     })
   })
 
+  it('forwards the quiet refresh and title commands', async () => {
+    invokeMock.mockResolvedValue(true)
+    await expect(ipc.checkModsChanged()).resolves.toBe(true)
+    expect(invokeMock).toHaveBeenLastCalledWith('check_mods_changed', {})
+
+    invokeMock.mockResolvedValue(SNAPSHOT)
+    await ipc.rescanMods()
+    expect(invokeMock).toHaveBeenLastCalledWith('rescan_mods', {})
+
+    const report = { updated: 1, failed: 0, snapshot: SNAPSHOT, message: null }
+    invokeMock.mockResolvedValue(report)
+    await expect(ipc.refreshWorkshopTitles(true)).resolves.toEqual(report)
+    expect(invokeMock).toHaveBeenLastCalledWith('refresh_workshop_titles', { force: true })
+  })
+
   it('forwards profile share commands with camelCase arguments', async () => {
     const report: ExportProfileReport = {
       path: 'C:/tmp/campaign.wh3mm-profile.json',

@@ -22,6 +22,32 @@ wall-clock budgets from the Linux i9-13900K baseline, not portable assertions ab
 shared runners. Use that host class when claiming a budget pass. Diagnostic
 command-line overrides must not become relaxed defaults.
 
+## Idle mod-change detection
+
+The visible-window poll calls `mod_index::fingerprint` every 5 seconds. It reads
+directory-entry metadata and pack names, never pack bodies. Criterion runs it as
+`mod_index/fingerprint/{100,500,2000}`:
+
+```bash
+cargo bench -p wh3mm-core --bench hot_paths --locked mod_index/fingerprint
+```
+
+The budget is **2 ms at 500 mods** and **5 ms at 2000 mods**, with average idle CPU
+at or below **0.25% of one core** (5-second interval) and no new long-lived Rust
+thread. A full scan or conflict recompute is allowed only when the fingerprint
+changes. If a change misses this budget, do not enable automatic refresh; report
+the measured numbers instead of relaxing the interval silently.
+
+A Windows 11 release-mode run on 2026-11-08 measured **1.05 ms / 1.60 ms / 3.67 ms**
+for 100 / 500 / 2000 packs. Run-to-run spread is a few percent. That is not the
+Linux baseline host; rerun the same Criterion group there before claiming the
+portable budget. At the 5-second interval, the 2000-pack measurement is about
+**0.07% of one core** before normal scheduler overhead.
+
+The Workshop title lookup uses `ureq` + rustls and adds about **2.7 MiB** to the
+Windows release binary (10.59 MiB to 13.30 MiB in the comparison run). The
+change-detection poll itself adds no dependency or long-lived Rust thread.
+
 ## Cold-process session measurements
 
 ```bash

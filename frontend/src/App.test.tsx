@@ -548,6 +548,31 @@ describe('App', () => {
     expect(screen.queryByLabelText('Show authors')).not.toBeInTheDocument()
   })
 
+  it('shows the official title and the technical pack name in the inspector', async () => {
+    mockReady(
+      makeSnapshot([
+        {
+          ...MOD_A,
+          name: 'alpha_internal.pack',
+          humanName: 'Official Alpha',
+        },
+      ]),
+    )
+    render(<App />)
+    const list = await screen.findByRole('listbox', { name: 'Mods' })
+    const row = within(list).getByText('Official Alpha').closest('[role="option"]')
+    expect(row).not.toBeNull()
+    expect(row!.querySelector('.row-pack')).toHaveTextContent('alpha_internal')
+    expect(row!.querySelector('.row-pack')).not.toHaveTextContent('.pack')
+    fireEvent.doubleClick(row!)
+
+    expect(await screen.findByRole('heading', { name: 'Official Alpha' })).toBeInTheDocument()
+    const inspector = screen.getByRole('complementary', { name: 'Inspector' })
+    expect(within(inspector).getByText('Pack name')).toBeInTheDocument()
+    expect(within(inspector).getByText('alpha_internal')).toBeInTheDocument()
+    expect(within(inspector).getByText('alpha_internal.pack')).toBeInTheDocument()
+  })
+
   it('switches sections with Ctrl+1..5 and focuses search with Ctrl+F', async () => {
     mockReady()
     render(<App />)

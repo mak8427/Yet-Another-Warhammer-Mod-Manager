@@ -6,6 +6,7 @@ use crate::paths::{lexical_absolute, GameLocation};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::UNIX_EPOCH;
 
 /// The fallback vanilla pack list when `data/manifest.txt` cannot be read.
 /// WH3 ships these three; any other pack in `data` is treated as a local mod.
@@ -25,6 +26,104 @@ pub struct IndexReport {
     pub workshop_candidates: usize,
     pub duplicates: Vec<DuplicatePackName>,
     pub problems: Vec<String>,
+}
+
+/// One filesystem entry's change-detection stamp. Pack bodies are never read.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct FileStamp {
+    pub path: String,
+    pub len: u64,
+    pub modified_ns: Option<u128>,
+}
+
+/// A cheap metadata-only snapshot of every location that can add, remove, or
+/// update a mod. Comparing two fingerprints avoids rescanning pack headers when
+/// nothing changed.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ModIndexFingerprint {
+    pub local: Vec<FileStamp>,
+    pub workshop: Vec<FileStamp>,
+    /// Steam exposes an in-progress Workshop download here. While true, callers
+    /// should wait before treating the content folder as a completed change.
+    pub downloads_active: bool,
+}
+
+/// Reads directory metadata and pack file stamps without opening any pack body.
+pub fn fingerprint(location: &GameLocation) -> ModIndexFingerprint {
+    let mut result = ModIndexFingerprint::default();
+    collect_pack_stamps(&location.data_path, &mut result.local);
+    collect_pack_stamps(&location.data_path.join("modding"), &mut result.local);
+
+    if !location.workshop_path.as_os_str().is_empty() {
+        if let Ok(entries) = fs::read_dir(&location.workshop_path) {
+            for entry in entries.flatten() {
+                if !entry.file_type().is_ok_and(|kind| kind.is_dir()) {
+                    continue;
+                }
+                let folder = entry.path();
+                if let Ok(files) = fs::read_dir(&folder) {
+                    for file in files.flatten() {
+                        let path = file.path();
+                        if !is_pack(&path) {
+                            continue;
+                        }
+                        let Ok(metadata) = file.metadata() else {
+                            continue;
+                        };
+                        if metadata.is_file() {
+                            result.workshop.push(stamp_from_metadata(&path, &metadata));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if !location.steam_root.as_os_str().is_empty() {
+        let downloads = location
+            .steam_root
+            .join("steamapps")
+            .join("workshop")
+            .join("downloads")
+            .join(crate::paths::WH3_APP_ID);
+        result.downloads_active =
+            fs::read_dir(downloads).is_ok_and(|mut entries| entries.next().is_some());
+    }
+
+    result.local.sort();
+    result.workshop.sort();
+    result
+}
+
+fn collect_pack_stamps(dir: &Path, stamps: &mut Vec<FileStamp>) {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !is_pack(&path) || file_name_lower(&path) == crate::launch::MANAGED_SKIP_INTRO_PACK {
+            continue;
+        }
+        let Ok(metadata) = entry.metadata() else {
+            continue;
+        };
+        if metadata.is_file() {
+            stamps.push(stamp_from_metadata(&path, &metadata));
+        }
+    }
+}
+
+fn stamp_from_metadata(path: &Path, metadata: &fs::Metadata) -> FileStamp {
+    let modified_ns = metadata
+        .modified()
+        .ok()
+        .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
+        .map(|duration| duration.as_nanos());
+    FileStamp {
+        path: path.to_string_lossy().replace('\\', "/"),
+        len: metadata.len(),
+        modified_ns,
+    }
 }
 
 /// A mod discovered on disk, before user tags and profile state are applied.
@@ -543,5 +642,94 @@ mod tests {
         assert!(id.ends_with("mod.pack"));
         assert!(!id.contains('\\'));
         assert_eq!(stable_mod_id(&path), stable_mod_id(&path));
+    }
+
+    #[test]
+    fn fingerprint_is_stable_until_a_pack_or_workshop_state_changes() {
+        let dir = TempDir::new("index-fingerprint");
+        let steam = dir.path().join("Steam");
+        let game = steam
+            .join("steamapps")
+            .join("common")
+            .join("Total War WARHAMMER III");
+        let data = game.join("data");
+        fs::create_dir_all(&data).unwrap();
+        write(&data.join("a.pack"), &synthetic_pack_bytes(0, &[], 0));
+        let workshop = steam
+            .join("steamapps")
+            .join("workshop")
+            .join("content")
+            .join("1142710");
+        write(
+            &workshop.join("42").join("b.pack"),
+            &synthetic_pack_bytes(0, &[], 0),
+        );
+        let mut location = fixture_location(&game, Some(workshop.clone()));
+        location.steam_root = steam.clone();
+
+        let first = fingerprint(&location);
+        assert_eq!(first, fingerprint(&location));
+        assert!(!first.downloads_active);
+
+        write(&data.join("c.pack"), &synthetic_pack_bytes(0, &[], 0));
+        let second = fingerprint(&location);
+        assert_ne!(first, second);
+
+        write(
+            &workshop.join("43").join("d.pack"),
+            &synthetic_pack_bytes(0, &[], 0),
+        );
+        assert_ne!(second, fingerprint(&location));
+
+        let downloads = steam
+            .join("steamapps")
+            .join("workshop")
+            .join("downloads")
+            .join("1142710")
+            .join("44");
+        fs::create_dir_all(&downloads).unwrap();
+        assert!(fingerprint(&location).downloads_active);
+    }
+
+    #[test]
+    fn fingerprint_ignores_the_managed_skip_intro_pack() {
+        let dir = TempDir::new("index-fingerprint-skip-intro");
+        let game = dir.path().join("game");
+        fs::create_dir_all(game.join("data")).unwrap();
+        let location = fixture_location(&game, None);
+        let first = fingerprint(&location);
+
+        write(
+            &game
+                .join("data")
+                .join(crate::launch::MANAGED_SKIP_INTRO_PACK),
+            &synthetic_pack_bytes(0, &[], 0),
+        );
+
+        assert_eq!(first, fingerprint(&location));
+    }
+
+    #[test]
+    fn fingerprint_ignores_steam_metadata_timestamp_changes() {
+        let dir = TempDir::new("index-fingerprint-acf");
+        let steam = dir.path().join("Steam");
+        let game = steam
+            .join("steamapps")
+            .join("common")
+            .join("Total War WARHAMMER III");
+        fs::create_dir_all(game.join("data")).unwrap();
+        let acf_dir = steam.join("steamapps").join("workshop");
+        fs::create_dir_all(&acf_dir).unwrap();
+        let acf = acf_dir.join("appworkshop_1142710.acf");
+        fs::write(&acf, b"\"AppWorkshop\"\n{\n\"TimeLastAppRan\" \"1\"\n}\n").unwrap();
+        let location = fixture_location(&game, None);
+        let location = crate::paths::GameLocation {
+            steam_root: steam,
+            ..location
+        };
+
+        let first = fingerprint(&location);
+        fs::write(&acf, b"\"AppWorkshop\"\n{\n\"TimeLastAppRan\" \"2\"\n}\n").unwrap();
+        assert_eq!(first, fingerprint(&location));
     }
 }

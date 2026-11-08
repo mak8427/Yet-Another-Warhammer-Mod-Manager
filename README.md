@@ -205,8 +205,13 @@ For uninstall commands and configuration cleanup, see [the installation guide](d
 
 ## Highlights
 
-- **📚 One view for game and Workshop mods.** Scan installed packs, search and
-  filter the list, add tags, and inspect the selected pack.
+- **📚 One view for game and Workshop mods.** Scan installed packs, see official
+  Workshop titles with the technical pack handle beneath each title, search and
+  filter the list, add tags, and inspect the selected pack. The inspector also
+  keeps the handle and exact filename for troubleshooting.
+- **🔄 Stay current without restarting.** A quiet metadata check picks up mods
+  added by Steam while the manager is open; full scans run only when something
+  actually changed.
 - **↕️ Control your load order.** Enable mods individually or in batches, drag
   to reorder, and move selections to the top, bottom, or adjacent positions.
 - **🗂 Profiles for different campaigns.** Save, duplicate, rename, and switch
@@ -286,11 +291,11 @@ server; filesystem and game actions require the Tauri app.
 | Capability | Status | Details |
 |---|---|---|
 | Game & Steam discovery | Implemented; platform caveats | Steam libraries and manual game-folder selection; Flatpak/Snap/XDG discovery is best-effort |
-| Mod browsing | Implemented | Local/Workshop packs, search, sort, tags, thumbnails, and selected-pack inspection |
+| Mod browsing | Implemented | Local/Workshop packs, official Workshop titles with technical-handle subtitles, search, sort, tags, thumbnails, live refresh, and selected-pack inspection |
 | Load order | Implemented | Enable/disable, batch actions, drag/move controls, atomic writes, and backups |
 | Profiles | Implemented | Create, rename, duplicate, delete, switch, apply, and share as a portable JSON file (import requires every listed mod to be installed) |
 | Conflict inspection | Implemented | Overlapping pack entries, duplicate pack names, and missing/disabled dependencies |
-| Workshop | Partial | Read installed/subscribed metadata and open Steam pages; subscribe/unsubscribe/update through Steam |
+| Workshop | Partial | Read installed/subscribed metadata, fetch and cache official titles through Steam's public endpoint, and open Steam pages; subscribe/unsubscribe/update through Steam |
 | Game launch | Implemented; manual QA required | Direct Windows / Proton paths, launch options, running-game checks, and load-order protection |
 | Preferences | Implemented; persistence caveats | Density, thumbnails, paths, reset, and backup recovery; see the testing guide |
 | Large-list UI | Partial | Virtualized rows; persisted scroll and the 20k-row guard remain documented limitations |
