@@ -25,12 +25,16 @@ import {
 } from './lib/ipc'
 import { clampZoom, stepZoom, ZOOM_DEFAULT } from './lib/zoom'
 import { profileFiles, suggestedProfileFileName, type ProfileFiles } from './lib/files'
+import { packStem } from './lib/ui'
 
 export type AppStatus = 'loading' | 'ready' | 'no-game' | 'error'
 export type View = 'mods' | 'profiles' | 'conflicts' | 'workshop' | 'settings'
 export type SortMode = 'load-order' | 'name' | 'updated'
 export type SelectMode = 'single' | 'toggle' | 'range'
 export type MoveTarget = 'up' | 'down' | 'top' | 'bottom'
+
+/** Quiet filesystem check cadence while the window is visible. */
+export const MOD_POLL_INTERVAL_MS = 5000
 
 interface ModEdit {
   apply: (snapshot: ModListSnapshot) => ModListSnapshot
@@ -165,6 +169,7 @@ export function visibleMods(state: Pick<AppState, 'snapshot' | 'query' | 'active
     if (query === '') return true
     return (
       mod.name.toLowerCase().includes(query) ||
+      packStem(mod.name).toLowerCase().includes(query) ||
       mod.humanName.toLowerCase().includes(query) ||
       (mod.workshopId ?? '').includes(query)
     )
@@ -211,6 +216,11 @@ export class AppStore {
   private pendingScrollTop = 0
   private readonly modEdits: ModEdit[] = []
   private conflictRefreshPending = false
+  private workshopRefreshPending = false
+  private modPollTimer: ReturnType<typeof setTimeout> | null = null
+  private watching = false
+  private modCheckInFlight = false
+  private titleRefreshInFlight = false
 
   constructor(client: IpcClient = ipc, files: ProfileFiles = profileFiles) {
     this.client = client
@@ -233,15 +243,94 @@ export class AppStore {
   }
 
   reset(): void {
+    this.stopWatching()
     for (const edit of this.modEdits) edit.resolve()
     this.modEdits.length = 0
     this.conflictRefreshPending = false
+    this.workshopRefreshPending = false
     if (this.scrollTimer) clearTimeout(this.scrollTimer)
     this.scrollTimer = null
     this.initialized = false
     this.initPromise = null
     this.state = initialState()
     for (const listener of this.listeners) listener()
+  }
+
+  private readonly onVisibilityChange = (): void => {
+    if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      void this.checkForModChanges()
+    }
+  }
+
+  /** Starts the quiet visible-window poll; the returned cleanup stops it. */
+  startWatching(): () => void {
+    this.stopWatching()
+    if (!this.initialized || this.state.status !== 'ready') {
+      return () => this.stopWatching()
+    }
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', this.onVisibilityChange)
+    }
+    this.watching = true
+    this.scheduleModCheck()
+    return () => this.stopWatching()
+  }
+
+  private scheduleModCheck(): void {
+    this.modPollTimer = setTimeout(() => {
+      this.modPollTimer = null
+      void this.checkForModChanges().finally(() => {
+        if (this.watching && this.initialized && this.state.status === 'ready') {
+          this.scheduleModCheck()
+        }
+      })
+    }, MOD_POLL_INTERVAL_MS)
+  }
+
+  private stopWatching(): void {
+    this.watching = false
+    if (this.modPollTimer !== null) clearTimeout(this.modPollTimer)
+    this.modPollTimer = null
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.onVisibilityChange)
+    }
+  }
+
+  /** Cheap check; only a real change triggers a full scan and list update. */
+  async checkForModChanges(): Promise<void> {
+    if (this.state.status !== 'ready' || this.state.busy || this.modEdits.length > 0) return
+    if (this.modCheckInFlight) return
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+    this.modCheckInFlight = true
+    try {
+      if (!(await this.client.checkModsChanged())) return
+      const snapshot = await this.client.rescanMods()
+      this.setSnapshot(snapshot)
+      void this.refreshWorkshop()
+      void this.refreshWorkshopTitles()
+    } catch {
+      // Quiet by design; the next visible tick retries.
+    } finally {
+      this.modCheckInFlight = false
+    }
+  }
+
+  /** Applies official Workshop names without rescanning packs or conflicts. */
+  async refreshWorkshopTitles(force = false): Promise<void> {
+    if (this.state.status !== 'ready' || this.state.busy || this.modEdits.length > 0) return
+    if (this.titleRefreshInFlight) return
+    this.titleRefreshInFlight = true
+    try {
+      const report = await this.client.refreshWorkshopTitles(force)
+      if (report.updated > 0) {
+        this.setSnapshot(report.snapshot, false)
+        void this.refreshWorkshop()
+      }
+    } catch {
+      // Titles are optional metadata; cached/technical names remain usable.
+    } finally {
+      this.titleRefreshInFlight = false
+    }
   }
 
   init(): Promise<void> {
@@ -282,6 +371,7 @@ export class AppStore {
       void this.refreshConflicts()
       void this.refreshWorkshop()
       void this.refreshLaunchOptions()
+      void this.refreshWorkshopTitles()
     } catch (cause) {
       const error = toIpcError(cause)
       this.initialized = true
@@ -326,6 +416,7 @@ export class AppStore {
       void this.refreshConflicts()
       void this.refreshWorkshop()
       void this.refreshLaunchOptions()
+      void this.refreshWorkshopTitles()
     } catch (cause) {
       const error = toIpcError(cause)
       if (error.code === 'game_not_found') {
@@ -354,7 +445,7 @@ export class AppStore {
     }
   }
 
-  private setSnapshot(snapshot: ModListSnapshot): void {
+  private setSnapshot(snapshot: ModListSnapshot, refreshConflicts = true): void {
     const known = new Set(snapshot.mods.map((mod) => mod.id))
     const selection = this.state.selection.filter((id) => known.has(id))
     this.set({
@@ -363,7 +454,7 @@ export class AppStore {
       anchorId:
         this.state.anchorId && known.has(this.state.anchorId) ? this.state.anchorId : null,
     })
-    void this.refreshConflicts()
+    if (refreshConflicts) void this.refreshConflicts()
   }
 
   private async updateSnapshot(
@@ -401,13 +492,22 @@ export class AppStore {
   }
 
   async refreshWorkshop(): Promise<void> {
-    if (this.state.status !== 'ready' || this.state.workshopLoading) return
+    if (this.state.status !== 'ready') return
+    if (this.state.workshopLoading) {
+      this.workshopRefreshPending = true
+      return
+    }
+    this.workshopRefreshPending = false
     this.set({ workshopLoading: true, workshopError: null })
     try {
       const workshop = await this.client.listWorkshopItems()
       this.set({ workshop, workshopLoading: false })
     } catch (cause) {
       this.set({ workshopLoading: false, workshopError: toIpcError(cause) })
+    }
+    if (this.workshopRefreshPending) {
+      this.workshopRefreshPending = false
+      void this.refreshWorkshop()
     }
   }
 
@@ -543,6 +643,7 @@ export class AppStore {
     this.set({ busy: null })
     void this.refreshProfiles()
     void this.refreshConflicts()
+    void this.refreshWorkshopTitles()
     for (const edit of completed) edit.resolve()
   }
 
@@ -844,12 +945,13 @@ export class AppStore {
 
   async rescan(): Promise<void> {
     if (this.state.status !== 'ready') return
-    this.set({ busy: 'Rescanning mods' })
+    this.set({ busy: 'Rescanning mods', error: null })
     try {
-      const { snapshot, profiles, tags, ui } = await this.loadWorkspaceData()
+      const snapshot = await this.client.rescanMods()
       this.setSnapshot(snapshot)
-      this.set({ profiles, tags, ui, busy: null, error: null })
-      await Promise.all([this.refreshConflicts(), this.refreshWorkshop()])
+      await Promise.all([this.refreshProfiles(), this.refreshWorkshop()])
+      this.set({ busy: null })
+      void this.refreshWorkshopTitles()
     } catch (cause) {
       this.set({ busy: null, error: toIpcError(cause) })
     }

@@ -14,6 +14,7 @@ describe('WorkshopScreen', () => {
         busy={false}
         error={null}
         onRefresh={() => {}}
+        onRefreshNames={() => {}}
         onDismissError={() => {}}
         onAction={onAction}
       />,
@@ -27,6 +28,25 @@ describe('WorkshopScreen', () => {
     expect(rows.length).toBeGreaterThan(1)
   })
 
+  it('dispatches an official-title refresh', () => {
+    const onRefreshNames = vi.fn()
+    render(
+      <WorkshopScreen
+        items={WORKSHOP_ITEMS}
+        loading={false}
+        busy={false}
+        error={null}
+        onRefresh={() => {}}
+        onRefreshNames={onRefreshNames}
+        onDismissError={() => {}}
+        onAction={() => {}}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh names' }))
+    expect(onRefreshNames).toHaveBeenCalledTimes(1)
+  })
+
   it('dispatches open for the selected workshop item', () => {
     const onAction = vi.fn()
     render(
@@ -36,6 +56,7 @@ describe('WorkshopScreen', () => {
         busy={false}
         error={null}
         onRefresh={() => {}}
+        onRefreshNames={() => {}}
         onDismissError={() => {}}
         onAction={onAction}
       />,
@@ -60,6 +81,7 @@ describe('WorkshopScreen', () => {
         error={null}
         viewportHeightOverride={320}
         onRefresh={() => {}}
+        onRefreshNames={() => {}}
         onDismissError={() => {}}
         onAction={() => {}}
       />,
@@ -85,6 +107,7 @@ describe('WorkshopScreen', () => {
         busy={false}
         error={error}
         onRefresh={() => {}}
+        onRefreshNames={() => {}}
         onDismissError={() => {}}
         onAction={() => {}}
       />,

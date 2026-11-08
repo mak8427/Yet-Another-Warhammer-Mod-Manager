@@ -548,6 +548,27 @@ describe('App', () => {
     expect(screen.queryByLabelText('Show authors')).not.toBeInTheDocument()
   })
 
+  it('shows the official title and the technical pack name in the inspector', async () => {
+    mockReady(
+      makeSnapshot([
+        {
+          ...MOD_A,
+          name: 'alpha_internal.pack',
+          humanName: 'Official Alpha',
+        },
+      ]),
+    )
+    render(<App />)
+    const list = await screen.findByRole('listbox', { name: 'Mods' })
+    const row = within(list).getByText('Official Alpha').closest('[role="option"]')
+    expect(row).not.toBeNull()
+    fireEvent.doubleClick(row!)
+
+    expect(await screen.findByRole('heading', { name: 'Official Alpha' })).toBeInTheDocument()
+    expect(screen.getByText('Pack name')).toBeInTheDocument()
+    expect(screen.getByText('alpha_internal')).toBeInTheDocument()
+  })
+
   it('switches sections with Ctrl+1..5 and focuses search with Ctrl+F', async () => {
     mockReady()
     render(<App />)

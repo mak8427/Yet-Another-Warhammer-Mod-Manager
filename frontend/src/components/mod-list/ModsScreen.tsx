@@ -1,5 +1,6 @@
 import { useMemo, type ComponentProps } from 'react'
 import { store, visibleMods, type AppState } from '../../store'
+import { packStem } from '../../lib/ui'
 import { LoadOrderBanner } from '../load-order/LoadOrderBanner'
 import { ModInspector } from './ModInspector'
 import { ModList } from './ModList'
@@ -52,6 +53,7 @@ export function ModsScreen({ state }: ModsScreenProps) {
     const names = new Set<string>()
     for (const mod of snapshot?.mods ?? []) {
       names.add(mod.name.toLowerCase())
+      names.add(packStem(mod.name).toLowerCase())
       names.add(mod.humanName.toLowerCase())
     }
     return names

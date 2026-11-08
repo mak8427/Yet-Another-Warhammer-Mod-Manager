@@ -60,9 +60,18 @@ entries, missing/disabled dependencies, duplicate pack names, and base-game tabl
 shadows. They are not a full database editor or a proof that a mod combination
 is playable.
 
-Workshop subscriptions/install state come from Steam metadata. Workshop actions
-open the Steam client; the app does not authenticate as the user or claim a
-subscription succeeded before Steam records it.
+Workshop subscriptions/install state come from Steam metadata. Official item
+titles are cached in the app config directory and refreshed in batches from
+Steam's public `GetPublishedFileDetails` endpoint by numeric Workshop id; no
+credentials are sent, and an offline or failed lookup falls back to the pack
+stem. Workshop actions open the Steam client; the app does not authenticate as
+the user or claim a subscription succeeded before Steam records it.
+
+While the window is visible, the UI asks the session whether a metadata-only
+fingerprint changed. The fingerprint lists local and Workshop pack stamps but
+never opens a pack body. A full index scan runs only after a change, and Steam's
+`workshop/downloads` folder defers the check while a download is still in
+progress. Steam ACF timestamp changes alone do not trigger a scan.
 
 ## Persistence and load-order safety
 

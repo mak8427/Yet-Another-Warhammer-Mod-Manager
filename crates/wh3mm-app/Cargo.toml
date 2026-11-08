@@ -20,6 +20,8 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 wh3mm-core = { path = "../wh3mm-core" }
 serde.workspace = true
+serde_json.workspace = true
+ureq = { version = "3.5.1", default-features = false, features = ["rustls"] }
 
 [target.'cfg(any(windows, target_os = "linux"))'.dependencies]
 # custom-protocol makes cargo-built binaries use the embedded frontend instead

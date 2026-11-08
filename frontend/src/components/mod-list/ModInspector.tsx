@@ -6,7 +6,7 @@ import {
   type Tag,
 } from '../../lib/ipc'
 import { formatBytes, formatDate } from '../../lib/format'
-import { factionSlotForColor, modPositionLabel } from '../../lib/ui'
+import { factionSlotForColor, modPositionLabel, packStem } from '../../lib/ui'
 import type { MoveTarget } from '../../store'
 
 interface ModInspectorProps {
@@ -167,6 +167,10 @@ export function ModInspector({
         <section className="inspector-section" aria-labelledby="inspector-pack">
           <h4 id="inspector-pack">Pack</h4>
           <dl className="inspector-facts">
+            <div>
+              <dt>Pack name</dt>
+              <dd title={packStem(mod.name)}>{packStem(mod.name)}</dd>
+            </div>
             <div>
               <dt>File</dt>
               <dd title={mod.name}>{mod.name}</dd>

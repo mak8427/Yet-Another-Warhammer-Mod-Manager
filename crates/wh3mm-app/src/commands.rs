@@ -1,36 +1,51 @@
+use std::collections::BTreeMap;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
+use serde::Deserialize;
 use wh3mm_core::conflicts::ConflictReport;
 use wh3mm_core::error::AppError;
 use wh3mm_core::ipc::{
     AppInfo, ExportProfileReport, GameLocation, ImportProfileOutcome, LoadOrderReadReport,
     LoadOrderWriteReport, ModListSnapshot, Profile, ProfilesState, ResetDefaultsReport, Tag,
-    UiPreferences,
+    UiPreferences, WorkshopTitleRefreshReport,
 };
 use wh3mm_core::launch::{LaunchOptions, LaunchResult};
 use wh3mm_core::session::{Session, SessionOptions};
 use wh3mm_core::window::WindowGeometry;
-use wh3mm_core::workshop::{SteamActionResult, WorkshopAction, WorkshopItem};
+use wh3mm_core::workshop::{now_unix_seconds, SteamActionResult, WorkshopAction, WorkshopItem};
 
 /// Owns the single mutable session. Every filesystem mutation is serialized by
 /// this mutex; the command layer adds no business logic of its own.
 pub struct Manager {
     session: Mutex<Session>,
+    title_fetch_last_attempt: Mutex<Option<Instant>>,
+    title_fetch_in_flight: AtomicBool,
 }
+
+const TITLE_LOOKUP_URL: &str =
+    "https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/";
+const TITLE_LOOKUP_BATCH: usize = 100;
+const TITLE_LOOKUP_TIMEOUT: Duration = Duration::from_secs(10);
+const TITLE_LOOKUP_RETRY_DELAY: Duration = Duration::from_secs(10 * 60);
 
 impl Manager {
     pub fn new(config_dir: PathBuf) -> Result<Self, AppError> {
         let session = Session::initialize(SessionOptions::new(config_dir))?;
         Ok(Self {
             session: Mutex::new(session),
+            title_fetch_last_attempt: Mutex::new(None),
+            title_fetch_in_flight: AtomicBool::new(false),
         })
     }
 
     pub fn from_session(session: Session) -> Self {
         Self {
             session: Mutex::new(session),
+            title_fetch_last_attempt: Mutex::new(None),
+            title_fetch_in_flight: AtomicBool::new(false),
         }
     }
 
@@ -75,6 +90,77 @@ impl Manager {
             );
         }
         Ok(snapshot)
+    }
+
+    pub fn check_mods_changed(&self) -> Result<bool, AppError> {
+        self.with(|session| session.mods_changed())
+    }
+
+    pub fn rescan_mods(&self) -> Result<ModListSnapshot, AppError> {
+        self.with_mut(|session| session.rescan_mods())
+    }
+
+    /// Looks up official Steam Workshop titles for installed/subscribed items.
+    /// Network work happens outside the session lock; a failure keeps the
+    /// cached or technical names and is reported without failing the command.
+    pub fn refresh_workshop_titles(
+        &self,
+        force: bool,
+    ) -> Result<WorkshopTitleRefreshReport, AppError> {
+        let (ids, snapshot) =
+            self.with(|session| (session.workshop_title_requests(force), session.snapshot()))?;
+        if ids.is_empty() {
+            return Ok(title_refresh_report(0, 0, snapshot, None));
+        }
+
+        if !force {
+            let last_attempt = self
+                .title_fetch_last_attempt
+                .lock()
+                .map_err(|_| AppError::internal("The Workshop title lock was poisoned"))?;
+            if last_attempt.is_some_and(|instant| instant.elapsed() < TITLE_LOOKUP_RETRY_DELAY) {
+                return Ok(title_refresh_report(
+                    0,
+                    0,
+                    snapshot,
+                    Some("Workshop titles will be retried later".to_string()),
+                ));
+            }
+        }
+
+        if self.title_fetch_in_flight.swap(true, Ordering::AcqRel) {
+            return Ok(title_refresh_report(
+                0,
+                0,
+                snapshot,
+                Some("A Workshop title lookup is already running".to_string()),
+            ));
+        }
+
+        let (titles, failed, message) = fetch_workshop_titles(&ids);
+        let updated = titles.len() as u32;
+        let snapshot = if titles.is_empty() {
+            snapshot
+        } else {
+            match self
+                .with_mut(|session| Ok(session.apply_workshop_titles(titles, now_unix_seconds())))
+            {
+                Ok(snapshot) => snapshot,
+                Err(error) => {
+                    self.title_fetch_in_flight.store(false, Ordering::Release);
+                    return Err(error);
+                }
+            }
+        };
+        if let Ok(mut last_attempt) = self.title_fetch_last_attempt.lock() {
+            if updated == 0 && failed > 0 {
+                *last_attempt = Some(Instant::now());
+            } else if updated > 0 {
+                *last_attempt = None;
+            }
+        }
+        self.title_fetch_in_flight.store(false, Ordering::Release);
+        Ok(title_refresh_report(updated, failed, snapshot, message))
     }
 
     pub fn set_mod_enabled(
@@ -246,6 +332,100 @@ impl Manager {
     }
 }
 
+fn title_refresh_report(
+    updated: u32,
+    failed: u32,
+    snapshot: ModListSnapshot,
+    message: Option<String>,
+) -> WorkshopTitleRefreshReport {
+    WorkshopTitleRefreshReport {
+        updated,
+        failed,
+        snapshot,
+        message,
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct PublishedFileDetailsResponse {
+    response: PublishedFileDetails,
+}
+
+#[derive(Debug, Deserialize)]
+struct PublishedFileDetails {
+    publishedfiledetails: Vec<PublishedFileDetail>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PublishedFileDetail {
+    publishedfileid: String,
+    result: i32,
+    title: Option<String>,
+}
+
+fn parse_workshop_title_response(
+    text: &str,
+) -> Result<BTreeMap<String, String>, serde_json::Error> {
+    let parsed: PublishedFileDetailsResponse = serde_json::from_str(text)?;
+    let mut titles = BTreeMap::new();
+    for detail in parsed.response.publishedfiledetails {
+        if detail.result == 1 {
+            if let Some(title) = detail.title {
+                if !title.trim().is_empty() {
+                    titles.insert(detail.publishedfileid, title);
+                }
+            }
+        }
+    }
+    Ok(titles)
+}
+
+/// Fetches official titles from Steam's public Workshop endpoint. This sends
+/// only numeric Workshop ids and never authenticates to Steam.
+fn fetch_workshop_titles(ids: &[String]) -> (BTreeMap<String, String>, u32, Option<String>) {
+    let config = ureq::Agent::config_builder()
+        .timeout_global(Some(TITLE_LOOKUP_TIMEOUT))
+        .build();
+    let agent: ureq::Agent = config.into();
+    let mut titles = BTreeMap::new();
+    let mut failure = None;
+
+    for chunk in ids.chunks(TITLE_LOOKUP_BATCH) {
+        let mut form = Vec::with_capacity(chunk.len() + 1);
+        form.push(("itemcount".to_string(), chunk.len().to_string()));
+        for (index, workshop_id) in chunk.iter().enumerate() {
+            form.push((format!("publishedfileids[{index}]"), workshop_id.clone()));
+        }
+
+        let mut response = match agent.post(TITLE_LOOKUP_URL).send_form(form) {
+            Ok(response) => response,
+            Err(error) => {
+                failure = Some(format!("Could not fetch Workshop titles: {error}"));
+                continue;
+            }
+        };
+        let text = match response.body_mut().read_to_string() {
+            Ok(text) => text,
+            Err(error) => {
+                failure = Some(format!("Could not read Workshop titles: {error}"));
+                continue;
+            }
+        };
+        match parse_workshop_title_response(&text) {
+            Ok(parsed) => titles.extend(parsed),
+            Err(error) => {
+                failure = Some(format!("Workshop title response was invalid: {error}"));
+            }
+        }
+    }
+
+    let failed = ids.iter().filter(|id| !titles.contains_key(*id)).count() as u32;
+    if failure.is_none() && failed > 0 {
+        failure = Some(format!("{failed} Workshop titles were not available"));
+    }
+    (titles, failed, failure)
+}
+
 /// Returns identity and build information for the running application.
 ///
 /// This is the M0 round-trip proof: the React shell invokes `app_info` and
@@ -309,6 +489,24 @@ mod tauri_commands {
     #[tauri::command]
     pub async fn list_mods(app: tauri::AppHandle) -> Result<ModListSnapshot, AppError> {
         run_blocking(move || app.state::<Manager>().list_mods()).await
+    }
+
+    #[tauri::command]
+    pub async fn check_mods_changed(app: tauri::AppHandle) -> Result<bool, AppError> {
+        run_blocking(move || app.state::<Manager>().check_mods_changed()).await
+    }
+
+    #[tauri::command]
+    pub async fn rescan_mods(app: tauri::AppHandle) -> Result<ModListSnapshot, AppError> {
+        run_blocking(move || app.state::<Manager>().rescan_mods()).await
+    }
+
+    #[tauri::command]
+    pub async fn refresh_workshop_titles(
+        app: tauri::AppHandle,
+        force: bool,
+    ) -> Result<WorkshopTitleRefreshReport, AppError> {
+        run_blocking(move || app.state::<Manager>().refresh_workshop_titles(force)).await
     }
 
     #[tauri::command]
@@ -635,6 +833,73 @@ mod tests {
             .unwrap();
         assert!(options.skip_intro);
         assert!(manager.get_launch_options().unwrap().script_logging);
+    }
+
+    #[test]
+    #[ignore = "hits the public Steam Web API"]
+    fn fetches_a_real_workshop_title() {
+        let (titles, failed, message) = fetch_workshop_titles(&["2789858755".to_string()]);
+        assert_eq!(failed, 0, "{message:?}");
+        assert!(
+            titles
+                .get("2789858755")
+                .is_some_and(|title| !title.trim().is_empty()),
+            "{titles:?}"
+        );
+    }
+
+    #[test]
+    fn parses_only_successful_workshop_titles() {
+        let text = r#"{
+            "response": {
+                "publishedfiledetails": [
+                    {"publishedfileid": "111", "result": 1, "title": "Official Name"},
+                    {"publishedfileid": "222", "result": 9, "title": ""},
+                    {"publishedfileid": "333", "result": 1, "title": "Another Mod"}
+                ]
+            }
+        }"#;
+        let titles = parse_workshop_title_response(text).unwrap();
+        assert_eq!(titles.get("111").map(String::as_str), Some("Official Name"));
+        assert_eq!(titles.get("333").map(String::as_str), Some("Another Mod"));
+        assert!(!titles.contains_key("222"));
+    }
+
+    #[test]
+    fn manager_rescans_mods_while_open() {
+        let dir = TempDir::new("app-rescan");
+        let game = dir.path().join("game");
+        fs::create_dir_all(game.join("data")).unwrap();
+        fs::write(
+            game.join("data").join("a.pack"),
+            synthetic_pack_bytes(0, &[], 0),
+        )
+        .unwrap();
+        let session = Session::initialize(SessionOptions {
+            config_path: dir.path().join("config.json"),
+            steam_root_candidates: Some(Vec::new()),
+            manual_game_path: Some(game.clone()),
+            log_timings: false,
+        })
+        .unwrap();
+        let manager = Manager::from_session(session);
+
+        assert_eq!(manager.list_mods().unwrap().mods.len(), 1);
+        assert!(!manager.check_mods_changed().unwrap());
+
+        fs::write(
+            game.join("data").join("b.pack"),
+            synthetic_pack_bytes(0, &[], 0),
+        )
+        .unwrap();
+        assert!(manager.check_mods_changed().unwrap());
+        let snapshot = manager.rescan_mods().unwrap();
+        assert_eq!(snapshot.mods.len(), 2);
+        assert!(!manager.check_mods_changed().unwrap());
+
+        let report = manager.refresh_workshop_titles(false).unwrap();
+        assert_eq!(report.updated, 0);
+        assert_eq!(report.failed, 0);
     }
 
     #[test]

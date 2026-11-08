@@ -5,12 +5,13 @@
 //! unsubscribe, or update succeeded: it opens the item in the Steam client and
 //! the UI re-reads the ACF state afterwards.
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::time::{Duration, SystemTime};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
+use crate::atomic;
 use crate::clock::system_time_to_iso8601;
 use crate::error::{AppError, ErrorCode};
 use crate::paths::{self, GameLocation, VdfValue, WH3_APP_ID};
@@ -20,6 +21,116 @@ use crate::session::Session;
 /// explicitly; the game's own app id is the fallback for installations that
 /// use the conventional name.
 pub const WORKSHOP_APP_ID: &str = "3247630";
+
+/// Local cache for the public title lookup. The cache is disposable metadata,
+/// not user configuration.
+pub const WORKSHOP_TITLE_CACHE_FILE: &str = "workshop_titles.json";
+pub const WORKSHOP_TITLE_TTL_SECONDS: i64 = 7 * 24 * 60 * 60;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CachedWorkshopTitle {
+    pub title: String,
+    pub fetched_at: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkshopTitleCache {
+    pub schema_version: u32,
+    pub titles: BTreeMap<String, CachedWorkshopTitle>,
+}
+
+impl Default for WorkshopTitleCache {
+    fn default() -> Self {
+        Self {
+            schema_version: 1,
+            titles: BTreeMap::new(),
+        }
+    }
+}
+
+impl WorkshopTitleCache {
+    /// A missing, corrupt, or future-schema cache is treated as empty. Titles
+    /// are optional metadata and must never block startup.
+    pub fn load(path: &Path) -> Self {
+        let Ok(text) = std::fs::read_to_string(path) else {
+            return Self::default();
+        };
+        let Ok(cache) = serde_json::from_str::<Self>(&text) else {
+            return Self::default();
+        };
+        if cache.schema_version == 1 {
+            cache
+        } else {
+            Self::default()
+        }
+    }
+
+    pub fn save(&self, path: &Path) -> Result<(), AppError> {
+        let bytes = serde_json::to_vec_pretty(self).map_err(|error| {
+            AppError::internal("The Workshop title cache could not be serialized")
+                .with_details(error.to_string())
+        })?;
+        atomic::atomic_write_no_backup(path, &bytes).map_err(|error| {
+            AppError::io_path("Could not save the Workshop title cache", path, &error)
+        })
+    }
+
+    pub fn insert(&mut self, workshop_id: &str, title: &str, fetched_at: i64) {
+        let title = title.trim();
+        if title.is_empty() {
+            return;
+        }
+        self.titles.insert(
+            workshop_id.to_string(),
+            CachedWorkshopTitle {
+                title: title.to_string(),
+                fetched_at,
+            },
+        );
+    }
+
+    pub fn title_map(&self) -> HashMap<String, String> {
+        self.titles
+            .iter()
+            .map(|(id, entry)| (id.clone(), entry.title.clone()))
+            .collect()
+    }
+
+    /// Ids that have no cached title or whose cached title is older than the
+    /// TTL. `force` ignores both the cache and its age.
+    pub fn missing_or_stale(
+        &self,
+        ids: impl IntoIterator<Item = impl AsRef<str>>,
+        force: bool,
+        now: i64,
+    ) -> Vec<String> {
+        let mut requested = BTreeSet::new();
+        for id in ids {
+            let id = id.as_ref();
+            let fresh = !force
+                && self.titles.get(id).is_some_and(|entry| {
+                    now.saturating_sub(entry.fetched_at) < WORKSHOP_TITLE_TTL_SECONDS
+                });
+            if !fresh {
+                requested.insert(id.to_string());
+            }
+        }
+        requested.into_iter().collect()
+    }
+}
+
+pub fn title_cache_path(config_path: &Path) -> PathBuf {
+    config_path.with_file_name(WORKSHOP_TITLE_CACHE_FILE)
+}
+
+pub fn now_unix_seconds() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_secs() as i64)
+        .unwrap_or(0)
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -349,16 +460,14 @@ impl Session {
             .as_ref()
             .ok_or_else(AppError::game_not_found)?;
         let acf = read_workshop_acf(&location.steam_root)?;
-        let local_titles: HashMap<String, String> = self
-            .mods
-            .iter()
-            .filter_map(|module| {
-                module
-                    .workshop_id
-                    .as_ref()
-                    .map(|id| (id.clone(), module.human_name.clone()))
-            })
-            .collect();
+        let mut local_titles = self.workshop_titles.title_map();
+        for module in &self.mods {
+            if let Some(id) = &module.workshop_id {
+                local_titles
+                    .entry(id.clone())
+                    .or_insert_with(|| module.human_name.clone());
+            }
+        }
         let mut items = items_from_acf(&acf, &local_titles);
         let known: HashSet<String> = items.iter().map(|item| item.workshop_id.clone()).collect();
         for module in &self.mods {
@@ -570,5 +679,36 @@ mod tests {
             source: crate::ipc::LocationSource::Manual,
         };
         assert_eq!(find_steam_executable(&location), Some(steam));
+    }
+
+    #[test]
+    fn title_cache_round_trips_and_reports_stale_entries() {
+        let dir = TempDir::new("workshop-title-cache");
+        let path = dir.path().join("workshop_titles.json");
+        let mut cache = WorkshopTitleCache::default();
+        cache.insert("111", "First", 1_000);
+        cache.save(&path).unwrap();
+
+        let loaded = WorkshopTitleCache::load(&path);
+        assert_eq!(loaded.titles["111"].title, "First");
+        assert!(loaded
+            .missing_or_stale(["111"], false, 1_000 + WORKSHOP_TITLE_TTL_SECONDS - 1)
+            .is_empty());
+        assert_eq!(
+            loaded.missing_or_stale(["111"], false, 1_000 + WORKSHOP_TITLE_TTL_SECONDS),
+            vec!["111"]
+        );
+        assert_eq!(
+            loaded.missing_or_stale(["111", "222"], true, 1_000),
+            vec!["111", "222"]
+        );
+    }
+
+    #[test]
+    fn corrupt_title_cache_is_ignored() {
+        let dir = TempDir::new("workshop-title-cache-corrupt");
+        let path = dir.path().join("workshop_titles.json");
+        fs::write(&path, b"not json").unwrap();
+        assert!(WorkshopTitleCache::load(&path).titles.is_empty());
     }
 }

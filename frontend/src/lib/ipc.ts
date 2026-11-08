@@ -268,6 +268,13 @@ export interface WorkshopItem {
   updatedAt: string | null
 }
 
+export interface WorkshopTitleRefreshReport {
+  updated: number
+  failed: number
+  snapshot: ModListSnapshot
+  message: string | null
+}
+
 export interface SteamActionResult {
   action: WorkshopAction
   workshopId: string
@@ -348,6 +355,9 @@ type CommandName =
   | 'detect_game'
   | 'set_game_path'
   | 'list_mods'
+  | 'check_mods_changed'
+  | 'rescan_mods'
+  | 'refresh_workshop_titles'
   | 'set_mod_enabled'
   | 'set_mods_enabled'
   | 'set_load_order'
@@ -401,6 +411,18 @@ async function setGamePath(gamePath: string | null): Promise<GameLocation> {
 
 async function listMods(): Promise<ModListSnapshot> {
   return invokeCommand<ModListSnapshot>('list_mods')
+}
+
+async function checkModsChanged(): Promise<boolean> {
+  return invokeCommand<boolean>('check_mods_changed')
+}
+
+async function rescanMods(): Promise<ModListSnapshot> {
+  return invokeCommand<ModListSnapshot>('rescan_mods')
+}
+
+async function refreshWorkshopTitles(force = false): Promise<WorkshopTitleRefreshReport> {
+  return invokeCommand<WorkshopTitleRefreshReport>('refresh_workshop_titles', { force })
 }
 
 async function setModEnabled(modId: string, enabled: boolean): Promise<ModListSnapshot> {
@@ -546,6 +568,9 @@ export const ipc = {
   detectGame,
   setGamePath,
   listMods,
+  checkModsChanged,
+  rescanMods,
+  refreshWorkshopTitles,
   setModEnabled,
   setModsEnabled,
   setLoadOrder,
